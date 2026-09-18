@@ -28,8 +28,8 @@ Node 20+ and pnpm required.
     pnpm cli --client jev                      # real model; needs TYPESAFE_API_KEY
 
 In the REPL, type an utterance, `dtmf:44718293` to send keypad digits, or
-`/reset` to start a new call. The corpus has 150 labeled utterances and there
-are 33 scenarios available for multi-turn testing.
+`/reset` to start a new call. The corpus has 152 labeled utterances and there
+are 34 scenarios available for multi-turn testing.
 
 ## Regression
 
