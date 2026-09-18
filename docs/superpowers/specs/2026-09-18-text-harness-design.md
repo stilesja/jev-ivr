@@ -467,3 +467,22 @@ Twilio sub-project: the partial-prompt policy in `plan()` (today every
 `last: false` frame triggers a full model call, and a partial judged complete
 can act before the final frame arrives), and an `AbortController` path in
 `runTurn` (the `signal` field exists on `JevRequest` but nothing supplies it).
+
+Date and time hardening, known soft spots to revisit once real ASR output is
+available (all acceptable for the demo):
+
+- The year is never asked. An absolute date more than 31 days in the past jumps
+  to next year while one 31 days or less in the past resolves to `none`; the
+  boundary is a cliff and should probably become "always next occurrence".
+- "This Friday" on a Saturday and "next Friday" on a Thursday follow one fixed
+  convention (Monday-start weeks); regional usage varies and callers will
+  disagree with it.
+- A weekday plus a month ("Wednesday the 23rd of October") has no combined
+  mode; the day wins and the weekday is ignored, with no consistency check.
+- Ordinals and day-first phrasing ("the fifth of October") depend on the model;
+  the keyword stub cannot parse them at all.
+- Spoken numbers stop at tens; "four hundred" is not supported.
+- Time of day is out of scope entirely, and "morning" or "afternoon" answers
+  will be labeled `none`.
+- Leap day and February 29 in a non-leap year resolve to `none` rather than the
+  next valid occurrence.
