@@ -16,12 +16,12 @@ function alwaysOn(): QuestionMap {
   return {
     intent: {
       type: 'choice',
-      instructions: 'Read asr.text. What is the caller asking the clinic phone line to do? If they are only answering the question in node.promptJustPlayed, choose none.',
+      instructions: 'Read asr.text. What is the caller asking the clinic phone line to do? If they are only answering a slot or confirmation question and not asking for anything new, choose none.',
       criteria: INTENT_CRITERIA_MAP,
     },
     intentSecondary: {
       type: 'choice',
-      instructions: 'Read asr.text. Besides the main request, does the caller ask for a second, different thing? Choose none if there is only one request.',
+      instructions: 'Read asr.text. Besides the main request, which second, different request does the caller make, if any? Choose none if there is only one request.',
       criteria: INTENT_CRITERIA_MAP,
     },
     addressedToSystem: {
@@ -38,7 +38,7 @@ function alwaysOn(): QuestionMap {
     },
     rephrasingLastTurn: {
       type: 'noul',
-      instructions: 'Read asr.text and history. Is the caller repeating or rewording something they already said because the system did not understand?',
+      instructions: "Read asr.text and history. Is the caller repeating or rewording a request because the previous turn's outcome in history shows the system did not act on it?",
     },
     confusedByPrompt: {
       type: 'noul',
@@ -52,9 +52,9 @@ function alwaysOn(): QuestionMap {
       type: 'score',
       instructions: 'Read asr.text. How frustrated does the caller sound?',
       levels: [
-        { label: 'none', description: 'Calm or neutral' },
-        { label: 'mild', description: 'Impatient, sighing, or mildly annoyed' },
-        { label: 'high', description: 'Angry, raising their voice, swearing, or threatening to hang up' },
+        { label: 'none', description: 'Calm or neutral wording' },
+        { label: 'mild', description: 'Complains about waiting, repeats a request with irritation, or says come on or seriously' },
+        { label: 'high', description: 'Swears, insults the system, says this is ridiculous, or threatens to hang up or complain' },
       ],
     },
     urgency: {
@@ -72,7 +72,7 @@ function alwaysOn(): QuestionMap {
     },
     languageSwitch: {
       type: 'choice',
-      instructions: 'Read asr.text. Does the caller ask for, or speak in, a language other than English?',
+      instructions: 'Read asr.text. Which language other than English does the caller ask for or speak, if any?',
       criteria: { none: 'English', es: 'Spanish', fr: 'French' },
     },
     intelligible: {
