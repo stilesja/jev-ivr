@@ -55,6 +55,10 @@ export function emptySlot(): SlotState {
   return { value: null, display: null, confirmed: false, attempts: 0, window: null };
 }
 
+function cloneSlot(s: SlotState): SlotState {
+  return { ...s, window: s.window ? { ...s.window } : null };
+}
+
 export function emptySlots(): Record<SlotId, SlotState> {
   return { memberId: emptySlot(), provider: emptySlot(), date: emptySlot() };
 }
@@ -86,9 +90,9 @@ export function cloneSession(s: Session): Session {
   return {
     ...s,
     slots: {
-      memberId: { ...s.slots.memberId },
-      provider: { ...s.slots.provider },
-      date: { ...s.slots.date },
+      memberId: cloneSlot(s.slots.memberId),
+      provider: cloneSlot(s.slots.provider),
+      date: cloneSlot(s.slots.date),
     },
     lastPromptOptions: [...s.lastPromptOptions],
     history: s.history.map((h) => ({ ...h })),

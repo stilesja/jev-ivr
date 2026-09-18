@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newSession, bucketAttempt, bucketElapsed, bucketPriorCalls, missingSlots, currentAttempts, setForm } from './session';
+import { newSession, bucketAttempt, bucketElapsed, bucketPriorCalls, missingSlots, currentAttempts, setForm, cloneSession } from './session';
 
 describe('session', () => {
   it('starts with no form and empty slots', () => {
@@ -35,5 +35,14 @@ describe('session', () => {
     s.promptedFor = 'intent';
     s.intentAttempts = 1;
     expect(currentAttempts(s)).toBe(1);
+  });
+
+  it('cloneSession copies slot windows', () => {
+    const s = newSession('s1', 0);
+    s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };
+    const clone = cloneSession(s);
+    clone.slots.date.window!.label = 'changed';
+    expect(s.slots.date.window.label).toBe('next_week');
+    expect(clone.slots.date.window).not.toBe(s.slots.date.window);
   });
 });
