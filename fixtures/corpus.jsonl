@@ -166,3 +166,5 @@
 {"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}
 {"id":"dt-19","text":"sometime this week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"this_week"}}}
 {"id":"dt-20","text":"Monday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"monday"}}}
+{"id": "dt-21", "text": "tuesday of next week", "intent": "none", "context": "reschedule", "prompted": "date", "slots": {"date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}}
+{"id": "rs-13", "text": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three", "intent": "reschedule", "context": "no_form", "slots": {"provider": "chen", "memberId": {"span": "four four seven one eight two nine three", "value": "44718293"}, "date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}, "tags": ["over_answer", "all_slots"]}

@@ -676,5 +676,23 @@
       "form": "reschedule",
       "text": "this week"
     }
+  },
+  {
+    "id": "weekday-in-window-one-turn",
+    "steps": [
+      {
+        "say": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen",
+        "date": "2026-09-22"
+      }
+    }
   }
 ]

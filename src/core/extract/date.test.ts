@@ -47,6 +47,17 @@ describe('resolveDate', () => {
       .toEqual({ kind: 'window', start: '2026-09-21', end: '2026-09-27', label: 'next_week', confidence: 0.9 });
   });
 
+  it('resolves a weekday named with a window to that day inside the window', () => {
+    const c = comps({ mode: 'window', window: 'next_week', weekday: 'tuesday' });
+    c.weekday.p = 0.7;
+    expect(resolveDate(c, TODAY)).toEqual({ kind: 'day', iso: '2026-09-22', confidence: 0.7 });
+  });
+
+  it('keeps the window when the named weekday cannot fit', () => {
+    expect(resolveDate(comps({ mode: 'window', window: 'this_week', weekday: 'monday' }), TODAY))
+      .toMatchObject({ kind: 'window', start: '2026-09-18', end: '2026-09-20', label: 'this_week' });
+  });
+
   it('resolves this week from today to sunday', () => {
     expect(resolveDate(comps({ mode: 'window', window: 'this_week' }), TODAY))
       .toMatchObject({ kind: 'window', start: '2026-09-18', end: '2026-09-20' });

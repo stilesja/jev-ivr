@@ -54,6 +54,16 @@ function weekdayIndex(iso: string): number {
   return (new Date(parseIso(iso)).getUTCDay() + 6) % 7;
 }
 
+/** The first day on or after `fromIso` that falls on the given weekday index. */
+function weekdayOnOrAfter(fromIso: string, weekday: number): string {
+  return addDays(fromIso, (((weekday - weekdayIndex(fromIso)) % 7) + 7) % 7);
+}
+
+/** The first day on or after `fromIso` that falls on the same weekday as `iso`. */
+export function snapWeekdayOnOrAfter(iso: string, fromIso: string): string {
+  return weekdayOnOrAfter(fromIso, weekdayIndex(iso));
+}
+
 function daysInMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
@@ -139,6 +149,14 @@ export function resolveDate(c: DateComponents, todayIso: string): DateResolution
           return { kind: 'none' };
       }
       if (start === end) return { kind: 'day', iso: start, confidence };
+      // "Tuesday of next week" names a day, not a span: a weekday answered alongside a
+      // window picks that weekday out of it. If it cannot fit, the window stands and the
+      // narrowing prompt asks for a day.
+      const named = WEEKDAYS.indexOf(c.weekday.choice as (typeof WEEKDAYS)[number]);
+      if (named >= 0) {
+        const iso = weekdayOnOrAfter(start > todayIso ? start : todayIso, named);
+        if (iso <= end) return { kind: 'day', iso, confidence: minP(c.mode, c.window, c.weekday) };
+      }
       return { kind: 'window', start, end, label, confidence };
     }
 

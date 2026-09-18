@@ -2308,5 +2308,35 @@
       "provider": "patel",
       "date": "2026-09-21"
     }
+  },
+  "dt-21": {
+    "id": "dt-21",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-22"
+    }
+  },
+  "rs-13": {
+    "id": "rs-13",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    }
   }
 }

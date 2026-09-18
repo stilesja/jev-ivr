@@ -2,12 +2,11 @@ import type { SlotSpec, SlotOutcome } from './types';
 import { isChoice, type AnswerMap, type QuestionMap } from '../../jev/types';
 import {
   DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS,
-  resolveDate, describeDay, addDays, parseIso,
+  resolveDate, describeDay, snapWeekdayOnOrAfter,
   type DateComponents, type ComponentPick, type DateWindow,
 } from '../../core/extract/date';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
-const DAY_MS = 86_400_000;
 
 /**
  * A bare weekday answered while a window is pending narrows that window: "Wednesday"
@@ -19,9 +18,7 @@ const DAY_MS = 86_400_000;
 export function constrainToWindow(iso: string, mode: string, window: DateWindow | null, todayIso: string): string | null {
   if (!window || mode !== 'weekday') return iso;
   if (iso >= window.start && iso <= window.end) return iso;
-  const from = window.start > todayIso ? window.start : todayIso;
-  const offsetDays = Math.round((parseIso(iso) - parseIso(from)) / DAY_MS);
-  const snapped = addDays(from, ((offsetDays % 7) + 7) % 7);
+  const snapped = snapWeekdayOnOrAfter(iso, window.start > todayIso ? window.start : todayIso);
   return snapped <= window.end ? snapped : null;
 }
 

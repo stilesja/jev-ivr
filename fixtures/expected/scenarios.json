@@ -580,5 +580,22 @@
     },
     "pass": true,
     "mismatches": []
+  },
+  "weekday-in-window-one-turn": {
+    "id": "weekday-in-window-one-turn",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "pass": true,
+    "mismatches": []
   }
 }

@@ -68,8 +68,15 @@ function dateAnswers(id: string, text: string, labels: string[]): Answer {
   const relative = has(text, /\bday after tomorrow\b/) ? 'day_after_tomorrow' : has(text, /\btomorrow\b/) ? 'tomorrow' : has(text, /\btoday\b/) ? 'today' : 'none';
   const dayMatch = month ? new RegExp(`\\b${month}\\s+(?:the\\s+)?(\\d{1,2})`).exec(text) : null;
   const day = dayMatch ? dayMatch[1]! : 'none';
-  const qualifier = weekday && has(text, new RegExp(`\\bnext\\s+${weekday}\\b`)) ? 'next' : weekday && has(text, new RegExp(`\\bthis\\s+${weekday}\\b`)) ? 'this' : 'none';
-  const mode = window !== 'none' ? 'window' : relative !== 'none' ? 'relative_day' : weekday ? 'weekday' : month ? 'absolute' : 'none';
+  // "Tuesday of next week" names a day: the week window only qualifies which Tuesday.
+  const weekWindow = window === 'next_week' || window === 'this_week' ? window : null;
+  const weekdayInWindow = weekday && weekWindow ? weekday : null;
+  const qualifier = weekday && has(text, new RegExp(`\\bnext\\s+${weekday}\\b`)) ? 'next'
+    : weekday && has(text, new RegExp(`\\bthis\\s+${weekday}\\b`)) ? 'this'
+    : weekdayInWindow ? (weekWindow === 'next_week' ? 'next' : 'this') : 'none';
+  const effectiveWindow = weekdayInWindow ? 'none' : window;
+  const mode = weekdayInWindow ? 'weekday'
+    : effectiveWindow !== 'none' ? 'window' : relative !== 'none' ? 'relative_day' : weekday ? 'weekday' : month ? 'absolute' : 'none';
   const pick = (v: string) => choiceAnswer(sharp(labels, labels.includes(v) ? v : 'none', 0.88));
   switch (id) {
     case 'dateMode': return pick(mode);
@@ -78,7 +85,7 @@ function dateAnswers(id: string, text: string, labels: string[]): Answer {
     case 'dateWeekday': return pick(weekday ?? 'none');
     case 'dateWeekdayQualifier': return pick(qualifier);
     case 'dateRelativeDay': return pick(relative);
-    case 'dateWindow': return pick(window);
+    case 'dateWindow': return pick(effectiveWindow);
     default: return pick('none');
   }
 }

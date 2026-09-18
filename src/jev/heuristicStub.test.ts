@@ -17,6 +17,15 @@ async function ask(text: string) {
   return res;
 }
 
+describe('date components', () => {
+  it('reads "tuesday of next week" as a weekday, not a window', async () => {
+    const res = await ask('can you move it to tuesday of next week');
+    expect(res.answers.dateMode).toMatchObject({ choice: 'weekday' });
+    expect(res.answers.dateWeekdayQualifier).toMatchObject({ choice: 'next' });
+    expect(res.answers.dateWeekday).toMatchObject({ choice: 'tuesday' });
+  });
+});
+
 describe('sharp', () => {
   it('gives the winner the sharpness and spreads the rest', () => {
     expect(sharp(['a', 'b', 'c'], 'b', 0.9)).toEqual({ a: 0.05, b: 0.9, c: 0.05 });
