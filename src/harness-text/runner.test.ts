@@ -55,6 +55,19 @@ describe('runCorpusEntry', () => {
     expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'ask_provider', form: 'cancel' });
     expect(outcome.slots.memberId).toBe('44718293');
   });
+
+  it('prompts the requested slot for an in-form entry', async () => {
+    const entry: CorpusEntry = {
+      id: 'd1', text: 'tomorrow', intent: 'none', context: 'reschedule', prompted: 'date',
+      slots: { date: { mode: 'relative_day', relativeDay: 'tomorrow' } },
+    };
+    const client = new FixtureStubClient([entry], { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    const { outcome } = await runCorpusEntry(entry, { ...opts, client });
+    expect(outcome.decision).toBe('complete');
+    expect(outcome.slots.date).toBe('2026-09-19');
+    expect(outcome.slots.memberId).toBe('00000000');
+    expect(outcome.slots.provider).toBe('patel');
+  });
 });
 
 describe('runScenario', () => {

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { FORM_INTENTS, INTENTS, type FormId, type Intent } from '../domain/intents';
+import { FORMS, type SlotId } from '../domain/forms';
 
 export interface DateLabel {
   mode?: string;
@@ -28,6 +29,8 @@ export interface CorpusEntry {
   intent: Intent;
   /** the form active when this utterance is spoken; no_form for a first utterance */
   context: 'no_form' | FormId;
+  /** the slot the last prompt asked for; only inside a form, defaults to the form's first missing slot */
+  prompted?: SlotId;
   slots?: CorpusSlots;
   /** explicit distributions that replace the generated ones */
   answers?: Record<string, AnswerOverride>;
@@ -54,6 +57,10 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
     if (!(INTENTS as readonly string[]).includes(entry.intent)) throw new Error(`corpus ${entry.id}: unknown intent ${entry.intent}`);
     if (entry.context !== 'no_form' && !(FORM_INTENTS as readonly string[]).includes(entry.context)) {
       throw new Error(`corpus ${entry.id}: unknown context ${entry.context}`);
+    }
+    if (entry.prompted !== undefined
+      && (entry.context === 'no_form' || !FORMS[entry.context].slots.includes(entry.prompted))) {
+      throw new Error(`corpus ${entry.id}: prompted slot ${entry.prompted} is not on form ${entry.context}`);
     }
     if (seen.has(entry.id)) throw new Error(`corpus ${entry.id}: duplicate id`);
     seen.add(entry.id);

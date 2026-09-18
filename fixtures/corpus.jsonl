@@ -91,13 +91,13 @@
 {"id":"lc-08","text":"Book something","intent":"schedule_new","context":"no_form","answers":{"intent":{"probabilities":{"schedule_new":0.42,"other":0.3}}},"tags":["explicit_confirm"]}
 {"id":"lc-09","text":"Check on my appointment","intent":"confirm_appointment","context":"no_form","answers":{"intent":{"probabilities":{"confirm_appointment":0.75,"cancel":0.1}}},"tags":["implicit_confirm"]}
 {"id":"lc-10","text":"I guess I need to cancel","intent":"cancel","context":"no_form","answers":{"intent":{"probabilities":{"cancel":0.35,"none":0.4}}},"tags":["intent_failed"]}
-{"id":"lc-11","text":"Rossi I think","intent":"none","context":"schedule_new","slots":{"provider":"rossi"},"answers":{"provider":{"probabilities":{"rossi":0.55,"none":0.4}}},"tags":["implicit_confirm"]}
-{"id":"lc-12","text":"It might be Dr. Kim","intent":"none","context":"cancel","slots":{"provider":"kim"},"answers":{"provider":{"probabilities":{"kim":0.4,"none":0.5}}},"tags":["slot_absent"]}
+{"id":"lc-11","text":"Rossi I think","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"rossi"},"answers":{"provider":{"probabilities":{"rossi":0.55,"none":0.4}}},"tags":["implicit_confirm"]}
+{"id":"lc-12","text":"It might be Dr. Kim","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"kim"},"answers":{"provider":{"probabilities":{"kim":0.4,"none":0.5}}},"tags":["slot_absent"]}
 
 {"id":"fr-01","text":"This is ridiculous, I just want to reschedule","intent":"reschedule","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.75,"mild":0.2}}},"tags":["frustration"]}
 {"id":"fr-02","text":"I already told you, cancel it","intent":"cancel","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.65,"mild":0.25}},"rephrasingLastTurn":{"noul":0.8}},"tags":["frustration"]}
 {"id":"fr-03","text":"Ugh, come on, I need to reschedule","intent":"reschedule","context":"no_form","answers":{"frustration":{"probabilities":{"mild":0.6,"high":0.3}}},"tags":["frustration"]}
-{"id":"fr-04","text":"For the third time, Dr. Chen","intent":"none","context":"reschedule","slots":{"provider":"chen"},"answers":{"frustration":{"probabilities":{"high":0.8,"mild":0.15}},"rephrasingLastTurn":{"noul":0.85}},"tags":["frustration"]}
+{"id":"fr-04","text":"For the third time, Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"answers":{"frustration":{"probabilities":{"high":0.8,"mild":0.15}},"rephrasingLastTurn":{"noul":0.85}},"tags":["frustration"]}
 {"id":"fr-05","text":"Are you kidding me","intent":"none","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.7,"mild":0.2}}},"tags":["frustration"]}
 {"id":"fr-06","text":"Seriously, just cancel the appointment","intent":"cancel","context":"no_form","answers":{"frustration":{"probabilities":{"mild":0.55,"high":0.35}}},"tags":["frustration"]}
 
@@ -128,33 +128,33 @@
 {"id":"mi-11","text":"one two three four five six seven eight","intent":"none","context":"billing","slots":{"memberId":{"span":"one two three four five six seven eight","value":"12345678"}}}
 {"id":"mi-12","text":"it's oh nine three three one two seven six","intent":"none","context":"reschedule","slots":{"memberId":{"span":"oh nine three three one two seven six","value":"09331276"}},"tags":["oh_as_zero"]}
 
-{"id":"pv-01","text":"Dr. Chen","intent":"none","context":"reschedule","slots":{"provider":"chen"}}
-{"id":"pv-02","text":"It's with Patel","intent":"none","context":"cancel","slots":{"provider":"patel"}}
-{"id":"pv-03","text":"Nguyen","intent":"none","context":"schedule_new","slots":{"provider":"nguyen"}}
-{"id":"pv-04","text":"Dr. Cheng, C H E N G","intent":"none","context":"reschedule","slots":{"provider":"cheng"}}
-{"id":"pv-05","text":"Doctor Okafor","intent":"none","context":"confirm_appointment","slots":{"provider":"okafor"}}
-{"id":"pv-06","text":"Dr. Kim, and can we do next Monday","intent":"none","context":"reschedule","slots":{"provider":"kim","date":{"mode":"weekday","weekday":"monday","weekdayQualifier":"next"}},"tags":["over_answer"]}
-{"id":"pv-07","text":"I don't remember the doctor's name","intent":"none","context":"cancel","tags":["no_progress"]}
-{"id":"pv-08","text":"Alvarez","intent":"none","context":"cancel","slots":{"provider":"alvarez"}}
+{"id":"pv-01","text":"Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"}}
+{"id":"pv-02","text":"It's with Patel","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"patel"}}
+{"id":"pv-03","text":"Nguyen","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"nguyen"}}
+{"id":"pv-04","text":"Dr. Cheng, C H E N G","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"cheng"}}
+{"id":"pv-05","text":"Doctor Okafor","intent":"none","context":"confirm_appointment","prompted":"provider","slots":{"provider":"okafor"}}
+{"id":"pv-06","text":"Dr. Kim, and can we do next Monday","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"kim","date":{"mode":"weekday","weekday":"monday","weekdayQualifier":"next"}},"tags":["over_answer"]}
+{"id":"pv-07","text":"I don't remember the doctor's name","intent":"none","context":"cancel","prompted":"provider","tags":["no_progress"]}
+{"id":"pv-08","text":"Alvarez","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"alvarez"}}
 
-{"id":"dt-01","text":"tomorrow","intent":"none","context":"reschedule","slots":{"date":{"mode":"relative_day","relativeDay":"tomorrow"}}}
-{"id":"dt-02","text":"next Tuesday","intent":"none","context":"schedule_new","slots":{"date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
-{"id":"dt-03","text":"October 5th","intent":"none","context":"reschedule","slots":{"date":{"mode":"absolute","month":"october","day":"5"}}}
-{"id":"dt-04","text":"the twelfth of November","intent":"none","context":"schedule_new","slots":{"date":{"mode":"absolute","month":"november","day":"12"}}}
-{"id":"dt-05","text":"sometime next week","intent":"none","context":"reschedule","slots":{"date":{"mode":"window","window":"next_week"}}}
-{"id":"dt-06","text":"Thursday","intent":"none","context":"schedule_new","slots":{"date":{"mode":"weekday","weekday":"thursday"}}}
-{"id":"dt-07","text":"this Friday","intent":"none","context":"reschedule","slots":{"date":{"mode":"weekday","weekday":"friday","weekdayQualifier":"this"}}}
-{"id":"dt-08","text":"next month","intent":"none","context":"schedule_new","slots":{"date":{"mode":"window","window":"next_month"}}}
-{"id":"dt-09","text":"Monday, September 28","intent":"none","context":"reschedule","slots":{"date":{"mode":"absolute","month":"september","day":"28"}}}
-{"id":"dt-10","text":"today if possible","intent":"none","context":"schedule_new","slots":{"date":{"mode":"relative_day","relativeDay":"today"}}}
-{"id":"dt-11","text":"February 30th","intent":"none","context":"reschedule","slots":{"date":{"mode":"absolute","month":"february","day":"30"}},"tags":["impossible_date"]}
-{"id":"dt-12","text":"Tuesday next week","intent":"none","context":"reschedule","slots":{"date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
-{"id":"dt-13","text":"the day after tomorrow","intent":"none","context":"schedule_new","slots":{"date":{"mode":"relative_day","relativeDay":"day_after_tomorrow"}}}
-{"id":"dt-14","text":"March 3rd","intent":"none","context":"reschedule","slots":{"date":{"mode":"absolute","month":"march","day":"3"}},"tags":["next_year"]}
-{"id":"dt-15","text":"Wednesday","intent":"none","context":"reschedule","slots":{"date":{"mode":"weekday","weekday":"wednesday"}}}
-{"id":"dt-16","text":"how about Wednesday","intent":"none","context":"reschedule","slots":{"date":{"mode":"weekday","weekday":"wednesday"}}}
-{"id":"dt-17","text":"Tuesday","intent":"none","context":"reschedule","slots":{"date":{"mode":"weekday","weekday":"tuesday"}}}
-{"id":"dt-18","text":"any day is fine","intent":"none","context":"reschedule","tags":["no_progress"]}
+{"id":"dt-01","text":"tomorrow","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"tomorrow"}}}
+{"id":"dt-02","text":"next Tuesday","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
+{"id":"dt-03","text":"October 5th","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"october","day":"5"}}}
+{"id":"dt-04","text":"the twelfth of November","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"absolute","month":"november","day":"12"}}}
+{"id":"dt-05","text":"sometime next week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"next_week"}}}
+{"id":"dt-06","text":"Thursday","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"dt-07","text":"this Friday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"friday","weekdayQualifier":"this"}}}
+{"id":"dt-08","text":"next month","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"window","window":"next_month"}}}
+{"id":"dt-09","text":"Monday, September 28","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"september","day":"28","weekday":"monday"}}}
+{"id":"dt-10","text":"today if possible","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"today"}}}
+{"id":"dt-11","text":"February 30th","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"february","day":"30"}},"tags":["impossible_date"]}
+{"id":"dt-12","text":"Tuesday next week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
+{"id":"dt-13","text":"the day after tomorrow","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"day_after_tomorrow"}}}
+{"id":"dt-14","text":"March 3rd","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"march","day":"3"}},"tags":["next_year"]}
+{"id":"dt-15","text":"Wednesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"wednesday"}}}
+{"id":"dt-16","text":"how about Wednesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"wednesday"}}}
+{"id":"dt-17","text":"Tuesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday"}}}
+{"id":"dt-18","text":"any day is fine","intent":"none","context":"reschedule","prompted":"date","tags":["no_progress"]}
 
 {"id":"sw-01","text":"actually I want to cancel it instead","intent":"cancel","context":"reschedule","tags":["intent_switch"]}
 {"id":"sw-02","text":"wait, never mind, cancel the appointment","intent":"cancel","context":"reschedule","tags":["intent_switch"]}
@@ -162,4 +162,4 @@
 {"id":"sw-04","text":"I'd rather talk to a person","intent":"agent","context":"cancel","tags":["wants_human"]}
 {"id":"sw-05","text":"what did you say","intent":"repeat_prompt","context":"reschedule","tags":["repeat"]}
 {"id":"sw-06","text":"repeat that","intent":"repeat_prompt","context":"billing","tags":["repeat"]}
-{"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","answers":{"intentSecondary":{"probabilities":{"billing":0.8}}},"tags":["secondary_intent"]}
+{"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","answers":{"intentSecondary":{"probabilities":{"billing":0.8}}},"tags":["secondary_intent"]}

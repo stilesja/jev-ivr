@@ -5,6 +5,9 @@ import { spokenToDigits } from '../core/extract/spokenNumber';
 import { DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS } from '../core/extract/date';
 import { PROVIDERS } from '../domain/slots/provider';
 import { FORM_INTENTS } from '../domain/intents';
+import { ALWAYS_ON_IDS } from '../core/questions';
+import { allSlots, type SlotContext } from '../domain/slots';
+import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 
 const corpus = loadCorpus('fixtures/corpus.jsonl');
 
@@ -14,7 +17,19 @@ describe('fixtures/corpus.jsonl', () => {
   });
 
   it('uses valid contexts', () => {
-    for (const e of corpus) expect(['no_form', ...FORM_INTENTS], e.id).toContain(e.context);
+    for (const e of corpus) {
+      expect(['no_form', ...FORM_INTENTS], e.id).toContain(e.context);
+      if (e.prompted) expect(FORM_INTENTS, e.id).toContain(e.context);
+    }
+  });
+
+  it('overrides name only questions the schema can ask', () => {
+    const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS };
+    const askable = new Set<string>([...ALWAYS_ON_IDS, 'confirmsYes', 'confirmsNo', 'menuNumberSaid']);
+    for (const spec of allSlots()) for (const id of Object.keys(spec.questions(ctx))) askable.add(id);
+    for (const e of corpus) {
+      for (const id of Object.keys(e.answers ?? {})) expect([...askable], `${e.id}: ${id}`).toContain(id);
+    }
   });
 
   it('labels member id spans that exist as candidate spans and normalize to the value', () => {

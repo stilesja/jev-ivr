@@ -4,14 +4,15 @@ import { performance } from 'node:perf_hooks';
 import type { InboundFrame } from '../channel/frames';
 import { promptFrame, setupFrame, dtmfFrames } from '../channel/frames';
 import { plan, resolve, type TurnContext, type TurnError, type TurnResult } from '../core/turn';
-import { missingSlots, newSession, setForm, type Session } from '../core/session';
+import { emptySlot, missingSlots, newSession, setForm, type Session } from '../core/session';
 import type { Thresholds } from '../core/thresholds';
 import type { CorpusEntry } from '../jev/corpus';
 import { JevClientError, type JevClient, type JevResponse, type JsonValue, type QuestionMap } from '../jev/types';
 import { buildTraceRecord, type TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 import { promptText } from '../prompts/render';
-import { ALL_SLOTS, type SlotId } from '../domain/forms';
+import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
+import type { SlotCandidate } from '../domain/slots';
 
 export interface RunOptions {
   client: JevClient;
@@ -99,12 +100,27 @@ async function startSession(id: string, opts: RunOptions): Promise<Session> {
   return run.result.session;
 }
 
+/** Stand-ins for the slots a corpus entry's form has already collected. */
+const PLACEHOLDER_SLOTS: Partial<Record<SlotId, SlotCandidate>> = {
+  memberId: { value: '00000000', display: '0000 0000' },
+  provider: { value: 'patel', display: 'Dr. Patel' },
+};
+
 export async function runCorpusEntry(entry: CorpusEntry, opts: RunOptions): Promise<{ outcome: Outcome; run: TurnRun }> {
   const session = await startSession(entry.id, opts);
   if (entry.context !== 'no_form') {
     setForm(session, entry.context);
-    const [slot] = missingSlots(session);
-    session.promptedFor = slot ?? null;
+    // An entry that targets a later slot starts from a form that already has the earlier ones.
+    if (entry.prompted) {
+      for (const id of FORMS[entry.context].slots) {
+        if (id === entry.prompted) break;
+        const placeholder = PLACEHOLDER_SLOTS[id];
+        if (!placeholder) throw new Error(`corpus ${entry.id}: no placeholder for slot ${id}`);
+        session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: true };
+      }
+    }
+    const slot = entry.prompted ?? missingSlots(session)[0] ?? null;
+    session.promptedFor = slot;
     session.lastPromptId = slot ? `ask_${slot}` : null;
     session.lastPromptText = slot ? promptText(`ask_${slot}`, {}) : '';
   }
