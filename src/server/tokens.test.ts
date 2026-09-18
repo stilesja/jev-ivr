@@ -27,4 +27,15 @@ describe('CallTokens', () => {
     expect(tokens.verify(a, 'CA1')).toBe(false);
     expect(tokens.verify(b, 'CA1')).toBe(true);
   });
+
+  it('evicts expired tokens for calls that never connect', () => {
+    let t = 0;
+    const tokens = new CallTokens(1000, () => t);
+    const a = tokens.mint('CA1');
+    const b = tokens.mint('CA2');
+    t = 1001;
+    expect(tokens.evictExpired()).toBe(2);
+    expect(tokens.verify(a, 'CA1')).toBe(false);
+    expect(tokens.verify(b, 'CA2')).toBe(false);
+  });
 });

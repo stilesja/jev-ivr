@@ -30,4 +30,16 @@ export class CallTokens {
   revoke(callSid: string): void {
     this.byCall.delete(callSid);
   }
+
+  evictExpired(): number {
+    const now = this.now();
+    let count = 0;
+    for (const [callSid, e] of this.byCall) {
+      if (now > e.expiresAt) {
+        this.byCall.delete(callSid);
+        count++;
+      }
+    }
+    return count;
+  }
 }
