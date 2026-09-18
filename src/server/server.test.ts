@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startServer, type RunningServer } from './index';
+import { startServer, type RunningServer, type ServerOverrides } from './index';
 import { loadConfig } from './config';
 import { FakeRelay } from '../testing/fakeRelay';
 import type { JevClient } from '../jev/types';
@@ -13,7 +13,10 @@ afterEach(async () => {
   running = null;
 });
 
-async function start(client?: JevClient) {
+/** Shaped like a minted token (32 hex) so the upgrade is accepted and setup does the refusing. */
+const UNMINTED_TOKEN = 'f'.repeat(32);
+
+function makeConfig(extra: Record<string, string> = {}) {
   const traceDir = mkdtempSync(join(tmpdir(), 'server-'));
   const config = loadConfig({
     PUBLIC_HOST: 'localhost',
@@ -23,8 +26,14 @@ async function start(client?: JevClient) {
     SIGNATURE_CHECK: 'off',
     TODAY_OVERRIDE: '2026-09-18',
     TRACE_DIR: traceDir,
+    ...extra,
   });
-  running = await startServer(config, { client, log: () => {} });
+  return { traceDir, config };
+}
+
+async function start(client?: JevClient, overrides: Omit<ServerOverrides, 'client' | 'log'> = {}) {
+  const { traceDir, config } = makeConfig();
+  running = await startServer(config, { client, log: () => {}, ...overrides });
   return { traceDir, base: `http://127.0.0.1:${running.port}`, ws: `ws://127.0.0.1:${running.port}/conversation` };
 }
 
@@ -37,15 +46,46 @@ async function connected(callSid = 'CA1') {
   return { ...s, relay, callSid };
 }
 
+/** The corpus is expensive to load, so the delaying client shares one fixture client across its calls. */
+let sharedStub: JevClient | null = null;
+async function fixtureStub(): Promise<JevClient> {
+  if (!sharedStub) {
+    const { FixtureStubClient } = await import('../jev/fixtureStub');
+    const { HeuristicStubClient } = await import('../jev/heuristicStub');
+    const { loadCorpus } = await import('../jev/corpus');
+    sharedStub = new FixtureStubClient(loadCorpus('fixtures/corpus.jsonl'), { sharpness: 0.9, fallback: new HeuristicStubClient() });
+  }
+  return sharedStub;
+}
+
 describe('server end to end', () => {
   it('greets on setup and rejects a bad token', async () => {
     const { relay, ws } = await connected();
     expect(relay.texts()).toEqual(['Thanks for calling the clinic. How can I help you today?']);
-    const bad = await FakeRelay.connect(`${ws}?token=nope`);
+    const bad = await FakeRelay.connect(`${ws}?token=${UNMINTED_TOKEN}`);
     bad.setup('CA2');
     const end = await bad.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"unauthorized"}');
     expect((await bad.closed).code).toBe(1008);
+  });
+
+  it('refuses an upgrade without a token', async () => {
+    const s = await start();
+    await expect(FakeRelay.connect(s.ws)).rejects.toBeDefined();
+    await expect(FakeRelay.connect(`${s.ws}?token=nope`)).rejects.toBeDefined();
+  });
+
+  it('closes a connection that never sends setup', async () => {
+    const s = await start(undefined, { setupTimeoutMs: 200 });
+    const token = running!.tokens.mint('CA9');
+    const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
+    expect((await relay.closed).code).toBe(1008);
+  });
+
+  it('reports a port in use as a clean error', async () => {
+    await start();
+    const { config } = makeConfig({ PORT: String(running!.port) });
+    await expect(startServer(config, { log: () => {} })).rejects.toThrow(/EADDRINUSE/);
   });
 
   it('runs the worked example over the socket and ends the call', async () => {
@@ -81,32 +121,34 @@ describe('server end to end', () => {
     expect(second.texts().at(-1)).toBe('One moment while I connect you to someone who can help.');
   });
 
-  it('serializes a prompt and a digit that arrive back to back', async () => {
-    const slow: JevClient = {
-      ask: async (req) => {
-        await new Promise((r) => setTimeout(r, 150));
-        const { FixtureStubClient } = await import('../jev/fixtureStub');
-        const { HeuristicStubClient } = await import('../jev/heuristicStub');
-        const { loadCorpus } = await import('../jev/corpus');
-        return new FixtureStubClient(loadCorpus('fixtures/corpus.jsonl'), { sharpness: 0.9, fallback: new HeuristicStubClient() }).ask(req);
-      },
-    };
-    const s = await start(slow);
-    const token = running!.tokens.mint('CA7');
-    const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
-    relay.setup('CA7');
-    await relay.waitForTexts(1);
-    relay.prompt('Cancel my appointment with Dr. Kim please');
-    relay.dtmf('44718293');
-    const end = await relay.waitFor((m) => m.type === 'end', 6000);
-    expect(end.handoffData).toBe('{"reasonCode":"completed"}');
-    const records = readFileSync(join(s.traceDir, 'CA7.jsonl'), 'utf8')
-      .trim()
-      .split('\n')
-      .map((l) => JSON.parse(l));
-    expect(records.map((r) => r.event.type)).toEqual(['setup', 'prompt', ...Array(8).fill('dtmf')]);
-    expect(records[1].decision.promptId).toBe('ask_memberId');
-  });
+  it(
+    'serializes a prompt and a digit that arrive back to back',
+    async () => {
+      const slow: JevClient = {
+        ask: async (req) => {
+          const stub = await fixtureStub();
+          await new Promise((r) => setTimeout(r, 150));
+          return stub.ask(req);
+        },
+      };
+      const s = await start(slow);
+      const token = running!.tokens.mint('CA7');
+      const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
+      relay.setup('CA7');
+      await relay.waitForTexts(1);
+      relay.prompt('Cancel my appointment with Dr. Kim please');
+      relay.dtmf('44718293');
+      const end = await relay.waitFor((m) => m.type === 'end', 4000);
+      expect(end.handoffData).toBe('{"reasonCode":"completed"}');
+      const records = readFileSync(join(s.traceDir, 'CA7.jsonl'), 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+      expect(records.map((r) => r.event.type)).toEqual(['setup', 'prompt', ...Array(8).fill('dtmf')]);
+      expect(records[1].decision.promptId).toBe('ask_memberId');
+    },
+    { timeout: 8000 },
+  );
 
   it('records an interrupt as barge-in on the next prompt turn', async () => {
     const { relay, traceDir, callSid } = await connected();
@@ -123,7 +165,8 @@ describe('server end to end', () => {
   it('sanitizes call sids before building file names', async () => {
     const { safeFileStem } = await import('./index');
     expect(safeFileStem('CA' + 'a'.repeat(32))).toBe('CA' + 'a'.repeat(32));
-    expect(safeFileStem('../etc/passwd')).toBe('.._etc_passwd');
+    expect(safeFileStem('../etc/passwd')).toBe('___etc_passwd');
+    expect(safeFileStem('CA1.frames')).toBe('CA1_frames');
     expect(safeFileStem('')).toBe('unknown');
   });
 

@@ -113,6 +113,11 @@ export class SessionStore {
     return run;
   }
 
+  /** The queue tail of every live call, so a shutdown can wait for turns that are already running. */
+  tails(): Promise<void>[] {
+    return [...this.calls.values()].map((e) => e.tail);
+  }
+
   end(callSid: string): void {
     const e = this.calls.get(callSid);
     if (e) {

@@ -27,18 +27,22 @@ export interface ServerOverrides {
   client?: JevClient;
   now?: () => number;
   log?: (line: string) => void;
+  /** Tests use a short deadline so a connection that never sends setup does not hold the suite open. */
+  setupTimeoutMs?: number;
 }
 
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 const EVICT_EVERY_MS = 60 * 1000;
+/** How long a shutdown waits for turns already in flight before it terminates the sockets anyway. */
+const DRAIN_TIMEOUT_MS = 2_000;
 
 /**
  * Call SIDs come from Twilio (CA + 32 hex), but they arrive over the socket, so never let one shape a path.
- * Dots survive (they are legal in a file name); separators do not, so no stem can escape the trace directory
- * and no stem is a bare `.` or `..` component once the `.jsonl` suffix is appended.
+ * Dots are replaced too, not only separators: a SID of `CA1.frames` would otherwise write its trace to
+ * `CA1.frames.jsonl` and collide with call CA1's frame log.
  */
 export function safeFileStem(callSid: string): string {
-  const cleaned = callSid.replace(/[^A-Za-z0-9._-]/g, '_');
+  const cleaned = callSid.replace(/[^A-Za-z0-9_-]/g, '_');
   return cleaned.length ? cleaned.slice(0, 64) : 'unknown';
 }
 
@@ -67,7 +71,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const deps = { config, store, tokens, hints: buildHints(), log };
 
   const server = createServer(createRequestHandler(deps));
-  const wss = attachWebSocketServer(server, { store, tokens, log });
+  const wss = attachWebSocketServer(server, { store, tokens, log }, overrides.setupTimeoutMs);
   const evictor = setInterval(() => {
     for (const sid of store.evictIdle()) log(`${sid}: evicted idle session`);
     const swept = tokens.evictExpired();
@@ -75,7 +79,21 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   }, EVICT_EVERY_MS);
   evictor.unref();
 
-  await new Promise<void>((resolve) => server.listen(config.port, resolve));
+  // listen reports failure as an 'error' event, which is unhandled (and fatal) unless it is awaited here.
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const onError = (err: Error) => reject(err);
+      server.once('error', onError);
+      server.listen(config.port, () => {
+        server.removeListener('error', onError);
+        resolve();
+      });
+    });
+  } catch (err) {
+    clearInterval(evictor);
+    wss.close();
+    throw err;
+  }
   const port = (server.address() as { port: number }).port;
 
   return {
@@ -83,12 +101,23 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     port,
     store,
     tokens,
-    close: () =>
-      new Promise((resolve) => {
-        clearInterval(evictor);
-        for (const c of wss.clients) c.terminate();
-        wss.close(() => server.close(() => resolve()));
-      }),
+    close: async () => {
+      clearInterval(evictor);
+      // Let turns that are already running finish (and flush their frames) before the sockets go away.
+      const tails = store.tails();
+      if (tails.length) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          Promise.allSettled(tails),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, DRAIN_TIMEOUT_MS);
+          }),
+        ]);
+        if (timer) clearTimeout(timer);
+      }
+      for (const c of wss.clients) c.terminate();
+      await new Promise<void>((resolve) => wss.close(() => server.close(() => resolve())));
+    },
   };
 }
 
