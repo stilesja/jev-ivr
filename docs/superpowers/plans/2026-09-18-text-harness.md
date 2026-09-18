@@ -184,6 +184,14 @@ git commit -m "chore: scaffold TypeScript package with vitest and tsx"
 **Files:**
 - Create: `src/jev/types.ts`, `src/jev/types.test.ts`
 
+Deviation from spec §9, for three shapes: `ScoreQuestion` carries ordered
+`levels: {label, description}[]` instead of a flat `criteria: string[]`, so
+`ScoreAnswer.probabilities` can be keyed by level label rather than level
+number, which is what the gate ladder reads. `NoulQuestion.criteria` is the
+SDK's `{true?, false?}` object rather than a string. `ChoiceQuestion.criteria`
+drops the `string[]` variant because no v1 question needs example phrases;
+add it back if a slot does.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/jev/types.test.ts`:
