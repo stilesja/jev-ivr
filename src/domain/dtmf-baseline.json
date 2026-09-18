@@ -1,0 +1,7 @@
+{
+  "schedule_new": 7,
+  "reschedule": 7,
+  "cancel": 5,
+  "confirm_appointment": 5,
+  "billing": 3
+}
