@@ -126,7 +126,10 @@ async function main(): Promise<void> {
   }
 
   if (args.replay) {
-    const r = await replayFrameLog(args.replay, opts, (run) => printRun(run, args.quiet!));
+    // A replay defaults to the call's own date; --today only overrides it when the flag was
+    // actually passed, since parseArgs always fills `args.today` with a default.
+    const replayOptions = process.argv.includes('--today') ? { todayIso: args.today! } : undefined;
+    const r = await replayFrameLog(args.replay, opts, (run) => printRun(run, args.quiet!), replayOptions);
     records.push(...r.records);
     for (const s of r.skipped) console.log(`skipped ${s}`);
   }

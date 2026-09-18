@@ -7,6 +7,8 @@ export interface FrameLogLine {
   ts: string;
   dir: FrameDir;
   msg: unknown;
+  /** 1-based line number in the log file, so a skip report can point back at the source line. Not written by FrameLog.write; only readFrameLog populates it. */
+  line?: number;
 }
 
 /** Every socket message and webhook for one call, in arrival order. This is what replay consumes. */
@@ -23,14 +25,15 @@ export class FrameLog {
 
 export function readFrameLog(path: string, onSkip?: (lineNumber: number) => void): FrameLogLine[] {
   const lines: FrameLogLine[] = [];
-  const raw = readFileSync(path, 'utf8')
-    .split('\n')
-    .filter((l) => l.trim());
+  const raw = readFileSync(path, 'utf8').split('\n');
   raw.forEach((l, i) => {
+    if (!l.trim()) return;
+    const lineNumber = i + 1;
     try {
-      lines.push(JSON.parse(l) as FrameLogLine);
+      const parsed = JSON.parse(l) as FrameLogLine;
+      lines.push({ ...parsed, line: lineNumber });
     } catch {
-      onSkip?.(i + 1);
+      onSkip?.(lineNumber);
     }
   });
   return lines;
