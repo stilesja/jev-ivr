@@ -176,4 +176,33 @@ describe('server end to end', () => {
     expect(await res.json()).toEqual({ ok: true, sessions: 0 });
     await expect(FakeRelay.connect(`ws://127.0.0.1:${running!.port}/other`)).rejects.toBeDefined();
   });
+
+  it('reconnects a dropped call through the action callback and resumes the form', async () => {
+    const { relay, base, ws, callSid } = await connected();
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    await relay.waitForTexts(2);
+    relay.close();
+    await relay.closed;
+    const body = new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString();
+    const res = await fetch(`${base}/cr-action`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
+    const twiml = await res.text();
+    expect(twiml).toContain('<ConversationRelay');
+    const token = /token=([0-9a-f]{32})/.exec(twiml)![1]!;
+    const again = await FakeRelay.connect(`${ws}?token=${token}`);
+    again.setup(callSid, 'VX-second');
+    expect(await again.waitForTexts(1)).toEqual(["What's your member ID?"]);
+    again.prompt('four four seven one eight two nine three');
+    expect((await again.waitForTexts(3)).at(-1)).toBe('Which day next week works for you?');
+    const done = await fetch(`${base}/cr-action`, {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),
+    });
+    expect(await done.text()).toContain('<ConversationRelay');
+    const third = await fetch(`${base}/cr-action`, {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),
+    });
+    expect(await third.text()).toContain('<Dial>+15551234567</Dial>');
+    expect(running!.store.get(callSid)?.ended).toBe(true);
+  });
 });
