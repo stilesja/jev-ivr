@@ -1,0 +1,27 @@
+import { describe, expect, it } from 'vitest';
+import { buildTurnState } from './state';
+import { newSession, setForm } from './session';
+
+describe('buildTurnState', () => {
+  it('buckets numbers, trims history and exposes candidate spans', () => {
+    const s = setForm(newSession('s1', 0), 'cancel');
+    s.promptedFor = 'memberId';
+    s.slots.memberId.attempts = 1;
+    s.lastPromptId = 'ask_memberId';
+    s.lastPromptText = "What's your member ID?";
+    s.history = [1, 2, 3, 4].map((i) => ({ node: `n${i}`, intent: 'none', outcome: 'prompt' }));
+    s.caller.priorCalls7d = 2;
+
+    const ts = buildTurnState(s, { text: 'it is four four seven', isFinal: true, dtmf: null }, 45_000);
+
+    expect(ts.turn).toEqual({ attempt: 'second', elapsed: 'under_2m' });
+    expect(ts.node).toEqual({ id: 'ask_memberId', promptJustPlayed: "What's your member ID?", options: [] });
+    expect(ts.history.map((h) => h.node)).toEqual(['n2', 'n3', 'n4']);
+    expect(ts.caller.priorCalls).toBe('several');
+    expect(ts.asr).toEqual({ text: 'it is four four seven', isFinal: true, bargeIn: false, dtmf: null });
+    expect(ts.candidateSpans).toContain('four four seven');
+    expect(ts.slots.memberId).toEqual({ value: null, confirmed: false });
+    expect(ts.activeForm).toBe('cancel');
+    expect(ts.pendingConfirmation).toBeNull();
+  });
+});

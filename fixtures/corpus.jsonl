@@ -1,0 +1,170 @@
+{"id":"sn-01","text":"I'd like to make an appointment","intent":"schedule_new","context":"no_form"}
+{"id":"sn-02","text":"I need to book an appointment with Dr. Patel","intent":"schedule_new","context":"no_form","slots":{"provider":"patel"}}
+{"id":"sn-03","text":"Can I schedule a visit with Dr. Nguyen next week","intent":"schedule_new","context":"no_form","slots":{"provider":"nguyen","date":{"mode":"window","window":"next_week"}},"tags":["over_answer","window"]}
+{"id":"sn-04","text":"I want to set up a new appointment for tomorrow","intent":"schedule_new","context":"no_form","slots":{"date":{"mode":"relative_day","relativeDay":"tomorrow"}}}
+{"id":"sn-05","text":"Book me with Dr. Kim on October 5th","intent":"schedule_new","context":"no_form","slots":{"provider":"kim","date":{"mode":"absolute","month":"october","day":"5"}},"tags":["over_answer"]}
+{"id":"sn-06","text":"New appointment please, my member ID is four four seven one eight two nine three","intent":"schedule_new","context":"no_form","slots":{"memberId":{"span":"four four seven one eight two nine three","value":"44718293"}},"tags":["over_answer"]}
+{"id":"sn-07","text":"I'd like to see Dr. Alvarez sometime this month","intent":"schedule_new","context":"no_form","slots":{"provider":"alvarez","date":{"mode":"window","window":"this_month"}}}
+{"id":"sn-08","text":"Schedule an appointment for next Tuesday with Dr. Rossi","intent":"schedule_new","context":"no_form","slots":{"provider":"rossi","date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
+{"id":"sn-09","text":"I need to get in to see somebody about my knee","intent":"schedule_new","context":"no_form"}
+{"id":"sn-10","text":"Make an appointment with Dr. Okafor, member ID 4471 8293, Friday","intent":"schedule_new","context":"no_form","slots":{"provider":"okafor","memberId":{"span":"4471 8293","value":"44718293"},"date":{"mode":"weekday","weekday":"friday"}},"tags":["over_answer","all_slots"]}
+
+{"id":"rs-01","text":"I need to reschedule my appointment","intent":"reschedule","context":"no_form"}
+{"id":"rs-02","text":"I need to reschedule my appointment, it's with Dr. Chen sometime next week","intent":"reschedule","context":"no_form","slots":{"provider":"chen","date":{"mode":"window","window":"next_week"}},"tags":["over_answer","window","handoff_example"]}
+{"id":"rs-03","text":"Can I move my appointment with Dr. Patel to Thursday","intent":"reschedule","context":"no_form","slots":{"provider":"patel","date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"rs-04","text":"I have to change my appointment to a different day","intent":"reschedule","context":"no_form"}
+{"id":"rs-05","text":"Reschedule to tomorrow please","intent":"reschedule","context":"no_form","slots":{"date":{"mode":"relative_day","relativeDay":"tomorrow"}}}
+{"id":"rs-06","text":"Push my visit with Dr. Kim to next month","intent":"reschedule","context":"no_form","slots":{"provider":"kim","date":{"mode":"window","window":"next_month"}}}
+{"id":"rs-07","text":"I'd like to move my appointment to November 12","intent":"reschedule","context":"no_form","slots":{"date":{"mode":"absolute","month":"november","day":"12"}}}
+{"id":"rs-08","text":"Reschedule my appointment with Dr. Cheng","intent":"reschedule","context":"no_form","slots":{"provider":"cheng"}}
+{"id":"rs-09","text":"Hi, my member ID is four four seven one eight two nine three and I need to reschedule","intent":"reschedule","context":"no_form","slots":{"memberId":{"span":"four four seven one eight two nine three","value":"44718293"}},"tags":["over_answer"]}
+{"id":"rs-10","text":"Move my Dr. Nguyen appointment to this Friday","intent":"reschedule","context":"no_form","slots":{"provider":"nguyen","date":{"mode":"weekday","weekday":"friday","weekdayQualifier":"this"}}}
+{"id":"rs-11","text":"Can we do the day after tomorrow instead for my appointment with Dr. Rossi","intent":"reschedule","context":"no_form","slots":{"provider":"rossi","date":{"mode":"relative_day","relativeDay":"day_after_tomorrow"}}}
+{"id":"rs-12","text":"I need a different date for my appointment, something in December","intent":"reschedule","context":"no_form","slots":{"date":{"mode":"absolute","month":"december"}},"tags":["month_window"]}
+
+{"id":"cn-01","text":"Cancel my appointment","intent":"cancel","context":"no_form"}
+{"id":"cn-02","text":"I need to cancel my appointment with Dr. Okafor","intent":"cancel","context":"no_form","slots":{"provider":"okafor"}}
+{"id":"cn-03","text":"Please cancel, I can't make it","intent":"cancel","context":"no_form"}
+{"id":"cn-04","text":"I want to cancel my visit with Dr. Chen, member ID 44718293","intent":"cancel","context":"no_form","slots":{"provider":"chen","memberId":{"span":"44718293","value":"44718293"}},"tags":["over_answer"]}
+{"id":"cn-05","text":"Cancel the appointment I have with Dr. Alvarez","intent":"cancel","context":"no_form","slots":{"provider":"alvarez"}}
+{"id":"cn-06","text":"I won't be able to come in, cancel it","intent":"cancel","context":"no_form"}
+{"id":"cn-07","text":"Cancel my appointment with Dr. Kim please","intent":"cancel","context":"no_form","slots":{"provider":"kim"}}
+{"id":"cn-08","text":"I'd like to cancel","intent":"cancel","context":"no_form"}
+{"id":"cn-09","text":"Cancel my appointment, my ID is eight one two zero four four five seven","intent":"cancel","context":"no_form","slots":{"memberId":{"span":"eight one two zero four four five seven","value":"81204457"}}}
+{"id":"cn-10","text":"Cancel Dr. Patel","intent":"cancel","context":"no_form","slots":{"provider":"patel"}}
+
+{"id":"cf-01","text":"I want to confirm my appointment","intent":"confirm_appointment","context":"no_form"}
+{"id":"cf-02","text":"Can you check when my appointment with Dr. Rossi is","intent":"confirm_appointment","context":"no_form","slots":{"provider":"rossi"}}
+{"id":"cf-03","text":"Do I still have an appointment with Dr. Nguyen","intent":"confirm_appointment","context":"no_form","slots":{"provider":"nguyen"}}
+{"id":"cf-04","text":"Just confirming my visit with Dr. Chen next week","intent":"confirm_appointment","context":"no_form","slots":{"provider":"chen","date":{"mode":"window","window":"next_week"}}}
+{"id":"cf-05","text":"Is my appointment still on","intent":"confirm_appointment","context":"no_form"}
+{"id":"cf-06","text":"I'm calling to verify my appointment, member ID four four seven one eight two nine three","intent":"confirm_appointment","context":"no_form","slots":{"memberId":{"span":"four four seven one eight two nine three","value":"44718293"}}}
+{"id":"cf-07","text":"What time is my appointment with Dr. Kim","intent":"confirm_appointment","context":"no_form","slots":{"provider":"kim"}}
+{"id":"cf-08","text":"Confirm my appointment with Dr. Okafor","intent":"confirm_appointment","context":"no_form","slots":{"provider":"okafor"}}
+
+{"id":"bl-01","text":"I have a question about my bill","intent":"billing","context":"no_form"}
+{"id":"bl-02","text":"I was charged twice for my last visit","intent":"billing","context":"no_form"}
+{"id":"bl-03","text":"Why did my copay go up","intent":"billing","context":"no_form"}
+{"id":"bl-04","text":"I need to make a payment on my account","intent":"billing","context":"no_form"}
+{"id":"bl-05","text":"Does my insurance cover the visit","intent":"billing","context":"no_form"}
+{"id":"bl-06","text":"Billing please, my member ID is four four seven one eight two nine three","intent":"billing","context":"no_form","slots":{"memberId":{"span":"four four seven one eight two nine three","value":"44718293"}},"tags":["over_answer"]}
+{"id":"bl-07","text":"I got an invoice I don't understand","intent":"billing","context":"no_form"}
+{"id":"bl-08","text":"How much do I owe","intent":"billing","context":"no_form"}
+
+{"id":"ag-01","text":"I want to talk to a person","intent":"agent","context":"no_form"}
+{"id":"ag-02","text":"Agent","intent":"agent","context":"no_form"}
+{"id":"ag-03","text":"Can I speak with a representative","intent":"agent","context":"no_form"}
+{"id":"ag-04","text":"Operator please","intent":"agent","context":"no_form"}
+{"id":"ag-05","text":"Just get me a human","intent":"agent","context":"no_form"}
+{"id":"ag-06","text":"I need to speak to someone about my appointment","intent":"agent","context":"no_form"}
+{"id":"ag-07","text":"Representative","intent":"agent","context":"no_form"}
+{"id":"ag-08","text":"Let me talk to somebody","intent":"agent","context":"no_form"}
+
+{"id":"rp-01","text":"Can you repeat that","intent":"repeat_prompt","context":"no_form"}
+{"id":"rp-02","text":"Say that again","intent":"repeat_prompt","context":"no_form"}
+{"id":"rp-03","text":"What were the options","intent":"repeat_prompt","context":"no_form"}
+{"id":"rp-04","text":"Sorry, I didn't hear that","intent":"repeat_prompt","context":"no_form"}
+
+{"id":"ot-01","text":"What are your hours","intent":"other","context":"no_form"}
+{"id":"ot-02","text":"Do you have parking","intent":"other","context":"no_form"}
+{"id":"ot-03","text":"I need a prescription refill","intent":"other","context":"no_form"}
+{"id":"ot-04","text":"Can I get my lab results","intent":"other","context":"no_form"}
+{"id":"ot-05","text":"Where are you located","intent":"other","context":"no_form"}
+{"id":"ot-06","text":"I want to update my address","intent":"other","context":"no_form"}
+
+{"id":"ns-01","text":"honey where did you put the keys","intent":"none","context":"no_form","answers":{"addressedToSystem":{"noul":0.15}},"tags":["side_speech"]}
+{"id":"ns-02","text":"hold on a second I'm on the phone","intent":"none","context":"no_form","answers":{"addressedToSystem":{"noul":0.2}},"tags":["side_speech"]}
+{"id":"ns-03","text":"um","intent":"none","context":"no_form","answers":{"intelligible":{"noul":0.3}},"tags":["unintelligible"]}
+{"id":"ns-04","text":"ksh brr the","intent":"none","context":"no_form","answers":{"intelligible":{"noul":0.2}},"tags":["unintelligible"]}
+{"id":"ns-05","text":"I was wondering if","intent":"none","context":"no_form","answers":{"utteranceComplete":{"noul":0.25}},"tags":["incomplete"]}
+{"id":"ns-06","text":"so my appointment","intent":"none","context":"no_form","answers":{"utteranceComplete":{"noul":0.3}},"tags":["incomplete"]}
+{"id":"ns-07","text":"hello","intent":"none","context":"no_form"}
+{"id":"ns-08","text":"yeah so","intent":"none","context":"no_form","answers":{"utteranceComplete":{"noul":0.35}},"tags":["incomplete"]}
+
+{"id":"lc-01","text":"I need to do something about my appointment","intent":"reschedule","context":"no_form","answers":{"intent":{"probabilities":{"reschedule":0.45,"cancel":0.35,"confirm_appointment":0.1}}},"tags":["low_margin"]}
+{"id":"lc-02","text":"My appointment with Dr. Chen","intent":"confirm_appointment","context":"no_form","slots":{"provider":"chen"},"answers":{"intent":{"probabilities":{"confirm_appointment":0.5,"reschedule":0.2}}},"tags":["explicit_confirm"]}
+{"id":"lc-03","text":"Maybe cancel it","intent":"cancel","context":"no_form","answers":{"intent":{"probabilities":{"cancel":0.55,"none":0.3}}},"tags":["explicit_confirm"]}
+{"id":"lc-04","text":"I think I need to reschedule or maybe cancel","intent":"reschedule","context":"no_form","answers":{"intent":{"probabilities":{"reschedule":0.5,"cancel":0.42}}},"tags":["low_margin"]}
+{"id":"lc-05","text":"Change it","intent":"reschedule","context":"no_form","answers":{"intent":{"probabilities":{"reschedule":0.65,"cancel":0.15}}},"tags":["implicit_confirm"]}
+{"id":"lc-06","text":"I'm seeing Dr. Chen, or Cheng, I'm not sure","intent":"confirm_appointment","context":"no_form","slots":{"provider":"chen"},"answers":{"provider":{"probabilities":{"chen":0.46,"cheng":0.44}}},"tags":["provider_margin"]}
+{"id":"lc-07","text":"Reschedule with Dr. Chen","intent":"reschedule","context":"no_form","slots":{"provider":"chen"},"answers":{"provider":{"probabilities":{"chen":0.5,"cheng":0.4}}},"tags":["provider_margin"]}
+{"id":"lc-08","text":"Book something","intent":"schedule_new","context":"no_form","answers":{"intent":{"probabilities":{"schedule_new":0.42,"other":0.3}}},"tags":["explicit_confirm"]}
+{"id":"lc-09","text":"Check on my appointment","intent":"confirm_appointment","context":"no_form","answers":{"intent":{"probabilities":{"confirm_appointment":0.75,"cancel":0.1}}},"tags":["implicit_confirm"]}
+{"id":"lc-10","text":"I guess I need to cancel","intent":"cancel","context":"no_form","answers":{"intent":{"probabilities":{"cancel":0.35,"none":0.4}}},"tags":["intent_failed"]}
+{"id":"lc-11","text":"Rossi I think","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"rossi"},"answers":{"provider":{"probabilities":{"rossi":0.55,"none":0.4}}},"tags":["implicit_confirm"]}
+{"id":"lc-12","text":"It might be Dr. Kim","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"kim"},"answers":{"provider":{"probabilities":{"kim":0.4,"none":0.5}}},"tags":["slot_absent"]}
+
+{"id":"fr-01","text":"This is ridiculous, I just want to reschedule","intent":"reschedule","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.75,"mild":0.2}}},"tags":["frustration"]}
+{"id":"fr-02","text":"I already told you, cancel it","intent":"cancel","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.65,"mild":0.25}},"rephrasingLastTurn":{"noul":0.8}},"tags":["frustration"]}
+{"id":"fr-03","text":"Ugh, come on, I need to reschedule","intent":"reschedule","context":"no_form","answers":{"frustration":{"probabilities":{"mild":0.6,"high":0.3}}},"tags":["frustration"]}
+{"id":"fr-04","text":"For the third time, Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"answers":{"frustration":{"probabilities":{"high":0.8,"mild":0.15}},"rephrasingLastTurn":{"noul":0.85}},"tags":["frustration"]}
+{"id":"fr-05","text":"Are you kidding me","intent":"none","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.7,"mild":0.2}}},"tags":["frustration"]}
+{"id":"fr-06","text":"Seriously, just cancel the appointment","intent":"cancel","context":"no_form","answers":{"frustration":{"probabilities":{"mild":0.55,"high":0.35}}},"tags":["frustration"]}
+
+{"id":"mn-01","text":"one","intent":"none","context":"no_form","answers":{"menuNumberSaid":{"probabilities":{"1":0.92}},"spokeAMenuNumber":{"noul":0.9}},"tags":["menu"]}
+{"id":"mn-02","text":"two","intent":"none","context":"no_form","answers":{"menuNumberSaid":{"probabilities":{"2":0.92}},"spokeAMenuNumber":{"noul":0.9}},"tags":["menu"]}
+{"id":"mn-03","text":"press three","intent":"none","context":"no_form","answers":{"menuNumberSaid":{"probabilities":{"3":0.9}},"spokeAMenuNumber":{"noul":0.9}},"tags":["menu"]}
+{"id":"mn-04","text":"zero","intent":"none","context":"no_form","answers":{"menuNumberSaid":{"probabilities":{"0":0.9}},"spokeAMenuNumber":{"noul":0.9}},"tags":["menu"]}
+{"id":"mn-05","text":"five please","intent":"none","context":"no_form","answers":{"menuNumberSaid":{"probabilities":{"5":0.88}},"spokeAMenuNumber":{"noul":0.85}},"tags":["menu"]}
+
+{"id":"cy-01","text":"yes","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.94},"confirmsNo":{"noul":0.03}},"tags":["confirm_yes"]}
+{"id":"cy-02","text":"yeah that's right","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.9},"confirmsNo":{"noul":0.05}},"tags":["confirm_yes"]}
+{"id":"cy-03","text":"yes please","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.93},"confirmsNo":{"noul":0.03}},"tags":["confirm_yes"]}
+{"id":"cy-04","text":"correct","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.88},"confirmsNo":{"noul":0.06}},"tags":["confirm_yes"]}
+{"id":"cno-01","text":"no","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.03},"confirmsNo":{"noul":0.94}},"tags":["confirm_no"]}
+{"id":"cno-02","text":"no that's wrong","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.04},"confirmsNo":{"noul":0.92}},"tags":["confirm_no"]}
+{"id":"cno-03","text":"nope","intent":"none","context":"no_form","answers":{"confirmsYes":{"noul":0.05},"confirmsNo":{"noul":0.9}},"tags":["confirm_no"]}
+
+{"id":"mi-01","text":"four four seven one eight two nine three","intent":"none","context":"reschedule","slots":{"memberId":{"span":"four four seven one eight two nine three","value":"44718293"}}}
+{"id":"mi-02","text":"it's 4471 8293","intent":"none","context":"cancel","slots":{"memberId":{"span":"4471 8293","value":"44718293"}}}
+{"id":"mi-03","text":"my member ID is eight one two zero four four five seven","intent":"none","context":"billing","slots":{"memberId":{"span":"eight one two zero four four five seven","value":"81204457"}}}
+{"id":"mi-04","text":"forty four seventy one eighty two ninety three","intent":"none","context":"schedule_new","slots":{"memberId":{"span":"forty four seventy one eighty two ninety three","value":"44718293"}},"tags":["compound_numbers"]}
+{"id":"mi-05","text":"double four seven one eight two nine three","intent":"none","context":"confirm_appointment","slots":{"memberId":{"span":"double four seven one eight two nine three","value":"44718293"}},"tags":["double"]}
+{"id":"mi-06","text":"it is two two zero five nine one three eight","intent":"none","context":"reschedule","slots":{"memberId":{"span":"two two zero five nine one three eight","value":"22059138"}}}
+{"id":"mi-07","text":"four four seven one, that's it","intent":"none","context":"cancel","slots":{"memberId":{"span":"four four seven one","value":"4471"}},"tags":["mask_fail"]}
+{"id":"mi-08","text":"four four seven one uh","intent":"none","context":"cancel","slots":{"memberId":{"span":"four four seven one","value":"4471"}},"answers":{"memberIdComplete":{"noul":0.3},"utteranceComplete":{"noul":0.4}},"tags":["incomplete_id"]}
+{"id":"mi-09","text":"member ID 4471 8293 and it's with Dr. Chen","intent":"none","context":"reschedule","slots":{"memberId":{"span":"4471 8293","value":"44718293"},"provider":"chen"},"tags":["over_answer"]}
+{"id":"mi-10","text":"4 4 7 1 8 2 9 3","intent":"none","context":"schedule_new","slots":{"memberId":{"span":"4 4 7 1 8 2 9 3","value":"44718293"}}}
+{"id":"mi-11","text":"one two three four five six seven eight","intent":"none","context":"billing","slots":{"memberId":{"span":"one two three four five six seven eight","value":"12345678"}}}
+{"id":"mi-12","text":"it's oh nine three three one two seven six","intent":"none","context":"reschedule","slots":{"memberId":{"span":"oh nine three three one two seven six","value":"09331276"}},"tags":["oh_as_zero"]}
+
+{"id":"pv-01","text":"Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"}}
+{"id":"pv-02","text":"It's with Patel","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"patel"}}
+{"id":"pv-03","text":"Nguyen","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"nguyen"}}
+{"id":"pv-04","text":"Dr. Cheng, C H E N G","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"cheng"}}
+{"id":"pv-05","text":"Doctor Okafor","intent":"none","context":"confirm_appointment","prompted":"provider","slots":{"provider":"okafor"}}
+{"id":"pv-06","text":"Dr. Kim, and can we do next Monday","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"kim","date":{"mode":"weekday","weekday":"monday","weekdayQualifier":"next"}},"tags":["over_answer"]}
+{"id":"pv-07","text":"I don't remember the doctor's name","intent":"none","context":"cancel","prompted":"provider","tags":["no_progress"]}
+{"id":"pv-08","text":"Alvarez","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"alvarez"}}
+
+{"id":"dt-01","text":"tomorrow","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"tomorrow"}}}
+{"id":"dt-02","text":"next Tuesday","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
+{"id":"dt-03","text":"October 5th","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"october","day":"5"}}}
+{"id":"dt-04","text":"the twelfth of November","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"absolute","month":"november","day":"12"}}}
+{"id":"dt-05","text":"sometime next week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"next_week"}}}
+{"id":"dt-06","text":"Thursday","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"dt-07","text":"this Friday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"friday","weekdayQualifier":"this"}}}
+{"id":"dt-08","text":"next month","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"window","window":"next_month"}}}
+{"id":"dt-09","text":"Monday, September 28","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"september","day":"28","weekday":"monday"}}}
+{"id":"dt-10","text":"today if possible","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"today"}}}
+{"id":"dt-11","text":"February 30th","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"february","day":"30"}},"tags":["impossible_date"]}
+{"id":"dt-12","text":"Tuesday next week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
+{"id":"dt-13","text":"the day after tomorrow","intent":"none","context":"schedule_new","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"day_after_tomorrow"}}}
+{"id":"dt-14","text":"March 3rd","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"absolute","month":"march","day":"3"}},"tags":["next_year"]}
+{"id":"dt-15","text":"Wednesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"wednesday"}}}
+{"id":"dt-16","text":"how about Wednesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"wednesday"}}}
+{"id":"dt-17","text":"Tuesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday"}}}
+{"id":"dt-18","text":"any day is fine","intent":"none","context":"reschedule","prompted":"date","tags":["no_progress"]}
+
+{"id":"sw-01","text":"actually I want to cancel it instead","intent":"cancel","context":"reschedule","tags":["intent_switch"]}
+{"id":"sw-02","text":"wait, never mind, cancel the appointment","intent":"cancel","context":"reschedule","tags":["intent_switch"]}
+{"id":"sw-03","text":"actually can I just talk to someone","intent":"agent","context":"reschedule","tags":["wants_human"]}
+{"id":"sw-04","text":"I'd rather talk to a person","intent":"agent","context":"cancel","tags":["wants_human"]}
+{"id":"sw-05","text":"what did you say","intent":"repeat_prompt","context":"reschedule","tags":["repeat"]}
+{"id":"sw-06","text":"repeat that","intent":"repeat_prompt","context":"billing","tags":["repeat"]}
+{"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","answers":{"intentSecondary":{"probabilities":{"billing":0.8}}},"tags":["secondary_intent"]}
+{"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}
+{"id":"dt-19","text":"sometime this week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"this_week"}}}
+{"id":"dt-20","text":"Monday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"monday"}}}
+{"id": "dt-21", "text": "tuesday of next week", "intent": "none", "context": "reschedule", "prompted": "date", "slots": {"date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}}
+{"id": "rs-13", "text": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three", "intent": "reschedule", "context": "no_form", "slots": {"provider": "chen", "memberId": {"span": "four four seven one eight two nine three", "value": "44718293"}, "date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}, "tags": ["over_answer", "all_slots"]}

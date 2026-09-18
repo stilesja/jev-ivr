@@ -1,0 +1,698 @@
+[
+  {
+    "id": "reschedule-happy",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen",
+        "date": "2026-09-22"
+      }
+    }
+  },
+  {
+    "id": "schedule-dtmf-id",
+    "steps": [
+      {
+        "say": "I need to book an appointment with Dr. Patel"
+      },
+      {
+        "dtmf": "44718293"
+      },
+      {
+        "say": "next Tuesday"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "schedule_confirmed",
+      "form": "schedule_new",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "patel",
+        "date": "2026-09-22"
+      }
+    }
+  },
+  {
+    "id": "cancel-happy",
+    "steps": [
+      {
+        "say": "I need to cancel my appointment with Dr. Okafor"
+      },
+      {
+        "say": "it's 4471 8293"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "cancel_confirmed",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "okafor"
+      }
+    }
+  },
+  {
+    "id": "confirm-happy",
+    "steps": [
+      {
+        "say": "Confirm my appointment with Dr. Okafor"
+      },
+      {
+        "say": "it's 4471 8293"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "appointment_details",
+      "form": "confirm_appointment",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "okafor"
+      }
+    }
+  },
+  {
+    "id": "billing-handoff",
+    "steps": [
+      {
+        "say": "I have a question about my bill"
+      },
+      {
+        "say": "my member ID is eight one two zero four four five seven"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing",
+      "slots": {
+        "memberId": "81204457"
+      }
+    }
+  },
+  {
+    "id": "over-answer-one-turn",
+    "steps": [
+      {
+        "say": "Make an appointment with Dr. Okafor, member ID 4471 8293, Friday"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "schedule_confirmed",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "okafor",
+        "date": "2026-09-25"
+      },
+      "form": "schedule_new"
+    }
+  },
+  {
+    "id": "intent-switch-mid-form",
+    "steps": [
+      {
+        "say": "Reschedule my appointment with Dr. Cheng"
+      },
+      {
+        "say": "actually I want to cancel it instead"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "cancel",
+      "slots": {
+        "provider": "cheng"
+      }
+    }
+  },
+  {
+    "id": "window-then-day",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "how about Wednesday"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen",
+        "date": "2026-09-23"
+      },
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "text": "moved to Wednesday, September 23"
+    }
+  },
+  {
+    "id": "month-window-narrow",
+    "steps": [
+      {
+        "say": "I need a different date for my appointment, something in December"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "intent-retry-to-agent",
+    "steps": [
+      {
+        "say": "What are your hours"
+      },
+      {
+        "say": "What are your hours"
+      },
+      {
+        "say": "What are your hours"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "max-attempts",
+      "form": null
+    }
+  },
+  {
+    "id": "slot-retry-to-dtmf",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "um"
+      },
+      {
+        "say": "um"
+      },
+      {
+        "dtmf": "44718293"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293"
+      }
+    }
+  },
+  {
+    "id": "dtmf-menu",
+    "steps": [
+      {
+        "say": "What are your hours"
+      },
+      {
+        "say": "What are your hours"
+      },
+      {
+        "dtmf": "2"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "spoken-menu-number",
+    "steps": [
+      {
+        "say": "What are your hours"
+      },
+      {
+        "say": "What are your hours"
+      },
+      {
+        "say": "press three"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "cancel"
+    }
+  },
+  {
+    "id": "explicit-confirm-yes",
+    "steps": [
+      {
+        "say": "Maybe cancel it"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "cancel"
+    }
+  },
+  {
+    "id": "explicit-confirm-no",
+    "steps": [
+      {
+        "say": "Maybe cancel it"
+      },
+      {
+        "say": "no"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "nomatch_open",
+      "form": null
+    }
+  },
+  {
+    "id": "disambiguate-intent",
+    "steps": [
+      {
+        "say": "I think I need to reschedule or maybe cancel"
+      },
+      {
+        "say": "I need to reschedule my appointment"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "disambiguate-provider",
+    "steps": [
+      {
+        "say": "Reschedule with Dr. Chen"
+      },
+      {
+        "say": "Dr. Cheng, C H E N G"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "reschedule",
+      "slots": {
+        "provider": "cheng"
+      }
+    }
+  },
+  {
+    "id": "frustration-escalation",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "four four seven one, that's it"
+      },
+      {
+        "say": "For the third time, Dr. Chen"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "frustrated",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "wants-human-mid-form",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "actually can I just talk to someone"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "live-agent",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "repeat-prompt",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "what did you say"
+      }
+    ],
+    "expect": {
+      "decision": "replay",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "client-failure-once",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment",
+        "fail": true
+      },
+      {
+        "say": "I need to reschedule my appointment"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "client-failure-twice",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment",
+        "fail": true
+      },
+      {
+        "say": "I need to reschedule my appointment",
+        "fail": true
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "system-failure",
+      "form": null
+    }
+  },
+  {
+    "id": "side-speech-ignored",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "honey where did you put the keys"
+      }
+    ],
+    "expect": {
+      "decision": "ignore",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "invalid-date-retry",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Dr. Chen"
+      },
+      {
+        "say": "February 30th"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_date_retry",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "dtmf-provider-digit",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "dtmf": "44718293"
+      },
+      {
+        "say": "I don't remember the doctor's name"
+      },
+      {
+        "say": "I don't remember the doctor's name"
+      },
+      {
+        "dtmf": "4"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "cancel_confirmed",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "okafor"
+      }
+    }
+  },
+  {
+    "id": "dtmf-date-mmdd",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "dtmf": "44718293"
+      },
+      {
+        "say": "Dr. Chen"
+      },
+      {
+        "say": "any day is fine"
+      },
+      {
+        "say": "any day is fine"
+      },
+      {
+        "dtmf": "0922"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen",
+        "date": "2026-09-22"
+      }
+    }
+  },
+  {
+    "id": "confirm-unanswered-reask",
+    "steps": [
+      {
+        "say": "Maybe cancel it"
+      },
+      {
+        "say": "I don't remember the doctor's name"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_intent_explicit",
+      "form": null
+    }
+  },
+  {
+    "id": "confirm-unanswered-to-agent",
+    "steps": [
+      {
+        "say": "Maybe cancel it"
+      },
+      {
+        "say": "I don't remember the doctor's name"
+      },
+      {
+        "say": "I don't remember the doctor's name"
+      },
+      {
+        "say": "I don't remember the doctor's name"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "max-attempts",
+      "form": null
+    }
+  },
+  {
+    "id": "switch-confirm-yes-mid-form",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "or maybe just cancel it instead"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "cancel"
+    }
+  },
+  {
+    "id": "switch-confirm-no-resumes-form",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "or maybe just cancel it instead"
+      },
+      {
+        "say": "no"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "month-window-constrains-weekday",
+    "steps": [
+      {
+        "say": "I need a different date for my appointment, something in December"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Dr. Chen"
+      },
+      {
+        "say": "Wednesday"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "date": "2026-12-02"
+      }
+    }
+  },
+  {
+    "id": "partial-frame-holds",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "I was wondering if",
+        "partial": true
+      }
+    ],
+    "expect": {
+      "decision": "hold",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "implicit-ack-spoken",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "date_narrow_window",
+      "form": "reschedule",
+      "text": "Member ID 4471 8293"
+    }
+  },
+  {
+    "id": "weekday-outside-window",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Dr. Chen"
+      },
+      {
+        "say": "sometime this week"
+      },
+      {
+        "say": "Monday"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "date_narrow_window",
+      "form": "reschedule",
+      "text": "this week"
+    }
+  },
+  {
+    "id": "weekday-in-window-one-turn",
+    "steps": [
+      {
+        "say": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen",
+        "date": "2026-09-22"
+      }
+    }
+  }
+]
