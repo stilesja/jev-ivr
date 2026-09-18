@@ -6,7 +6,7 @@ import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { choice } from '../../testing/answers';
 import type { AnswerMap } from '../../jev/types';
 
-const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
+const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
 
 function dateAnswers(picks: Record<string, [string, number]>): AnswerMap {
   const ids = ['dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow'];
@@ -73,16 +73,16 @@ describe('dateSlot', () => {
     expect(out).toMatchObject({ kind: 'filled', value: '2026-09-25' });
   });
 
-  it('snaps a weekday backwards into a pending window that already started', () => {
-    const windowed = { ...ctx, window: { start: '2026-09-21', end: '2026-09-27', label: 'next_week' } };
-    const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['monday', 0.9] }), windowed);
-    expect(out).toMatchObject({ kind: 'filled', value: '2026-09-21' });
-  });
-
   it('rejects a weekday with no occurrence inside the window', () => {
     const windowed = { ...ctx, window: { start: '2026-12-01', end: '2026-12-02', label: 'december' } };
     const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['friday', 0.9] }), windowed);
     expect(out).toEqual({ kind: 'invalid', reason: 'outside_window', raw: '2026-09-25' });
+  });
+
+  it('never snaps into the part of a window that is already past', () => {
+    const windowed = { ...ctx, window: { start: '2026-09-14', end: '2026-09-20', label: 'this_week' } };
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['monday', 0.9] }), windowed);
+    expect(out).toEqual({ kind: 'invalid', reason: 'outside_window', raw: '2026-09-21' });
   });
 
   it('takes an absolute day outside the window as spoken', () => {

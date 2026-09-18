@@ -8,7 +8,7 @@ import { candidateSpans } from './spans';
 
 const T = { ...DEFAULT_THRESHOLDS };
 function ctx(text = ''): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: T };
+  return { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: T, window: null };
 }
 
 describe('retryStep', () => {

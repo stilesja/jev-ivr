@@ -44,6 +44,7 @@ export function buildTraceRecord(input: TraceInput): TraceRecord {
     gates: result.rows,
     decision: result.decision,
     frames: result.frames,
+    form: result.session.form,
     slots: result.session.slots,
     timing,
     usage: {

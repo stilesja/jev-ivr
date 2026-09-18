@@ -197,7 +197,7 @@ export function spokenText(result: TurnResult): string {
   return result.frames.filter((f) => f.type === 'text').map((f) => f.token).join(' ');
 }
 
-export function checkExpectation(outcome: Outcome, expected: ScenarioExpectation, spoken = ''): string[] {
+export function checkExpectation(outcome: Outcome, expected: ScenarioExpectation, spoken: string): string[] {
   const out: string[] = [];
   if (outcome.decision !== expected.decision) out.push(`decision: expected ${expected.decision}, got ${outcome.decision}`);
   if (expected.promptId !== undefined && outcome.promptId !== expected.promptId) out.push(`promptId: expected ${expected.promptId}, got ${outcome.promptId}`);

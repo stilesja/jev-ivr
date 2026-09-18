@@ -13,13 +13,15 @@ const DAY_MS = 86_400_000;
  * A bare weekday answered while a window is pending narrows that window: "Wednesday"
  * after "sometime in December" means the first Wednesday in December, not the one this
  * week. Absolute and relative days are taken as spoken, since they name a day outright.
- * Returns null when the weekday has no occurrence inside the window.
+ * The search starts at today when the window already began, so it never yields a past
+ * day. Returns null when the weekday has no occurrence left inside the window.
  */
-export function constrainToWindow(iso: string, mode: string, window: DateWindow | null): string | null {
+export function constrainToWindow(iso: string, mode: string, window: DateWindow | null, todayIso: string): string | null {
   if (!window || mode !== 'weekday') return iso;
   if (iso >= window.start && iso <= window.end) return iso;
-  const offsetDays = Math.round((parseIso(iso) - parseIso(window.start)) / DAY_MS);
-  const snapped = addDays(window.start, ((offsetDays % 7) + 7) % 7);
+  const from = window.start > todayIso ? window.start : todayIso;
+  const offsetDays = Math.round((parseIso(iso) - parseIso(from)) / DAY_MS);
+  const snapped = addDays(from, ((offsetDays % 7) + 7) % 7);
   return snapped <= window.end ? snapped : null;
 }
 
@@ -110,7 +112,7 @@ export const dateSlot: SlotSpec = {
         if (resolved.confidence < t.SLOT_CHOICE_CONFIRM) {
           return { kind: 'invalid', reason: 'low_confidence', raw: resolved.iso };
         }
-        const iso = constrainToWindow(resolved.iso, components.mode.choice, ctx.window ?? null);
+        const iso = constrainToWindow(resolved.iso, components.mode.choice, ctx.window, ctx.todayIso);
         if (iso === null) return { kind: 'invalid', reason: 'outside_window', raw: resolved.iso };
         return {
           kind: 'filled',

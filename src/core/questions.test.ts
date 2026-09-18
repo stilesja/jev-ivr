@@ -4,7 +4,7 @@ import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import type { SlotContext } from '../domain/slots';
 
-const ctx: SlotContext = { text: 'hi', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
+const ctx: SlotContext = { text: 'hi', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
 
 describe('buildQuestions', () => {
   it('always includes the routing, control, caller and guard questions', () => {

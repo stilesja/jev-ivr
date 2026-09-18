@@ -80,9 +80,9 @@ export function summarize(records: TraceRecord[]): Metrics {
         completionTurns = r.turnIndex - 1;
       }
     }
-    // A session that began with slots already filled (a corpus entry replayed mid-form)
-    // is not a whole call, so its turn count is not comparable to the DTMF baseline.
-    const preSeeded = list.length > 0 && filledCount(list[0]!.slots) > 0;
+    // A session whose very first record already has a form was seeded mid-call by the
+    // corpus runner, so it is not a whole call to compare against the DTMF baseline.
+    const preSeeded = list.length > 0 && list[0]!.form !== null;
     if (form && completionTurns !== null && !preSeeded) {
       completions.push({ sessionId, form, turns: completionTurns, baseline: (baseline as Record<string, number>)[form] ?? 0 });
     }

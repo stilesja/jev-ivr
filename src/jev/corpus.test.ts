@@ -24,7 +24,7 @@ describe('fixtures/corpus.jsonl', () => {
   });
 
   it('overrides name only questions the schema can ask', () => {
-    const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS };
+    const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null };
     const askable = new Set<string>([...ALWAYS_ON_IDS, 'confirmsYes', 'confirmsNo', 'menuNumberSaid']);
     for (const spec of allSlots()) for (const id of Object.keys(spec.questions(ctx))) askable.add(id);
     for (const e of corpus) {

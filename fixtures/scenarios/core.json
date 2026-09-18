@@ -650,5 +650,31 @@
       "form": "reschedule",
       "text": "Member ID 4471 8293"
     }
+  },
+  {
+    "id": "weekday-outside-window",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Dr. Chen"
+      },
+      {
+        "say": "sometime this week"
+      },
+      {
+        "say": "Monday"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "date_narrow_window",
+      "form": "reschedule",
+      "text": "this week"
+    }
   }
 ]

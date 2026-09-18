@@ -2278,5 +2278,35 @@
       "provider": null,
       "date": null
     }
+  },
+  "dt-19": {
+    "id": "dt-19",
+    "decision": "prompt",
+    "promptId": "date_narrow_window",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    }
+  },
+  "dt-20": {
+    "id": "dt-20",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-21"
+    }
   }
 }

@@ -37,6 +37,8 @@ export interface TraceRecord {
   gates: GateRow[];
   decision: Decision;
   frames: OutboundFrame[];
+  /** the form active after this turn, null when none is */
+  form: string | null;
   slots: Record<SlotId, SlotState>;
   timing: TraceTiming;
   usage: TraceUsage;

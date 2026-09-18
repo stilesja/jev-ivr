@@ -11,7 +11,7 @@ import { isChoice, isNoul, isScore, rankProbabilities } from './types';
 async function ask(text: string) {
   const session = newSession('s', 0);
   const state = buildTurnState(session, { text, isFinal: true, dtmf: null }, 0);
-  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } });
+  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
   const res = await new HeuristicStubClient().ask({ state: state as never, questions });
   expect(Object.keys(res.answers).sort()).toEqual(Object.keys(questions).sort());
   return res;

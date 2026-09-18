@@ -49,7 +49,7 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
     todayIso: tc.todayIso,
     thresholds: tc.thresholds,
     // A pending window constrains what a bare weekday can mean on the next turn.
-    window: session.slots.date.window ?? null,
+    window: session.slots.date.window,
   };
 }
 
@@ -89,6 +89,10 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
     if (step === 'dtmf') return prompt('nomatch_dtmf_menu', 'intent', {}, [], INTENT_MENU.map((m) => m.digit));
     return prompt('nomatch_open', 'intent');
   }
+  // A slot narrowed to a window re-asks the window question, not the generic retry:
+  // "which day next week?" is what the caller failed to answer.
+  const window = s.slots[target].window;
+  if (step === 'open' && window) return askSlot(target, window, []);
   return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target);
 }
 

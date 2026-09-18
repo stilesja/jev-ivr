@@ -563,5 +563,22 @@
     },
     "pass": true,
     "mismatches": []
+  },
+  "weekday-outside-window": {
+    "id": "weekday-outside-window",
+    "decision": "prompt",
+    "promptId": "date_narrow_window",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
   }
 }

@@ -6,7 +6,7 @@ import { candidateSpans } from '../../core/spans';
 import { choice, noul } from '../../testing/answers';
 
 function ctx(text: string): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
+  return { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
 }
 
 describe('memberIdSlot', () => {

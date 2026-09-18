@@ -29,6 +29,8 @@ describe('trace', () => {
     expect(parsed.sessionId).toBe('s');
     expect(parsed.source).toBe('none');
     expect(parsed.decision.kind).toBe('prompt');
+    // the greeting turn has no form yet; summarize() reads this to spot a seeded session
+    expect(parsed.form).toBeNull();
     expect(parsed.usage).toEqual({ inputTokens: 0, outputTokens: 0, estimated: true, costUsd: 0 });
   });
 });
