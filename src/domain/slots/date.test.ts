@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest';
+import { dateSlot } from './date';
+import { SLOTS, slotsFor } from './index';
+import type { SlotContext } from './types';
+import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
+import { choice } from '../../testing/answers';
+import type { AnswerMap } from '../../jev/types';
+
+const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
+
+function dateAnswers(picks: Record<string, [string, number]>): AnswerMap {
+  const ids = ['dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow'];
+  const out: AnswerMap = {};
+  for (const id of ids) {
+    const [label, p] = picks[id] ?? ['none', 0.95];
+    out[id] = choice({ [label]: p, ...(label === 'none' ? {} : { none: 1 - p }) });
+  }
+  return out;
+}
+
+describe('dateSlot', () => {
+  it('asks the seven component questions', () => {
+    expect(Object.keys(dateSlot.questions(ctx))).toEqual([
+      'dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow',
+    ]);
+  });
+
+  it('fills a specific day silently when confident', () => {
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['relative_day', 0.9], dateRelativeDay: ['tomorrow', 0.9] }), ctx);
+    expect(out).toEqual({ kind: 'filled', value: '2026-09-19', display: 'Saturday, September 19', confidence: 0.9, confirm: 'none' });
+  });
+
+  it('fills with implicit confirm when the weakest component is in the confirm band', () => {
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['absolute', 0.9], dateMonth: ['october', 0.9], dateDay: ['5', 0.6] }), ctx);
+    expect(out).toMatchObject({ kind: 'filled', value: '2026-10-05', confirm: 'implicit' });
+  });
+
+  it('returns a window for next week', () => {
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['window', 0.9], dateWindow: ['next_week', 0.88] }), ctx);
+    expect(out).toEqual({ kind: 'window', window: { start: '2026-09-21', end: '2026-09-27', label: 'next_week' }, confidence: 0.88 });
+  });
+
+  it('is absent when no date is mentioned', () => {
+    expect(dateSlot.fill(dateAnswers({}), ctx)).toEqual({ kind: 'absent' });
+  });
+
+  it('is absent when the mode is below the confirm band', () => {
+    expect(dateSlot.fill(dateAnswers({ dateMode: ['relative_day', 0.3], dateRelativeDay: ['tomorrow', 0.9] }), ctx)).toEqual({ kind: 'absent' });
+  });
+
+  it('parses MMDD dtmf', () => {
+    expect(dateSlot.dtmf.parse('1005', ctx)).toEqual({ value: '2026-10-05', display: 'Monday, October 5' });
+    expect(dateSlot.dtmf.parse('1305', ctx)).toBeNull();
+  });
+});
+
+describe('slot registry', () => {
+  it('exposes all three slots', () => {
+    expect(Object.keys(SLOTS)).toEqual(['memberId', 'provider', 'date']);
+  });
+  it('returns the slot specs for a form in priority order', () => {
+    expect(slotsFor('cancel').map((s) => s.id)).toEqual(['memberId', 'provider']);
+  });
+});
