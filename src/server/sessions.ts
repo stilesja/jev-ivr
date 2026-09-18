@@ -23,6 +23,7 @@ export interface CallEntry extends CallResources {
   lastActivityMs: number;
   ended: boolean;
   tail: Promise<void>;
+  inFlight: number;
 }
 
 export type CallFactory = (callSid: string) => CallResources;
@@ -54,6 +55,7 @@ export class SessionStore {
       lastActivityMs: this.now(),
       ended: false,
       tail: Promise.resolve(),
+      inFlight: 0,
     };
     this.calls.set(callSid, entry);
     return entry;
@@ -77,14 +79,36 @@ export class SessionStore {
     if (e) e.lastActivityMs = this.now();
   }
 
-  /** Serialize work per call: fn runs after everything previously queued for this call, errors are logged, the chain continues. */
+  /**
+   * Serialize work per call: fn runs after everything previously queued for this call, errors
+   * are logged, the chain continues. A call already ended skips the fn (a turn queued behind
+   * the completing turn must not speak after the end). The chain itself can never become a
+   * rejected promise, even if logging the error fails (e.g. ENOSPC) - a poisoned tail would
+   * cause every later enqueue to silently skip its fn forever.
+   */
   enqueue(callSid: string, fn: (entry: CallEntry) => Promise<void>): Promise<void> {
     const e = this.calls.get(callSid);
     if (!e) return Promise.resolve();
-    const run = e.tail.then(() => fn(e)).catch((err: unknown) => {
-      e.frames.write('log', { error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) });
-    });
-    e.tail = run;
+    const run = e.tail
+      .then(async () => {
+        if (e.ended) return;
+        e.inFlight++;
+        try {
+          await fn(e);
+        } finally {
+          e.inFlight--;
+        }
+      })
+      .catch((err: unknown) => {
+        const stack = err instanceof Error && err.stack ? `\n${err.stack}` : '';
+        const message = err instanceof Error ? `${err.name}: ${err.message}${stack}` : String(err);
+        try {
+          e.frames.write('log', { error: message });
+        } catch (logErr) {
+          console.error(`sessions: failed to log turn error for ${callSid}`, message, logErr);
+        }
+      });
+    e.tail = run.catch(() => {});
     e.lastActivityMs = this.now();
     return run;
   }
@@ -97,12 +121,14 @@ export class SessionStore {
     }
   }
 
-  /** Remove sessions idle longer than the TTL. Returns the evicted call SIDs. */
+  /** Remove sessions idle longer than the TTL. Skips sessions with in-flight work. Returns the evicted call SIDs. */
   evictIdle(): string[] {
     const cutoff = this.now() - this.ttlMs;
     const gone: string[] = [];
     for (const [sid, e] of this.calls) {
+      if (e.inFlight > 0) continue;
       if (e.lastActivityMs < cutoff) {
+        if (e.socket) e.socket.close(1000, 'session evicted');
         this.calls.delete(sid);
         gone.push(sid);
       }

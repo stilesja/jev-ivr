@@ -66,4 +66,61 @@ describe('SessionStore', () => {
     expect(s.evictIdle()).toEqual(['CA2']);
     expect(s.size()).toBe(0);
   });
+
+  it('keeps the queue alive when the frame log itself throws', async () => {
+    const s = store(() => 0);
+    const e = s.create('CA1', fakeSocket());
+    e.frames.write = () => {
+      throw new Error('disk');
+    };
+    let ran = false;
+    const p1 = s.enqueue('CA1', async () => {
+      throw new Error('boom');
+    });
+    const p2 = s.enqueue('CA1', async () => {
+      ran = true;
+    });
+    await Promise.all([p1, p2]);
+    expect(ran).toBe(true);
+    await expect(e.tail).resolves.toBeUndefined();
+  });
+
+  it('skips queued work after end', async () => {
+    const s = store(() => 0);
+    s.create('CA1', fakeSocket());
+    let secondRan = false;
+    const p1 = s.enqueue('CA1', async () => {
+      await new Promise((r) => setTimeout(r, 20));
+      s.end('CA1');
+    });
+    const p2 = s.enqueue('CA1', async () => {
+      secondRan = true;
+    });
+    await Promise.all([p1, p2]);
+    expect(secondRan).toBe(false);
+  });
+
+  it('does not evict a session with work in flight', async () => {
+    let t = 0;
+    const s = store(() => t, 1000);
+    s.create('CA1', fakeSocket());
+    const p = s.enqueue('CA1', async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    t = 2000;
+    expect(s.evictIdle()).toEqual([]);
+    await p;
+    expect(s.evictIdle()).toEqual(['CA1']);
+  });
+
+  it('closes a live socket on eviction', () => {
+    let t = 0;
+    const s = store(() => t, 1000);
+    const sock = fakeSocket();
+    s.create('CA1', sock);
+    t = 2000;
+    expect(s.evictIdle()).toEqual(['CA1']);
+    expect(sock.closed).toBe(true);
+  });
 });
