@@ -925,6 +925,8 @@ git commit -m "feat(server): add raw frame log per call"
 **Files:**
 - Create: `src/server/sessions.ts`, `src/server/sessions.test.ts`
 
+Deviation, added after review: the committed store makes the queue unpoisonable (a failing frame-log write cannot reject the tail), skips queued work once the entry has ended, tracks in-flight work so `evictIdle` never removes a session mid-turn, and closes a live socket on eviction. The committed code is the source of truth.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/server/sessions.test.ts`:
@@ -1288,7 +1290,9 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock2, ctx2, setupMsg('CA1', 'VX2'));
     expect(texts(sock2)).toEqual(["What's your member ID?"]);
     await handleSocketMessage(d, sock2, ctx2, prompt('Dr. Chen'));
-    expect(texts(sock2).at(-1)).toBe('What day works for you?');
+    // The form asks for the member ID before the date, so the re-ask repeats; the provider fill
+    // below is what proves the turn ran on the session the first connection left behind.
+    expect(texts(sock2)).toEqual(["What's your member ID?", "What's your member ID?"]);
     expect(d.store.get('CA1')?.session.slots.provider.value).toBe('chen');
   });
 });
