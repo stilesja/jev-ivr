@@ -851,6 +851,17 @@ git commit -m "feat(extract): add mask validation"
 
 All arithmetic is in UTC on ISO `YYYY-MM-DD` strings. Weeks start Monday.
 
+Deviation, added after code review of the first implementation: the resolver
+also (a) returns `none` for any resolved day earlier than today, (b) starts a
+month-only window for the current month at today rather than the 1st, (c)
+collapses a window whose start equals its end into a `day`, (d) implements
+the `this` weekday qualifier as the occurrence in the current Monday-start
+week (or the following week if already past), (e) guards the relative-day
+lookup with `Object.hasOwn`, and (f) names the component type
+`ComponentPick` so it does not shadow TypeScript's `Pick`. The committed
+code and tests are the source of truth for these; the code block below
+predates them.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/core/extract/date.test.ts`:
@@ -948,19 +959,19 @@ Expected: FAIL, cannot find module './date'.
 `src/core/extract/date.ts`:
 
 ```ts
-export interface Pick {
+export interface ComponentPick {
   choice: string;
   p: number;
 }
 
 export interface DateComponents {
-  mode: Pick;            // absolute | relative_day | weekday | window | none
-  month: Pick;           // january..december | none
-  day: Pick;             // 1..31 | none
-  weekday: Pick;         // monday..sunday | none
-  weekdayQualifier: Pick; // this | next | none
-  relativeDay: Pick;     // today | tomorrow | day_after_tomorrow | none
-  window: Pick;          // this_week | next_week | this_month | next_month | none
+  mode: ComponentPick;            // absolute | relative_day | weekday | window | none
+  month: ComponentPick;           // january..december | none
+  day: ComponentPick;             // 1..31 | none
+  weekday: ComponentPick;         // monday..sunday | none
+  weekdayQualifier: ComponentPick; // this | next | none
+  relativeDay: ComponentPick;     // today | tomorrow | day_after_tomorrow | none
+  window: ComponentPick;          // this_week | next_week | this_month | next_month | none
 }
 
 export interface DateWindow {
@@ -1012,7 +1023,7 @@ function endOfMonth(year: number, monthIndex: number): string {
   return toIso(Date.UTC(year, monthIndex, daysInMonth(year, monthIndex)));
 }
 
-function minP(...picks: Pick[]): number {
+function minP(...picks: ComponentPick[]): number {
   return Math.min(...picks.map((p) => p.p));
 }
 
@@ -1972,7 +1983,7 @@ import type { SlotSpec, SlotOutcome } from './types';
 import { isChoice, type AnswerMap, type QuestionMap } from '../../jev/types';
 import {
   DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS,
-  resolveDate, describeDay, type DateComponents, type Pick,
+  resolveDate, describeDay, type DateComponents, type ComponentPick,
 } from '../../core/extract/date';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
@@ -1985,7 +1996,7 @@ export const DATE_QUESTION_IDS = [
   'dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow',
 ] as const;
 
-function pick(answers: AnswerMap, id: string): Pick {
+function pick(answers: AnswerMap, id: string): ComponentPick {
   const a = answers[id];
   if (!isChoice(a)) return { choice: 'none', p: 0 };
   return { choice: a.choice, p: a.probabilities[a.choice] ?? a.confidence };
@@ -2078,7 +2089,7 @@ export const dateSlot: SlotSpec = {
       const month = Number(digits.slice(0, 2));
       const day = Number(digits.slice(2, 4));
       if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-      const one: Pick = { choice: '', p: 1 };
+      const one: ComponentPick = { choice: '', p: 1 };
       const resolved = resolveDate(
         {
           mode: { choice: 'absolute', p: 1 },
