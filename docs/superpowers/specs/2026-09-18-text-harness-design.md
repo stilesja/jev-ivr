@@ -118,7 +118,10 @@ mode used. Year is never asked; an absolute date is placed in the current year,
 or the next if more than 31 days in the past. Impossible dates resolve to
 `none`. A `window` result stores the window on the slot and marks it unfilled;
 the next prompt narrows it (`date_narrow_window`: "Which day next week works?").
-Time of day is out of scope.
+While a window is pending, a bare weekday answer resolves to that weekday's
+first occurrence inside the window, and a weekday that cannot fall inside it
+is `invalid`; absolute and relative days are accepted as spoken. Time of day
+is out of scope.
 
 ### Candidate spans
 
@@ -202,7 +205,7 @@ after the deciding gate, is still evaluated and written to the trace with
 | 3 | `utteranceComplete` | noul ≥ `GATE_COMPLETE` (0.60) | if `asr.isFinal` is false: hold, wait. If final: outcome `noted`, ladder continues |
 | 4 | `wantsHuman` | noul < `GATE_WANTS_HUMAN` (0.70) | end, handoff `live-agent` |
 | 5 | intent switch | see below | routes or confirms |
-| 6 | intent margin | top1 − top2 ≥ `GATE_INTENT_MARGIN` (0.15), only when gate 5 routed | disambiguate top two |
+| 6 | intent margin | top1 − top2 ≥ `GATE_INTENT_MARGIN` (0.15), only when gate 5 routed | disambiguate top two. With normalized probabilities a top-1 ≥ 0.60 always clears the margin, so in practice this fires inside the explicit-confirm band and turns "confirm the top one" into "ask which of two" |
 | 7 | escalation | not (`frustration.probabilities.high` ≥ `GATE_FRUSTRATION_HIGH` (0.60) and attempt ≠ first) | end, handoff `live-agent` |
 | 8 | slot fill | per slot kind, section 3 | per slot outcome |
 
@@ -336,7 +339,7 @@ sub-project; the manifest shape already has the field.
 
 ```jsonc
 { "id": "resched-012", "text": "I need to reschedule my appointment, it's with Dr. Chen sometime next week",
-  "intent": "reschedule", "slots": { "provider": "chen", "date": { "kind": "window", "label": "next_week" } },
+  "intent": "reschedule", "slots": { "provider": "chen", "date": { "mode": "window", "window": "next_week" } },
   "context": "no_form",                       // or the active form name
   "answers": { "intent": { "probabilities": { "reschedule": 0.62, "cancel": 0.30 } } },  // optional override
   "tags": ["over_answer", "window"] }
@@ -393,7 +396,7 @@ interface TraceRecord {
   turnState: TurnState | null;                 // null for dtmf-only turns
   questions: Record<string, Question> | null;
   answers: Record<string, Answer> | null;
-  source: 'jev' | 'stub:fixture' | 'stub:heuristic' | 'replay' | 'dtmf' | 'error';
+  source: 'jev' | 'stub:fixture' | 'stub:heuristic' | 'replay' | 'dtmf' | 'error' | 'none';  // none: no model call, e.g. the setup turn
   error: { name: string; message: string } | null;
   gates: Array<{ gate: string; value: number | null; threshold: number | null;
                  passed: boolean; outcome: string; decided: boolean }>;
