@@ -79,10 +79,12 @@ async function repl(opts: RunOptions, quiet: boolean): Promise<TraceRecord[]> {
         if (run.result.decision.kind !== 'ignore') printRun(run, quiet);
       }
     } else if (text) {
-      const run = await runTurn(session, promptFrame(text), opts);
-      session = run.result.session;
-      records.push(run.record);
-      printRun(run, quiet);
+      if (!session.ended) {
+        const run = await runTurn(session, promptFrame(text), opts);
+        session = run.result.session;
+        records.push(run.record);
+        printRun(run, quiet);
+      }
     }
     if (session.ended) console.log('(call ended; /reset to start another)');
     rl.prompt();
@@ -134,6 +136,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((e) => {
-  console.error(e);
+  if (e instanceof Error) console.error(`error: ${e.message}`);
+  else console.error(e);
   process.exit(1);
 });
