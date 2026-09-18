@@ -8,6 +8,7 @@ import { loadCorpus } from '../jev/corpus';
 import { TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 import { loadScenarios, runCorpusEntry, runScenario, runTurn, type RunOptions, type TurnRun } from './runner';
+import { replayFrameLog } from './replay';
 import { summarize } from './metrics';
 import { formatAnswers, formatDecision, formatGates, formatMetrics } from './print';
 export { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
@@ -19,6 +20,7 @@ function parseCliArgs() {
     options: {
       corpus: { type: 'string' },
       scenarios: { type: 'string' },
+      replay: { type: 'string' },
       client: { type: 'string', default: 'stub' },
       trace: { type: 'string' },
       threshold: { type: 'string', multiple: true, default: [] },
@@ -123,7 +125,13 @@ async function main(): Promise<void> {
     if (failed) process.exitCode = 1;
   }
 
-  if (!args.corpus && !args.scenarios) {
+  if (args.replay) {
+    const r = await replayFrameLog(args.replay, opts, (run) => printRun(run, args.quiet!));
+    records.push(...r.records);
+    for (const s of r.skipped) console.log(`skipped ${s}`);
+  }
+
+  if (!args.corpus && !args.scenarios && !args.replay) {
     records.push(...(await repl(opts, args.quiet!)));
   }
 
