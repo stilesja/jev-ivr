@@ -170,6 +170,16 @@ git commit -m "refactor(run): share runTurn and client builders between CLI and 
 - Modify: `src/channel/frames.ts`
 - Create: `src/channel/wire.ts`, `src/channel/wire.test.ts`
 
+Deviation, added after review of the first implementation: the committed
+`wire.ts` is stricter than the block below. `serializeOutbound` builds each
+message from an explicit per-type field list and throws on unknown types;
+`parseInbound` caps text fields at `MAX_TEXT_LENGTH` (4000) and
+`customParameters` at 50 entries of 500 characters, requires
+`durationUntilInterruptMs` to be finite and non-negative, accepts DTMF digits
+matching `[0-9*#]` only, and rejects present-but-wrong-typed `lang`, `last`,
+`from`, `to`, and `description`. The committed code and tests are the source
+of truth.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/channel/wire.test.ts`:
@@ -1241,6 +1251,8 @@ describe('adapter', () => {
     const before = sock.sent.length;
     for (const digit of '4471829') await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit }));
     expect(sock.sent.length).toBe(before);
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
+    expect(sock.sent.length).toBe(before);
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '3' }));
     expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim is cancelled. Goodbye.');
   });
@@ -1389,6 +1401,11 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
     return;
   }
   entry.frames.write('in', frame);
+  // The slots have fixed digit lengths, so the keypad terminators carry no meaning yet.
+  if (frame.type === 'dtmf' && (frame.digit === '#' || frame.digit === '*')) {
+    entry.frames.write('log', { ignoredDigit: frame.digit });
+    return;
+  }
   // Finals only in this sub-project: every prompt is treated as the complete utterance.
   const event: InboundFrame = frame.type === 'prompt' ? { ...frame, last: true } : frame;
   await deps.store.enqueue(ctx.callSid, (e) => turn(deps, e, event));
@@ -1928,7 +1945,8 @@ function wrap(ws: WebSocket): SocketLike {
 
 /** Accept ConversationRelay upgrades on /conversation only; the token from the query is checked at setup. */
 export function attachWebSocketServer(server: Server, deps: AdapterDeps): WebSocketServer {
-  const wss = new WebSocketServer({ noServer: true });
+  // 64 KiB is far above any ConversationRelay message; larger payloads are closed with 1009 by ws.
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname !== '/conversation') {
