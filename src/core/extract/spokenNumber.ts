@@ -64,8 +64,10 @@ export function spokenToDigits(text: string): string {
     } else if (tok in TENS) {
       flush();
       pendingTens = TENS[tok]!;
+    } else {
+      flush();
+      repeat = 1;
     }
-    // any other token is ignored
   }
   flush();
   return out;

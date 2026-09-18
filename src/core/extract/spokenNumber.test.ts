@@ -13,6 +13,8 @@ describe('spokenToDigits', () => {
     ['triple seven', '777'],
     ['four-four-seven', '447'],
     ['hello there', ''],
+    ['forty please hold four', '404'],
+    ['double please four', '4'],
   ])('%s -> %s', (input, expected) => {
     expect(spokenToDigits(input)).toBe(expected);
   });
