@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveDate, type DateComponents } from './date';
+import { describeWindow, resolveDate, type DateComponents } from './date';
 
 // 2026-09-18 is a Friday.
 const TODAY = '2026-09-18';
@@ -106,5 +106,12 @@ describe('resolveDate', () => {
   it('returns none for a prototype-name relative day', () => {
     expect(resolveDate(comps({ mode: 'relative_day', relativeDay: 'constructor' }), TODAY))
       .toEqual({ kind: 'none' });
+  });
+});
+
+describe('describeWindow', () => {
+  it('describes a month window as "in <Month>" and other windows as underscore-to-space', () => {
+    expect(describeWindow({ start: '2026-12-01', end: '2026-12-31', label: 'december' })).toBe('in December');
+    expect(describeWindow({ start: '2026-09-21', end: '2026-09-27', label: 'next_week' })).toBe('next week');
   });
 });

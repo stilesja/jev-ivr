@@ -174,15 +174,19 @@ export function resolveDate(c: DateComponents, todayIso: string): DateResolution
   }
 }
 
+function cap(s: string): string {
+  return s[0]!.toUpperCase() + s.slice(1);
+}
+
 /** Human-readable form for prompts, e.g. "Tuesday, September 22". */
 export function describeDay(iso: string): string {
   const d = new Date(parseIso(iso));
   const wd = WEEKDAYS[weekdayIndex(iso)]!;
   const mo = MONTHS[d.getUTCMonth()]!;
-  const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
   return `${cap(wd)}, ${cap(mo)} ${d.getUTCDate()}`;
 }
 
 export function describeWindow(w: DateWindow): string {
+  if ((MONTHS as readonly string[]).includes(w.label)) return `in ${cap(w.label)}`;
   return w.label.replace(/_/g, ' ');
 }
