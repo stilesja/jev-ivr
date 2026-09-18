@@ -1,12 +1,16 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runTurn, runCorpusEntry, runScenario, type Scenario } from './runner';
+import { runTurn, runCorpusEntry, runScenario, loadScenarios, type Scenario } from './runner';
 import { summarize } from './metrics';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
 import type { CorpusEntry } from '../jev/corpus';
 import { newSession } from '../core/session';
-import { setupFrame } from '../channel/frames';
+import { promptFrame, setupFrame } from '../channel/frames';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
+import type { JevClient } from '../jev/types';
 
 const entries: CorpusEntry[] = [
   { id: 'c1', text: 'cancel my appointment with dr patel', intent: 'cancel', context: 'no_form', slots: { provider: 'patel' } },
@@ -27,6 +31,15 @@ describe('runTurn', () => {
     expect(run.response).toBeNull();
     expect(run.record.source).toBe('none');
     expect(run.record.decision.kind).toBe('prompt');
+  });
+
+  it('rethrows non-client errors', async () => {
+    const badClient: JevClient = {
+      ask: () => {
+        throw new Error('boom');
+      },
+    };
+    await expect(runTurn(newSession('s', 0), promptFrame('hello'), { ...opts, client: badClient })).rejects.toThrow(/boom/);
   });
 });
 
@@ -75,6 +88,29 @@ describe('runScenario', () => {
     expect(r.pass).toBe(false);
     expect(r.mismatches[0]).toMatch(/decision/);
   });
+
+  it('stops a scenario after the session ends', async () => {
+    const r = await runScenario({
+      id: 'cancel-happy-trailing',
+      steps: [
+        { say: 'cancel my appointment with dr patel' },
+        { say: 'four four seven one eight two nine three' },
+        { say: 'cancel my appointment with dr patel' },
+      ],
+      expect: { decision: 'complete' },
+    }, opts);
+    expect(r.pass).toBe(true);
+    expect(r.outcome.decision).toBe('complete');
+    expect(r.runs).toHaveLength(3);
+  });
+});
+
+describe('loadScenarios', () => {
+  it('rejects a non-array file', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'scenarios-'));
+    writeFileSync(join(dir, 'bad.json'), JSON.stringify({ id: 'not-an-array' }));
+    expect(() => loadScenarios(dir)).toThrow(/expected an array/);
+  });
 });
 
 describe('summarize', () => {
@@ -84,11 +120,18 @@ describe('summarize', () => {
       steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }],
       expect: { decision: 'complete' },
     }, opts);
-    const m = summarize(r.runs.map((x) => x.record));
+    const records = r.runs.map((x) => x.record);
+    const m = summarize(records);
     expect(m.completions).toEqual([{ sessionId: 'cancel-happy', form: 'cancel', turns: 2, baseline: 5 }]);
     expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
     expect(m.bySource['stub:fixture']).toBe(2);
     // turn 1 routed at the intent gate; turn 2 proceeded to slot filling with no gate deciding
     expect(m.byDecidingGate).toEqual({ intent: 1, none: 1 });
+
+    const promptRecord = records.find((rec) => rec.event.type === 'prompt')!;
+    const ignored = { ...promptRecord, decision: { kind: 'ignore' } as const, frames: [] };
+    const withIgnore = summarize([...records, ignored]);
+    expect(withIgnore.promptTurns).toBe(m.promptTurns);
+    expect(withIgnore.completions).toEqual(m.completions);
   });
 });

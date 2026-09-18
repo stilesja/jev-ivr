@@ -11,7 +11,7 @@ import { JevClientError, type JevClient, type JevResponse, type JsonValue, type 
 import { buildTraceRecord, type TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 import { promptText } from '../prompts/render';
-import type { SlotId } from '../domain/forms';
+import { ALL_SLOTS, type SlotId } from '../domain/forms';
 
 export interface RunOptions {
   client: JevClient;
@@ -19,6 +19,10 @@ export interface RunOptions {
   todayIso: string;
   trace?: TraceWriter | null;
   now?: () => number;
+}
+
+function nowOf(opts: RunOptions): () => number {
+  return opts.now ?? (() => Date.now());
 }
 
 export interface TurnRun {
@@ -30,7 +34,7 @@ export interface TurnRun {
 }
 
 export async function runTurn(session: Session, event: InboundFrame, opts: RunOptions): Promise<TurnRun> {
-  const now = opts.now ?? (() => Date.now());
+  const now = nowOf(opts);
   const tc: TurnContext = { nowMs: now(), todayIso: opts.todayIso, thresholds: opts.thresholds };
   const t0 = performance.now();
   const p = plan(session, event, tc);
@@ -45,7 +49,11 @@ export async function runTurn(session: Session, event: InboundFrame, opts: RunOp
         timeoutMs: opts.thresholds.JEV_TIMEOUT_MS,
       });
     } catch (e) {
-      error = e instanceof Error ? { name: e.name, message: e.message } : { name: 'Error', message: String(e) };
+      // A JevClientError is a client-level failure (timeout, transport) the harness models
+      // as part of the run. Anything else is a bug in the corpus/fixture authoring (e.g. a
+      // bad label) and should stop the run rather than being scored as a client failure.
+      if (!(e instanceof JevClientError)) throw e;
+      error = { name: e.name, message: e.message };
     }
   }
   const t2 = performance.now();
@@ -82,16 +90,12 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
     decidedGate: result.rows.find((r) => r.decided)?.gate ?? null,
     verdict: result.verdict?.kind ?? null,
     form: result.session.form,
-    slots: {
-      memberId: result.session.slots.memberId.value,
-      provider: result.session.slots.provider.value,
-      date: result.session.slots.date.value,
-    },
+    slots: Object.fromEntries(ALL_SLOTS.map((id) => [id, result.session.slots[id].value])) as Record<SlotId, string | null>,
   };
 }
 
 async function startSession(id: string, opts: RunOptions): Promise<Session> {
-  const run = await runTurn(newSession(id, (opts.now ?? Date.now)()), setupFrame(id), opts);
+  const run = await runTurn(newSession(id, nowOf(opts)()), setupFrame(id), opts);
   return run.result.session;
 }
 
@@ -138,18 +142,20 @@ export async function runScenario(scenario: Scenario, opts: RunOptions): Promise
   };
   const o = { ...opts, client };
   const runs: TurnRun[] = [];
-  let session = newSession(scenario.id, (opts.now ?? Date.now)());
+  let session = newSession(scenario.id, nowOf(opts)());
   const setup = await runTurn(session, setupFrame(scenario.id), o);
   runs.push(setup);
   session = setup.result.session;
   let last = setup;
   for (const step of scenario.steps) {
+    if (session.ended) break;
     const events = 'dtmf' in step ? dtmfFrames(step.dtmf) : [promptFrame(step.say)];
     failNext = 'say' in step && step.fail === true;
     for (const event of events) {
       last = await runTurn(session, event, o);
       runs.push(last);
       session = last.result.session;
+      if (session.ended) break;
     }
     failNext = false;
   }
@@ -170,12 +176,23 @@ export function checkExpectation(outcome: Outcome, expected: ScenarioExpectation
   return out;
 }
 
+function isValidScenario(s: unknown): s is Scenario {
+  return (
+    typeof s === 'object' && s !== null &&
+    typeof (s as Scenario).id === 'string' &&
+    Array.isArray((s as Scenario).steps) &&
+    typeof (s as Scenario).expect === 'object' && (s as Scenario).expect !== null
+  );
+}
+
 export function loadScenarios(dir: string): Scenario[] {
   const seen = new Set<string>();
   const out: Scenario[] = [];
   for (const file of readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
-    const list = JSON.parse(readFileSync(join(dir, file), 'utf8')) as Scenario[];
-    for (const s of list) {
+    const parsed: unknown = JSON.parse(readFileSync(join(dir, file), 'utf8'));
+    if (!Array.isArray(parsed)) throw new Error(`scenarios ${file}: expected an array`);
+    for (const [index, s] of parsed.entries()) {
+      if (!isValidScenario(s)) throw new Error(`scenarios ${file}: entry ${index} is missing id, steps, or expect`);
       if (seen.has(s.id)) throw new Error(`scenario ${s.id}: duplicate id`);
       seen.add(s.id);
       out.push(s);

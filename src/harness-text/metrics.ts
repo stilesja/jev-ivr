@@ -50,31 +50,36 @@ export function summarize(records: TraceRecord[]): Metrics {
 
   for (const [sessionId, list] of bySession) {
     let prevFilled = 0;
-    let callerTurns = 0;
-    let inDtmfRun = false;
     let form: string | null = null;
+    let completionTurns: number | null = null;
     for (const r of list) {
       costUsd += r.usage.costUsd;
       bySource[r.source] = (bySource[r.source] ?? 0) + 1;
+      // ignore/hold decisions neither advance the flow nor were meant to fill a slot;
+      // their cost and source are still counted above, but they don't count as turns.
+      const counted = r.decision.kind !== 'ignore' && r.decision.kind !== 'hold';
       if (r.event.type === 'prompt') {
-        promptTurns += 1;
-        callerTurns += 1;
-        inDtmfRun = false;
-        const now = filledCount(r.slots);
-        slotsFilled += Math.max(0, now - prevFilled);
-        prevFilled = now;
-        if (r.source !== 'error' && r.source !== 'none') latencies.push(r.timing.askMs);
-        const gate = r.gates.find((g) => g.decided)?.gate ?? 'none';
-        byDecidingGate[gate] = (byDecidingGate[gate] ?? 0) + 1;
+        if (counted) {
+          promptTurns += 1;
+          const now = filledCount(r.slots);
+          slotsFilled += Math.max(0, now - prevFilled);
+          prevFilled = now;
+          if (r.source !== 'error' && r.source !== 'none') latencies.push(r.timing.totalMs);
+          const gate = r.gates.find((g) => g.decided)?.gate ?? 'none';
+          byDecidingGate[gate] = (byDecidingGate[gate] ?? 0) + 1;
+        }
       } else if (r.event.type === 'dtmf') {
-        if (!inDtmfRun) callerTurns += 1;
-        inDtmfRun = true;
         prevFilled = filledCount(r.slots);
       }
-      if (r.decision.kind === 'complete') form = r.decision.form;
+      if (r.decision.kind === 'complete') {
+        form = r.decision.form;
+        // bookkeep() already excludes ignore/hold from turnIndex, and the setup
+        // greeting is turn 1, so turnIndex - 1 is the caller's turn count.
+        completionTurns = r.turnIndex - 1;
+      }
     }
-    if (form) {
-      completions.push({ sessionId, form, turns: callerTurns, baseline: (baseline as Record<string, number>)[form] ?? 0 });
+    if (form && completionTurns !== null) {
+      completions.push({ sessionId, form, turns: completionTurns, baseline: (baseline as Record<string, number>)[form] ?? 0 });
     }
   }
 
