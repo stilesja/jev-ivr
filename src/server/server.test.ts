@@ -96,6 +96,31 @@ describe('server end to end', () => {
     expect(settled).toBe(stillOpen);
   });
 
+  it('does not time out an authenticated call whose first turn is slow', async () => {
+    const slow: JevClient = {
+      ask: async (req) => {
+        const stub = await fixtureStub();
+        await new Promise((r) => setTimeout(r, 500));
+        return stub.ask(req);
+      },
+    };
+    const s = await start(slow, { setupTimeoutMs: 200 });
+    const token = running!.tokens.mint('CA10');
+    const first = await FakeRelay.connect(`${s.ws}?token=${token}`);
+    first.setup('CA10');
+    await first.waitForTexts(1);
+    // Only prompt turns consult the model, so the way a setup handler outlives the deadline is a
+    // reconnect whose replay queues behind a slow turn that is already running.
+    first.prompt('I need to reschedule my appointment');
+    const again = await FakeRelay.connect(`${s.ws}?token=${token}`);
+    again.setup('CA10', 'VX-slow');
+    const stillOpen = Symbol('open');
+    const settled = await Promise.race([again.closed, new Promise((r) => setTimeout(() => r(stillOpen), 400))]);
+    expect(settled).toBe(stillOpen);
+    // The reconnect hears the replayed prompt, and the slow turn's own frames land on this socket too.
+    expect((await again.waitForTexts(1)).length).toBeGreaterThanOrEqual(1);
+  });
+
   it('reports a port in use as a clean error', async () => {
     await start();
     const { config } = makeConfig({ PORT: String(running!.port) });

@@ -31,14 +31,14 @@ export function attachWebSocketServer(server: Server, deps: AdapterDeps, setupTi
     }, setupTimeoutMs);
     deadline.unref();
     ws.on('message', (data) => {
-      void handleSocketMessage(deps, sock, ctx, data.toString())
-        .then(() => {
-          // callSid is set only once a setup passed the token check, so this is the accepted-setup signal.
-          if (ctx.callSid) clearTimeout(deadline);
-        })
-        .catch((err: unknown) =>
-          deps.log(`${ctx.callSid ?? 'unknown'}: message handler failed: ${err instanceof Error ? err.message : String(err)}`),
-        );
+      const handled = handleSocketMessage(deps, sock, ctx, data.toString());
+      // handleSocketMessage assigns ctx.callSid synchronously, before its first await, once a setup
+      // passes the token check. Disarming here rather than on the promise means a first turn slower
+      // than the deadline cannot kill a call that has already authenticated.
+      if (ctx.callSid) clearTimeout(deadline);
+      void handled.catch((err: unknown) =>
+        deps.log(`${ctx.callSid ?? 'unknown'}: message handler failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
     });
     ws.on('close', () => {
       clearTimeout(deadline);
