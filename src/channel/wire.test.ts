@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseInbound, serializeOutbound } from './wire';
+import { MAX_TEXT_LENGTH, parseInbound, serializeOutbound } from './wire';
 import { endFrame, textFrame } from './frames';
 
 describe('parseInbound', () => {
@@ -30,6 +30,40 @@ describe('parseInbound', () => {
     expect(parseInbound('{"type":"setup","sessionId":"s"}')).toBeNull();
     expect(parseInbound('{"type":"prompt","voicePrompt":5}')).toBeNull();
   });
+
+  it('rejects text fields over the max length', () => {
+    const long = 'a'.repeat(MAX_TEXT_LENGTH + 1000);
+    expect(parseInbound(JSON.stringify({ type: 'prompt', voicePrompt: long }))).toBeNull();
+  });
+
+  it('rejects a non-finite or negative durationUntilInterruptMs', () => {
+    expect(parseInbound(JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'x', durationUntilInterruptMs: -5 }))).toBeNull();
+    expect(parseInbound(JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'x', durationUntilInterruptMs: 1e400 }))).toBeNull();
+  });
+
+  it('accepts only valid dtmf digits', () => {
+    expect(parseInbound('{"type":"dtmf","digit":"#"}')).toEqual({ type: 'dtmf', digit: '#' });
+    expect(parseInbound('{"type":"dtmf","digit":"*"}')).toEqual({ type: 'dtmf', digit: '*' });
+    expect(parseInbound('{"type":"dtmf","digit":"w"}')).toBeNull();
+    expect(parseInbound('{"type":"dtmf","digit":"A"}')).toBeNull();
+  });
+
+  it('rejects present-but-wrong-typed optional fields instead of defaulting', () => {
+    expect(parseInbound('{"type":"prompt","voicePrompt":"x","last":"false"}')).toBeNull();
+    expect(parseInbound('{"type":"error","description":5}')).toBeNull();
+  });
+
+  it('caps customParameters at 50 entries of at most 500 characters each', () => {
+    const customParameters: Record<string, string> = {};
+    for (let i = 0; i < 60; i += 1) customParameters[`k${i}`] = 'v';
+    customParameters.tooLong = 'a'.repeat(501);
+    const f = parseInbound(JSON.stringify({ type: 'setup', sessionId: 's', callSid: 'c', customParameters }));
+    expect(f?.type).toBe('setup');
+    if (f?.type === 'setup') {
+      expect(Object.keys(f.customParameters).length).toBe(50);
+      expect(f.customParameters.tooLong).toBeUndefined();
+    }
+  });
 });
 
 describe('serializeOutbound', () => {
@@ -38,5 +72,12 @@ describe('serializeOutbound', () => {
       type: 'text', token: 'hi', last: true, lang: 'en-US', interruptible: true, preemptible: false,
     });
     expect(JSON.parse(serializeOutbound(endFrame('completed')))).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed"}' });
+  });
+
+  it('drops extra properties not in the documented field set', () => {
+    const frame = { ...textFrame('hi', true), extra: 'nope' };
+    expect(JSON.parse(serializeOutbound(frame))).toEqual({
+      type: 'text', token: 'hi', last: true, lang: 'en-US', interruptible: true, preemptible: false,
+    });
   });
 });
