@@ -2,7 +2,7 @@ import type { AnswerMap } from '../jev/types';
 import type { SlotId } from '../domain/forms';
 import { SLOTS, type SlotCandidate, type SlotContext, type SlotOutcome, type SlotSpec } from '../domain/slots';
 import type { DateWindow } from './extract/date';
-import { missingSlots, type Session } from './session';
+import { missingSlots, requiredSlots, type Session } from './session';
 import type { Thresholds } from './thresholds';
 
 export type RetryStep = 'open' | 'dtmf' | 'agent';
@@ -10,7 +10,7 @@ export type RetryStep = 'open' | 'dtmf' | 'agent';
 /** attempts = failures so far including the one just counted. */
 export function retryStep(attempts: number, t: Thresholds): RetryStep {
   if (attempts >= t.MAX_ATTEMPTS) return 'agent';
-  if (attempts === 2) return 'dtmf';
+  if (attempts >= t.MAX_ATTEMPTS - 1) return 'dtmf';
   return 'open';
 }
 
@@ -45,14 +45,16 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
     events.push({ slot: spec.id, outcome });
     const slot = session.slots[spec.id];
     switch (outcome.kind) {
-      case 'filled':
+      case 'filled': {
+        const keepConfirmed = slot.confirmed && slot.value === outcome.value;
         slot.value = outcome.value;
         slot.display = outcome.display;
-        slot.confirmed = outcome.confirm === 'none';
+        slot.confirmed = outcome.confirm === 'none' || keepConfirmed;
         slot.window = null;
         if (outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
         progress = true;
         break;
+      }
       case 'window':
         if (slot.value === null) {
           slot.window = outcome.window;
@@ -90,6 +92,7 @@ export type DtmfResult =
 export function applyDtmf(session: Session, buffer: string, ctx: SlotContext): DtmfResult {
   const target = session.promptedFor;
   if (target === null || target === 'intent') return { kind: 'no_target' };
+  if (!requiredSlots(session).includes(target)) return { kind: 'no_target' };
   const spec = SLOTS[target];
   if (buffer.length < spec.dtmf.length) return { kind: 'collecting' };
   const parsed = spec.dtmf.parse(buffer.slice(0, spec.dtmf.length), ctx);

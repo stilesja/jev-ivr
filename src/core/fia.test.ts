@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fillSlots, nextPrompt, retryStep, applyDtmf } from './fia';
 import { newSession, setForm } from './session';
-import { DEFAULT_THRESHOLDS } from './thresholds';
+import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
 import { slotsFor, type SlotContext } from '../domain/slots';
 import { choice, noul } from '../testing/answers';
 import { candidateSpans } from './spans';
@@ -16,6 +16,14 @@ describe('retryStep', () => {
     expect(retryStep(1, T)).toBe('open');
     expect(retryStep(2, T)).toBe('dtmf');
     expect(retryStep(3, T)).toBe('agent');
+  });
+
+  it('stays monotonic under overrides', () => {
+    const t5 = withOverrides({ MAX_ATTEMPTS: 5 });
+    expect([1, 2, 3, 4, 5].map((n) => retryStep(n, t5))).toEqual(['open', 'open', 'open', 'dtmf', 'agent']);
+
+    const t2 = withOverrides({ MAX_ATTEMPTS: 2 });
+    expect([1, 2].map((n) => retryStep(n, t2))).toEqual(['dtmf', 'agent']);
   });
 });
 
@@ -57,6 +65,26 @@ describe('fillSlots', () => {
     expect(r.progress).toBe(false);
     expect(r.events).toEqual([{ slot: 'memberId', outcome: { kind: 'invalid', reason: 'mask', raw: '447' } }]);
   });
+
+  it('keeps a confirmed slot confirmed when re-filled with the same value', () => {
+    const s = setForm(newSession('s', 0), 'billing');
+    s.slots.memberId.value = '44718293';
+    s.slots.memberId.confirmed = true;
+    const r = fillSlots(s, {
+      containsMemberId: noul(0.9), memberIdSpan: choice({ '44718293': 0.9, none: 0.1 }), memberIdComplete: noul(0.9),
+    }, ctx('44718293'), slotsFor('billing'));
+    expect(r.session.slots.memberId).toMatchObject({ value: '44718293', confirmed: true });
+  });
+
+  it('unconfirms a confirmed slot when re-filled with a different value', () => {
+    const s = setForm(newSession('s', 0), 'billing');
+    s.slots.memberId.value = '44718293';
+    s.slots.memberId.confirmed = true;
+    const r = fillSlots(s, {
+      containsMemberId: noul(0.9), memberIdSpan: choice({ '11112222': 0.9, none: 0.1 }), memberIdComplete: noul(0.9),
+    }, ctx('11112222'), slotsFor('billing'));
+    expect(r.session.slots.memberId).toMatchObject({ value: '11112222', confirmed: false });
+  });
 });
 
 describe('nextPrompt', () => {
@@ -81,9 +109,16 @@ describe('applyDtmf', () => {
     expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: true });
   });
 
-  it('rejects invalid digits as an attempt', () => {
+  it('rejects invalid digits', () => {
     const s = setForm(newSession('s', 0), 'cancel');
     s.promptedFor = 'provider';
     expect(applyDtmf(s, '9', ctx())).toEqual({ kind: 'invalid', slot: 'provider' });
+  });
+
+  it('ignores a target not on the active form', () => {
+    const s = setForm(newSession('s', 0), 'billing');
+    s.promptedFor = 'date';
+    expect(applyDtmf(s, '0922', ctx())).toEqual({ kind: 'no_target' });
+    expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
   });
 });

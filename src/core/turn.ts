@@ -125,6 +125,16 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     case 'rejected':
       s.pendingConfirmation = null;
       return { decision: failAttempt(s, 'intent', t), events: [] };
+    case 'confirm_unanswered': {
+      // The confirmation stands; re-ask it until the retry policy runs out.
+      const intent = s.pendingConfirmation!.intent;
+      s.intentAttempts += 1;
+      if (retryStep(s.intentAttempts, t) === 'agent') {
+        s.pendingConfirmation = null;
+        return { decision: handoff('max-attempts'), events: [] };
+      }
+      return { decision: prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[intent] }, [], ['yes', 'no']), events: [] };
+    }
     case 'route':
       if (verdict.confirm === 'explicit') {
         s.pendingConfirmation = { target: 'intent', intent: verdict.intent };

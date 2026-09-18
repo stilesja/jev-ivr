@@ -99,6 +99,21 @@ describe('evaluateGates', () => {
     expect(r.verdict).toEqual({ kind: 'route', intent: 'cancel', confirm: 'none' });
   });
 
+  it('asks to confirm a mid-confidence intent switch', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    expect(run(s, baseAnswers({ intent: choice({ reschedule: 0.7, none: 0.3 }) })).verdict)
+      .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'explicit' });
+  });
+
+  it('reports an unanswered confirmation when no new intent is expressed', () => {
+    const s = newSession('s', 0);
+    s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+    const r = run(s, baseAnswers({
+      confirmsYes: noul(0.5), confirmsNo: noul(0.5), intent: choice({ none: 0.9, other: 0.1 }),
+    }));
+    expect(r.verdict).toEqual({ kind: 'confirm_unanswered' });
+  });
+
   it('handles agent and repeat intents', () => {
     expect(run(newSession('s', 0), baseAnswers({ intent: choice({ agent: 0.8, none: 0.2 }) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
     expect(run(newSession('s', 0), baseAnswers({ intent: choice({ repeat_prompt: 0.8, none: 0.2 }) })).verdict).toEqual({ kind: 'replay' });

@@ -20,6 +20,7 @@ export type Verdict =
   | { kind: 'handoff'; reason: string }
   | { kind: 'confirmed' }
   | { kind: 'rejected' }
+  | { kind: 'confirm_unanswered' }
   | { kind: 'replay' }
   | { kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit' }
   | { kind: 'disambiguate_intent'; a: Intent; b: Intent }
@@ -85,11 +86,12 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     const high = isScore(f) ? (f.probabilities.high ?? 0) : 0;
     const repeat = ts.turn.attempt !== 'first';
     const passed = !(high >= t.GATE_FRUSTRATION_HIGH && repeat);
-    const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed, outcome: passed ? (repeat ? 'pass' : 'first_attempt') : 'handoff', decided: false };
+    const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed, outcome: passed ? (high >= t.GATE_FRUSTRATION_HIGH ? 'first_attempt' : 'pass') : 'handoff', decided: false };
     passed ? rows.push(row) : decide(row, { kind: 'handoff', reason: 'frustrated' });
   }
 
   // 6. pending explicit confirmation
+  let confirmationUnanswered = false;
   if (session.pendingConfirmation) {
     const yes = noulValue(answers, 'confirmsYes');
     const no = noulValue(answers, 'confirmsNo');
@@ -99,6 +101,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
       decide({ gate: 'confirmation', value: no, threshold: t.CONFIRM_NO, passed: true, outcome: 'rejected', decided: false }, { kind: 'rejected' });
     } else {
       rows.push({ gate: 'confirmation', value: Math.max(yes, no), threshold: t.CONFIRM_YES, passed: false, outcome: 'unanswered', decided: false });
+      confirmationUnanswered = true;
     }
   }
 
@@ -111,6 +114,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
       const row = { gate: 'menuNumber', value: top.p, threshold: t.MENU_NUMBER, passed: true, outcome: `menu:${mapped.intent}`, decided: false };
       if (mapped.intent === 'agent') decide(row, { kind: 'handoff', reason: 'live-agent' });
       else if (isFormIntent(mapped.intent)) decide(row, { kind: 'route', intent: mapped.intent, confirm: 'none' });
+      else rows.push(row);
     } else {
       rows.push({ gate: 'menuNumber', value: top?.p ?? null, threshold: t.MENU_NUMBER, passed: false, outcome: 'no_menu_number', decided: false });
     }
@@ -143,6 +147,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     if (label === 'agent' && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'handoff', reason: 'live-agent' }; outcome = 'agent'; }
     else if (label === 'repeat_prompt' && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'replay' }; outcome = 'replay'; }
     else if (isFormIntent(label) && label !== activeForm && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'route', intent: label, confirm: 'none' }; outcome = 'switch'; }
+    else if (isFormIntent(label) && label !== activeForm && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'explicit' }; outcome = 'switch_explicit'; }
     else { routeVerdict = { kind: 'proceed' }; outcome = 'proceed'; }
   }
 
@@ -150,6 +155,13 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     gate: 'intent', value: top.p, threshold: activeForm === null ? t.INTENT_EXPLICIT : t.INTENT_SWITCH,
     passed: routeVerdict.kind !== 'intent_failed', outcome: `${outcome}:${label}`, decided: false,
   };
+
+  // A pending confirmation the caller neither answered nor talked past is a
+  // confirmation retry, not an intent failure.
+  if (session.pendingConfirmation && confirmationUnanswered && routeVerdict.kind === 'intent_failed') {
+    routeVerdict = { kind: 'confirm_unanswered' };
+    intentRow.outcome = `confirm_unanswered:${label}`;
+  }
 
   // 9. margin, whenever routing on a form intent. With normalized probabilities a
   // top-1 >= 0.60 always has margin >= 0.20, so in practice this fires inside the
@@ -169,5 +181,6 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     rows.push(marginRow);
   }
 
+  // `verdict` is only ever assigned inside the `decide` closure, so TypeScript narrows it to null here; the `??` is load-bearing at runtime.
   return { rows, verdict: verdict ?? routeVerdict };
 }

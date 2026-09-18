@@ -113,6 +113,14 @@ describe('turn', () => {
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
   });
 
+  it('re-asks an unanswered confirmation and counts an attempt', () => {
+    let r = say(started(), 'maybe cancel', { intent: choice({ cancel: 0.5, none: 0.5 }) });
+    r = say(r.session, 'um not sure', { confirmsYes: noul(0.4), confirmsNo: noul(0.4) });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
+    expect(r.session.intentAttempts).toBe(1);
+    expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
+  });
+
   it('handles a client failure once with a hint and twice with a handoff', () => {
     const err = { name: 'JevClientError', message: 'timeout' };
     let r = resolve(started(), promptFrame('hello'), null, tc, err);
