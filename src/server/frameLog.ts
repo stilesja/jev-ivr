@@ -21,9 +21,17 @@ export class FrameLog {
   }
 }
 
-export function readFrameLog(path: string): FrameLogLine[] {
-  return readFileSync(path, 'utf8')
+export function readFrameLog(path: string, onSkip?: (lineNumber: number) => void): FrameLogLine[] {
+  const lines: FrameLogLine[] = [];
+  const raw = readFileSync(path, 'utf8')
     .split('\n')
-    .filter((l) => l.trim())
-    .map((l) => JSON.parse(l) as FrameLogLine);
+    .filter((l) => l.trim());
+  raw.forEach((l, i) => {
+    try {
+      lines.push(JSON.parse(l) as FrameLogLine);
+    } catch {
+      onSkip?.(i + 1);
+    }
+  });
+  return lines;
 }
