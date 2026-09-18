@@ -8,6 +8,14 @@ export interface SetupFrame {
   from: string;
   to: string;
   customParameters: Record<string, string>;
+  // Optional fields Twilio also sends; passed through and logged, never read by the core.
+  accountSid?: string;
+  parentCallSid?: string;
+  forwardedFrom?: string;
+  callType?: string;
+  callerName?: string;
+  direction?: string;
+  callStatus?: string;
 }
 
 export interface PromptFrame {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildClient, buildThresholds, corpusFileOf, DEFAULT_CORPUS_FILE } from './cli';
+import { buildClient, buildThresholds, corpusFileOf, DEFAULT_CORPUS_FILE, resolveTodayIso } from './cli';
+import { defaultTimeZone, localDateIso } from '../run/clock';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { loadCorpus } from '../jev/corpus';
 import type { QuestionMap } from '../jev/types';
@@ -23,6 +24,17 @@ describe('buildThresholds', () => {
 
   it('throws on an unknown threshold name', () => {
     expect(() => buildThresholds(['NOT_A_THRESHOLD=0.5'])).toThrow(/unknown threshold/);
+  });
+});
+
+describe('resolveTodayIso', () => {
+  it('uses the given date whether it came from --today VALUE or --today=VALUE', () => {
+    expect(resolveTodayIso('2026-01-01')).toBe('2026-01-01');
+  });
+
+  it('falls back to the host wall-clock date, not the UTC one, when --today was never passed', () => {
+    expect(resolveTodayIso(undefined)).toBe(localDateIso(Date.now(), defaultTimeZone()));
+    expect(resolveTodayIso(undefined)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 

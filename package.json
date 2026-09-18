@@ -3,19 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "cli": "tsx src/harness-text/cli.ts",
-    "regress": "tsx src/harness-text/regress.ts"
+    "regress": "tsx src/harness-text/regress.ts",
+    "server": "tsx src/server/index.ts"
   },
   "dependencies": {
-    "@typesafe-ai/sdk": "^0.6.0"
+    "@typesafe-ai/sdk": "^0.6.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",
+    "@types/ws": "^8.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

@@ -4,19 +4,16 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dtmfFrames, promptFrame, setupFrame } from '../channel/frames';
 import { newSession, type Session } from '../core/session';
-import { parseOverride, withOverrides, type Thresholds } from '../core/thresholds';
 import { loadCorpus } from '../jev/corpus';
-import { FixtureStubClient } from '../jev/fixtureStub';
-import { HeuristicStubClient } from '../jev/heuristicStub';
-import { SdkJevClient } from '../jev/sdkClient';
-import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 import { loadScenarios, runCorpusEntry, runScenario, runTurn, type RunOptions, type TurnRun } from './runner';
+import { replayFrameLog } from './replay';
 import { summarize } from './metrics';
 import { formatAnswers, formatDecision, formatGates, formatMetrics } from './print';
-
-export const DEFAULT_CORPUS_FILE = 'fixtures/corpus.jsonl';
+export { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
+import { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
+import { defaultTimeZone, localDateIso } from '../run/clock';
 
 /** Parsed inside main() so a bad flag reports through the same clean error path as a bad run. */
 function parseCliArgs() {
@@ -24,29 +21,29 @@ function parseCliArgs() {
     options: {
       corpus: { type: 'string' },
       scenarios: { type: 'string' },
+      replay: { type: 'string' },
       client: { type: 'string', default: 'stub' },
       trace: { type: 'string' },
       threshold: { type: 'string', multiple: true, default: [] },
-      today: { type: 'string', default: new Date().toISOString().slice(0, 10) },
+      today: { type: 'string' },
       quiet: { type: 'boolean', default: false },
       'corpus-file': { type: 'string' },
     },
   }).values;
 }
 
-export function buildThresholds(overrides: string[]): Thresholds {
-  return withOverrides(Object.assign({}, ...overrides.map(parseOverride)));
-}
-
-export function buildClient(kind: string, corpusFile: string, thresholds: Thresholds): JevClient {
-  if (kind === 'jev') return new SdkJevClient({ timeoutMs: thresholds.JEV_TIMEOUT_MS });
-  if (kind === 'heuristic') return new HeuristicStubClient();
-  return new FixtureStubClient(loadCorpus(corpusFile), { sharpness: thresholds.STUB_SHARPNESS, fallback: new HeuristicStubClient() });
-}
-
 /** The fixture stub reads --corpus-file; running a corpus defaults it to that same file. */
 export function corpusFileOf(corpusFile: string | undefined, corpus: string | undefined): string {
   return corpusFile ?? corpus ?? DEFAULT_CORPUS_FILE;
+}
+
+/**
+ * --today is unset (not merely defaulted by parseArgs) only when the caller never passed it.
+ * The fallback is the host's wall-clock date, not the UTC one: an evening run west of Greenwich
+ * would otherwise resolve "tomorrow" a day early.
+ */
+export function resolveTodayIso(today: string | undefined): string {
+  return today ?? localDateIso(Date.now(), defaultTimeZone());
 }
 
 function printRun(run: TurnRun, quiet: boolean): void {
@@ -109,7 +106,7 @@ async function main(): Promise<void> {
   const thresholds = buildThresholds(args.threshold ?? []);
   const client = buildClient(args.client!, corpusFileOf(args['corpus-file'], args.corpus), thresholds);
   const trace = args.trace ? new TraceWriter(args.trace) : null;
-  const opts: RunOptions = { client, thresholds, todayIso: args.today!, trace };
+  const opts: RunOptions = { client, thresholds, todayIso: resolveTodayIso(args.today), trace };
   const records: TraceRecord[] = [];
 
   if (args.corpus) {
@@ -138,7 +135,16 @@ async function main(): Promise<void> {
     if (failed) process.exitCode = 1;
   }
 
-  if (!args.corpus && !args.scenarios) {
+  if (args.replay) {
+    // A replay defaults to the call's own date; --today only overrides it when the flag was
+    // actually passed (in either `--today VALUE` or `--today=VALUE` form).
+    const replayOptions = args.today !== undefined ? { todayIso: args.today } : undefined;
+    const r = await replayFrameLog(args.replay, opts, (run) => printRun(run, args.quiet!), replayOptions);
+    records.push(...r.records);
+    for (const s of r.skipped) console.log(`skipped ${s}`);
+  }
+
+  if (!args.corpus && !args.scenarios && !args.replay) {
     records.push(...(await repl(opts, args.quiet!)));
   }
 
