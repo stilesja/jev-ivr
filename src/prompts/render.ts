@@ -54,10 +54,28 @@ export function decisionToFrames(decision: Decision): OutboundFrame[] {
   }
 }
 
-/** The spoken text of a decision, for lastPromptText and the CLI. */
+/**
+ * What the caller hears, built straight from the manifest. Deriving this from
+ * rendered frames would couple session state to the channel's framing, so the
+ * text a later turn reasons about is defined here instead.
+ */
+export function spokenText(decision: Decision): string {
+  switch (decision.kind) {
+    case 'ignore':
+    case 'hold':
+      return '';
+    case 'replay':
+      return decision.text;
+    case 'prompt':
+      return [...decision.acks.map((a) => promptText(a.promptId, a.vars)), promptText(decision.promptId, decision.vars)].join(' ');
+    case 'complete':
+      return promptText(decision.promptId, decision.vars);
+    case 'handoff':
+      return promptText(decision.promptId, {});
+  }
+}
+
+/** The spoken text of a decision, for the CLI. */
 export function decisionText(decision: Decision): string {
-  return decisionToFrames(decision)
-    .filter((f): f is Extract<OutboundFrame, { type: 'text' }> => f.type === 'text')
-    .map((f) => f.token)
-    .join(' ');
+  return spokenText(decision);
 }

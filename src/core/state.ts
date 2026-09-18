@@ -50,7 +50,7 @@ export function buildTurnState(session: Session, input: TurnInput, nowMs: number
       openAppointment: session.caller.openAppointment,
       priorCalls: bucketPriorCalls(session.caller.priorCalls7d),
     },
-    asr: { text: input.text, isFinal: input.isFinal, bargeIn: false, dtmf: input.dtmf },
+    asr: { text: input.text, isFinal: input.isFinal, bargeIn: session.lastInterrupt !== null, dtmf: input.dtmf },
     candidateSpans: candidateSpans(input.text),
     pendingConfirmation: session.pendingConfirmation
       ? { target: 'intent', value: INTENT_LABELS[session.pendingConfirmation.intent] }

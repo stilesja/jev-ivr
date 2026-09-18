@@ -29,10 +29,6 @@ function criteriaOf(labels: readonly string[]): Record<string, null> {
   return Object.fromEntries(labels.map((l) => [l, null]));
 }
 
-export const DATE_QUESTION_IDS = [
-  'dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow',
-] as const;
-
 function pick(answers: AnswerMap, id: string): ComponentPick {
   const a = answers[id];
   if (!isChoice(a)) return { choice: 'none', p: 0 };

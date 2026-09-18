@@ -2,12 +2,16 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runTurn, runCorpusEntry, runScenario, loadScenarios, type Scenario } from './runner';
+import {
+  runTurn, runCorpusEntry, runScenario, loadScenarios, checkExpectation, outcomeOf, spokenText,
+  type Outcome, type Scenario,
+} from './runner';
 import { summarize } from './metrics';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
 import type { CorpusEntry } from '../jev/corpus';
 import { newSession } from '../core/session';
+import type { TurnResult } from '../core/turn';
 import { promptFrame, setupFrame } from '../channel/frames';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import type { JevClient } from '../jev/types';
@@ -177,6 +181,76 @@ describe('runScenario', () => {
     expect(r.pass).toBe(true);
     expect(r.outcome.decision).toBe('complete');
     expect(r.runs).toHaveLength(3);
+  });
+});
+
+const outcome: Outcome = {
+  id: 'x', decision: 'prompt', promptId: 'ask_memberId', acks: [], reason: null,
+  decidedGate: 'intent', verdict: 'route', form: 'cancel',
+  slots: { memberId: null, provider: 'patel', date: null },
+};
+
+describe('checkExpectation', () => {
+  it('passes a fully matching expectation', () => {
+    expect(checkExpectation(outcome, {
+      decision: 'prompt', promptId: 'ask_memberId', form: 'cancel', slots: { provider: 'patel' }, text: 'member',
+    }, 'What is your member ID?')).toEqual([]);
+  });
+
+  it('names the field for each kind of mismatch', () => {
+    expect(checkExpectation(outcome, { decision: 'complete' }, '')[0]).toMatch(/^decision: expected complete, got prompt/);
+    expect(checkExpectation(outcome, { decision: 'prompt', promptId: 'ask_date' }, '')[0]).toMatch(/^promptId: expected ask_date, got ask_memberId/);
+    expect(checkExpectation({ ...outcome, decision: 'handoff' }, { decision: 'handoff', reason: 'billing' }, '')[0])
+      .toMatch(/^reason: expected billing, got null/);
+    expect(checkExpectation(outcome, { decision: 'prompt', form: 'reschedule' }, '')[0]).toMatch(/^form: expected reschedule, got cancel/);
+    expect(checkExpectation(outcome, { decision: 'prompt', slots: { memberId: '44718293' } }, '')[0])
+      .toMatch(/^slot memberId: expected 44718293, got null/);
+  });
+
+  it('quotes both sides when the spoken text does not contain the expectation', () => {
+    expect(checkExpectation(outcome, { decision: 'prompt', text: 'member ID' }, 'Which provider?'))
+      .toEqual(['text: expected to contain "member ID", got "Which provider?"']);
+  });
+
+  it('collects every mismatch, not just the first', () => {
+    expect(checkExpectation(outcome, { decision: 'complete', promptId: 'ask_date', form: null }, '')).toHaveLength(3);
+  });
+});
+
+describe('outcomeOf', () => {
+  it('reads a completed turn', async () => {
+    const r = await runScenario({
+      id: 'done',
+      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }],
+      expect: { decision: 'complete' },
+    }, opts);
+    const o = outcomeOf('done', r.runs.at(-1)!.result);
+    expect(o).toMatchObject({ id: 'done', decision: 'complete', promptId: 'cancel_confirmed', reason: null, form: 'cancel' });
+    expect(o.slots).toEqual({ memberId: '44718293', provider: 'patel', date: null });
+  });
+
+  it('reads an ignored turn as having no prompt, gate or verdict', () => {
+    const ignored = {
+      decision: { kind: 'ignore' } as const,
+      rows: [], verdict: null, session: newSession('i', 0), turnState: null, fillEvents: [], frames: [],
+    } satisfies TurnResult;
+    expect(outcomeOf('i', ignored)).toEqual({
+      id: 'i', decision: 'ignore', promptId: null, acks: [], reason: null, decidedGate: null, verdict: null,
+      form: null, slots: { memberId: null, provider: null, date: null },
+    });
+  });
+});
+
+describe('spokenText', () => {
+  it('joins the text frames of a turn and ignores the end frame', async () => {
+    const r = await runScenario({
+      id: 'spoken',
+      steps: [{ say: 'cancel my appointment with dr patel' }],
+      expect: { decision: 'prompt' },
+    }, opts);
+    const result = r.runs.at(-1)!.result;
+    expect(spokenText(result)).toBe(result.frames.filter((f) => f.type === 'text').map((f) => f.token).join(' '));
+    expect(spokenText(result)).toContain('member ID');
   });
 });
 

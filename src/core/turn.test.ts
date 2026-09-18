@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { plan, resolve, type TurnContext } from './turn';
 import { newSession, type Session } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
-import { promptFrame, dtmfFrames, setupFrame } from '../channel/frames';
+import { promptFrame, dtmfFrames, setupFrame, type InterruptFrame } from '../channel/frames';
 import { choice, noul, score } from '../testing/answers';
 import type { AnswerMap } from '../jev/types';
 
@@ -162,6 +162,51 @@ describe('turn', () => {
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'system_slow_dtmf_hint' });
     r = resolve(r.session, promptFrame('hello'), null, tc, err);
     expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'system-failure' });
+  });
+
+  it('traces a gate row for every slot the turn touched', () => {
+    const r = say(started(), 'reschedule with dr chen next week', {
+      intent: choice({ reschedule: 0.94, none: 0.06 }),
+      provider: choice({ chen: 0.91, none: 0.09 }),
+      dateMode: choice({ window: 0.9, none: 0.1 }),
+      dateWindow: choice({ next_week: 0.88, none: 0.12 }),
+    });
+    expect(r.rows.find((g) => g.gate === 'slot:provider')).toMatchObject({ outcome: 'filled', passed: true });
+    expect(r.rows.find((g) => g.gate === 'slot:date')).toMatchObject({ outcome: 'window', passed: true });
+  });
+
+  it('traces a failed mask as an invalid slot row', () => {
+    let r = say(started(), 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    r = say(r.session, 'four four seven', {
+      containsMemberId: noul(0.95),
+      memberIdSpan: choice({ 'four four seven': 0.9, none: 0.1 }),
+      memberIdComplete: noul(0.9),
+    });
+    expect(r.rows.find((g) => g.gate === 'slot:memberId')).toMatchObject({ outcome: 'invalid:mask', passed: false, value: null });
+  });
+
+  it('traces a dtmf fill as a slot row', () => {
+    let r = say(started(), 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    for (const d of dtmfFrames('44718293')) r = resolve(r.session, d, null, tc);
+    expect(r.rows).toEqual([{ gate: 'slot:memberId', value: null, threshold: null, passed: true, outcome: 'dtmf', decided: false }]);
+  });
+
+  it('reports a barge-in to the model on the next prompt turn only', () => {
+    const interrupt: InterruptFrame = { type: 'interrupt', utteranceUntilInterrupt: 'wait no', durationUntilInterruptMs: 420 };
+    const i = resolve(started(), interrupt, null, tc);
+    expect(i.decision).toEqual({ kind: 'ignore' });
+    expect(i.session.lastInterrupt).toEqual({ utteranceUntilInterrupt: 'wait no', durationUntilInterruptMs: 420 });
+    expect(plan(i.session, promptFrame('cancel with dr patel'), tc).turnState!.asr.bargeIn).toBe(true);
+
+    const r = say(i.session, 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    expect(r.turnState!.asr.bargeIn).toBe(true);
+    expect(plan(r.session, promptFrame('hello'), tc).turnState!.asr.bargeIn).toBe(false);
   });
 
   it('ignores side speech without counting an attempt', () => {

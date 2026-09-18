@@ -13,7 +13,7 @@ import { evaluateGates, type GateRow, type Verdict } from './gates';
 import { applyDtmf, fillSlots, nextPrompt, retryStep, type Ack, type FillEvent } from './fia';
 import type { Decision, PromptDecision } from './decision';
 import type { Thresholds } from './thresholds';
-import { decisionText, decisionToFrames, handoffPromptId } from '../prompts/render';
+import { decisionToFrames, handoffPromptId, spokenText } from '../prompts/render';
 
 export interface TurnContext {
   nowMs: number;
@@ -53,9 +53,31 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
   };
 }
 
+/** Gate 8's threshold per slot kind: memberId is detected, the choice slots are picked. */
+function slotThreshold(slot: SlotId, t: Thresholds): number {
+  return slot === 'memberId' ? t.SLOT_DETECT : t.SLOT_CHOICE_CONFIRM;
+}
+
+/** Spec §6 gate 8: one row per slot the turn tried to fill, so the debug table is complete. */
+function slotRows(events: FillEvent[], t: Thresholds): GateRow[] {
+  return events.map(({ slot, outcome }) => ({
+    gate: `slot:${slot}`,
+    value: outcome.kind === 'filled' || outcome.kind === 'window' ? outcome.confidence : null,
+    threshold: slotThreshold(slot, t),
+    passed: outcome.kind === 'filled' || outcome.kind === 'window' || outcome.kind === 'disambiguate',
+    outcome: outcome.kind === 'invalid' ? `${outcome.kind}:${outcome.reason}` : outcome.kind,
+    decided: false,
+  }));
+}
+
+/** A keypad fill answers no question, so it carries neither a confidence nor a threshold. */
+function dtmfRow(slot: SlotId): GateRow {
+  return { gate: `slot:${slot}`, value: null, threshold: null, passed: true, outcome: 'dtmf', decided: false };
+}
+
 export function plan(session: Session, event: InboundFrame, tc: TurnContext): Plan {
   if (event.type !== 'prompt' || session.ended) return { needsModel: false, turnState: null, questions: null };
-  const turnState = buildTurnState(session, { text: event.voicePrompt, isFinal: event.last, dtmf: null }, tc.nowMs);
+  const turnState = buildTurnState(session, { text: event.voicePrompt, isFinal: event.last, dtmf: session.dtmfBuffer || null }, tc.nowMs);
   const questions = buildQuestions(session, slotContext(session, event.voicePrompt, tc));
   return { needsModel: true, turnState, questions };
 }
@@ -86,7 +108,7 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
   const step = retryStep(attempts, t);
   if (step === 'agent') return handoff('max-attempts');
   if (target === 'intent') {
-    if (step === 'dtmf') return prompt('nomatch_dtmf_menu', 'intent', {}, [], INTENT_MENU.map((m) => m.digit));
+    if (step === 'dtmf') return { ...prompt('nomatch_dtmf_menu', 'intent', {}, [], INTENT_MENU.map((m) => m.digit)), menu: true };
     return prompt('nomatch_open', 'intent');
   }
   // A slot narrowed to a window re-asks the window question, not the generic retry:
@@ -177,31 +199,31 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
   }
 }
 
-function handleDtmf(s: Session, digit: string, tc: TurnContext): Decision {
+function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Decision; rows: GateRow[] } {
   s.dtmfBuffer += digit;
   if (s.menuActive) {
     const option = INTENT_MENU.find((m) => m.digit === digit);
     s.dtmfBuffer = '';
     // A wrong key is a failed menu attempt, not dead air.
-    if (!option) return failAttempt(s, 'intent', tc.thresholds);
-    if (option.intent === 'agent') return handoff('live-agent');
-    if (!isFormIntent(option.intent)) return { kind: 'ignore' };
+    if (!option) return { decision: failAttempt(s, 'intent', tc.thresholds), rows: [] };
+    if (option.intent === 'agent') return { decision: handoff('live-agent'), rows: [] };
+    if (!isFormIntent(option.intent)) return { decision: { kind: 'ignore' }, rows: [] };
     setForm(s, option.intent);
-    return continueForm(s, [], null);
+    return { decision: continueForm(s, [], null), rows: [] };
   }
   const result = applyDtmf(s, s.dtmfBuffer, slotContext(s, '', tc));
   switch (result.kind) {
     case 'collecting':
-      return { kind: 'ignore' };
+      return { decision: { kind: 'ignore' }, rows: [] };
     case 'no_target':
       s.dtmfBuffer = '';
-      return { kind: 'ignore' };
+      return { decision: { kind: 'ignore' }, rows: [] };
     case 'invalid':
       s.dtmfBuffer = '';
-      return failAttempt(s, result.slot, tc.thresholds);
+      return { decision: failAttempt(s, result.slot, tc.thresholds), rows: [] };
     case 'filled':
       s.dtmfBuffer = '';
-      return continueForm(s, [], null);
+      return { decision: continueForm(s, [], null), rows: [dtmfRow(result.slot)] };
   }
 }
 
@@ -217,14 +239,14 @@ function bookkeep(s: Session, decision: Decision, verdictLabel: string): void {
   s.history.push({ node: s.lastPromptId ?? 'start', intent: verdictLabel, outcome: decision.kind });
   if (decision.kind === 'prompt') {
     s.lastPromptId = decision.promptId;
-    s.lastPromptText = decisionText(decision);
+    s.lastPromptText = spokenText(decision);
     s.lastPromptOptions = [...decision.options];
     s.promptedFor = decision.target;
-    s.menuActive = decision.promptId === 'nomatch_dtmf_menu';
+    s.menuActive = decision.menu === true;
     s.dtmfBuffer = '';
   } else if (decision.kind === 'complete' || decision.kind === 'handoff') {
     s.lastPromptId = decision.promptId;
-    s.lastPromptText = decisionText(decision);
+    s.lastPromptText = spokenText(decision);
     s.ended = true;
   }
 }
@@ -241,25 +263,36 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       return { ...base, decision, frames: decisionToFrames(decision) };
     }
     case 'dtmf': {
-      const decision = handleDtmf(s, event.digit, tc);
+      const { decision, rows } = handleDtmf(s, event.digit, tc);
       bookkeep(s, decision, `dtmf:${event.digit}`);
-      return { ...base, decision, frames: decisionToFrames(decision) };
+      return { ...base, rows, decision, frames: decisionToFrames(decision) };
     }
     case 'interrupt':
+      // Barge-in is state, not a turn: the next prompt frame reports it to the model.
+      s.lastInterrupt = {
+        utteranceUntilInterrupt: event.utteranceUntilInterrupt,
+        durationUntilInterruptMs: event.durationUntilInterruptMs,
+      };
+      return { ...base, decision: { kind: 'ignore' }, frames: [] };
     case 'error':
       return { ...base, decision: { kind: 'ignore' }, frames: [] };
     case 'prompt': {
-      const turnState = buildTurnState(s, { text: event.voicePrompt, isFinal: event.last, dtmf: null }, tc.nowMs);
+      const turnState = buildTurnState(s, { text: event.voicePrompt, isFinal: event.last, dtmf: s.dtmfBuffer || null }, tc.nowMs);
       if (error || answers === null) {
         const decision = handleFailure(s);
         bookkeep(s, decision, 'error');
+        // The turn state above already reported the barge-in, failed ask or not.
+        s.lastInterrupt = null;
         return { ...base, turnState, decision, frames: decisionToFrames(decision) };
       }
       s.consecutiveFailures = 0;
       const ctx = slotContext(s, event.voicePrompt, tc);
       const { rows, verdict } = evaluateGates(s, turnState, answers, tc.thresholds);
       const { decision, events } = handleVerdict(s, verdict, answers, ctx, tc);
+      rows.push(...slotRows(events, tc.thresholds));
       bookkeep(s, decision, verdict.kind);
+      // The barge-in has now been reported to the model; it does not carry into the next turn.
+      s.lastInterrupt = null;
       return { session: s, turnState, rows, verdict, fillEvents: events, decision, frames: decisionToFrames(decision) };
     }
   }

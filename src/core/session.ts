@@ -27,6 +27,11 @@ export interface PendingConfirmation {
   intent: Intent;
 }
 
+export interface Interrupt {
+  utteranceUntilInterrupt: string;
+  durationUntilInterruptMs: number;
+}
+
 export interface Session {
   sessionId: string;
   turnIndex: number;
@@ -45,6 +50,8 @@ export interface Session {
   history: HistoryEntry[];
   caller: CallerRecord;
   dtmfBuffer: string;
+  /** the barge-in that cut off the last prompt, until the next prompt turn consumes it */
+  lastInterrupt: Interrupt | null;
   consecutiveFailures: number;
   ended: boolean;
 }
@@ -80,6 +87,7 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
     history: [],
     caller: { ...caller },
     dtmfBuffer: '',
+    lastInterrupt: null,
     consecutiveFailures: 0,
     ended: false,
   };
@@ -98,6 +106,7 @@ export function cloneSession(s: Session): Session {
     history: s.history.map((h) => ({ ...h })),
     caller: { ...s.caller },
     pendingConfirmation: s.pendingConfirmation ? { ...s.pendingConfirmation } : null,
+    lastInterrupt: s.lastInterrupt ? { ...s.lastInterrupt } : null,
   };
 }
 

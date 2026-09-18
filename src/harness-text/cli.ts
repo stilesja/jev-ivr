@@ -1,5 +1,7 @@
 import { parseArgs } from 'node:util';
+import { realpathSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { fileURLToPath } from 'node:url';
 import { dtmfFrames, promptFrame, setupFrame } from '../channel/frames';
 import { newSession, type Session } from '../core/session';
 import { parseOverride, withOverrides, type Thresholds } from '../core/thresholds';
@@ -14,18 +16,23 @@ import { loadScenarios, runCorpusEntry, runScenario, runTurn, type RunOptions, t
 import { summarize } from './metrics';
 import { formatAnswers, formatDecision, formatGates, formatMetrics } from './print';
 
-const { values: args } = parseArgs({
-  options: {
-    corpus: { type: 'string' },
-    scenarios: { type: 'string' },
-    client: { type: 'string', default: 'stub' },
-    trace: { type: 'string' },
-    threshold: { type: 'string', multiple: true, default: [] },
-    today: { type: 'string', default: new Date().toISOString().slice(0, 10) },
-    quiet: { type: 'boolean', default: false },
-    'corpus-file': { type: 'string', default: 'fixtures/corpus.jsonl' },
-  },
-});
+export const DEFAULT_CORPUS_FILE = 'fixtures/corpus.jsonl';
+
+/** Parsed inside main() so a bad flag reports through the same clean error path as a bad run. */
+function parseCliArgs() {
+  return parseArgs({
+    options: {
+      corpus: { type: 'string' },
+      scenarios: { type: 'string' },
+      client: { type: 'string', default: 'stub' },
+      trace: { type: 'string' },
+      threshold: { type: 'string', multiple: true, default: [] },
+      today: { type: 'string', default: new Date().toISOString().slice(0, 10) },
+      quiet: { type: 'boolean', default: false },
+      'corpus-file': { type: 'string' },
+    },
+  }).values;
+}
 
 export function buildThresholds(overrides: string[]): Thresholds {
   return withOverrides(Object.assign({}, ...overrides.map(parseOverride)));
@@ -35,6 +42,11 @@ export function buildClient(kind: string, corpusFile: string, thresholds: Thresh
   if (kind === 'jev') return new SdkJevClient({ timeoutMs: thresholds.JEV_TIMEOUT_MS });
   if (kind === 'heuristic') return new HeuristicStubClient();
   return new FixtureStubClient(loadCorpus(corpusFile), { sharpness: thresholds.STUB_SHARPNESS, fallback: new HeuristicStubClient() });
+}
+
+/** The fixture stub reads --corpus-file; running a corpus defaults it to that same file. */
+export function corpusFileOf(corpusFile: string | undefined, corpus: string | undefined): string {
+  return corpusFile ?? corpus ?? DEFAULT_CORPUS_FILE;
 }
 
 function printRun(run: TurnRun, quiet: boolean): void {
@@ -93,8 +105,9 @@ async function repl(opts: RunOptions, quiet: boolean): Promise<TraceRecord[]> {
 }
 
 async function main(): Promise<void> {
+  const args = parseCliArgs();
   const thresholds = buildThresholds(args.threshold ?? []);
-  const client = buildClient(args.client!, args['corpus-file']!, thresholds);
+  const client = buildClient(args.client!, corpusFileOf(args['corpus-file'], args.corpus), thresholds);
   const trace = args.trace ? new TraceWriter(args.trace) : null;
   const opts: RunOptions = { client, thresholds, todayIso: args.today!, trace };
   const records: TraceRecord[] = [];
@@ -135,8 +148,12 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => {
-  if (e instanceof Error) console.error(`error: ${e.message}`);
-  else console.error(e);
-  process.exit(1);
-});
+/** Only runs as the entry point, so tests can import the builders without starting a REPL. */
+const entry = process.argv[1];
+if (entry && realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url))) {
+  main().catch((e) => {
+    if (e instanceof Error) console.error(`error: ${e.message}`);
+    else console.error(e);
+    process.exit(1);
+  });
+}

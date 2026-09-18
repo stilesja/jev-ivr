@@ -12,6 +12,8 @@ export interface PromptDecision {
   target: 'intent' | SlotId | null;
   /** spoken options, for disambiguation and menus */
   options: string[];
+  /** this prompt played the DTMF intent menu, so the next digit picks an option */
+  menu?: boolean;
 }
 
 export type Decision =
