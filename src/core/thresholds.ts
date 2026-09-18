@@ -38,9 +38,12 @@ export function withOverrides(overrides: Partial<Thresholds>): Thresholds {
 }
 
 export function parseOverride(spec: string): Partial<Thresholds> {
-  const [name, raw] = spec.split('=');
-  if (!name || raw === undefined) throw new Error(`bad threshold override: ${spec}`);
-  if (!(name in DEFAULT_THRESHOLDS)) throw new Error(`unknown threshold: ${name}`);
+  const parts = spec.split('=');
+  if (parts.length !== 2) throw new Error(`bad threshold override: ${spec}`);
+  const [name, raw] = parts;
+  if (!name) throw new Error(`bad threshold override: ${spec}`);
+  if (!Object.hasOwn(DEFAULT_THRESHOLDS, name)) throw new Error(`unknown threshold: ${name}`);
+  if (!raw || !raw.trim()) throw new Error(`bad threshold value: ${spec}`);
   const value = Number(raw);
   if (Number.isNaN(value)) throw new Error(`bad threshold value: ${spec}`);
   return { [name]: value } as Partial<Thresholds>;
