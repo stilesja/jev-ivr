@@ -2192,6 +2192,8 @@ git commit -m "test(server): cover reconnect through the action callback"
 - Create: `src/harness-text/replay.ts`, `src/harness-text/replay.test.ts`
 - Modify: `src/harness-text/cli.ts`
 
+Deviation, added after review: the committed `replayFrameLog` mirrors the adapter more closely than the block below. It drops `#` and `*` DTMF digits before running a turn, ignores every frame after the call has ended (reporting each), runs each turn with `now` set to that frame's logged timestamp and, unless `--today` was given explicitly, with `todayIso` taken from the setup line's date, so an old call re-resolves relative dates as it did live; a turn that throws is reported and the replay continues. `FrameLogLine` carries the 1-based file line so skip messages are exact. The committed code is the source of truth.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/harness-text/replay.test.ts`:
