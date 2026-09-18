@@ -2546,7 +2546,7 @@ describe('buildQuestions', () => {
     s.menuActive = true;
     const q = buildQuestions(s, ctx).menuNumberSaid!;
     expect(q.type).toBe('choice');
-    if (q.type === 'choice') expect(Object.keys(q.criteria)).toEqual(['1', '2', '3', '4', '5', '0', 'none']);
+    if (q.type === 'choice') expect(Object.keys(q.criteria)).toEqual(['0', '1', '2', '3', '4', '5', 'none']); // integer-like keys enumerate first, ascending
   });
 });
 ```
