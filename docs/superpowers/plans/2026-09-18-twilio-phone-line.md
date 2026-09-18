@@ -1146,6 +1146,8 @@ git commit -m "feat(server): add session store with a per-call turn queue"
 **Files:**
 - Create: `src/server/adapter.ts`, `src/server/adapter.test.ts`
 
+Deviation, added after review: the committed adapter carries the socket on the connection context and detaches only when the closing socket is the one attached (a late close from a replaced socket cannot mute a resumed call); a displaced socket is closed on resume; per-frame send failures are logged, detach the socket, and never skip end-of-call cleanup; a throwing turn is logged and answered with one apology text frame instead of dead air; every inbound frame is logged before any ignore decision; an `out` line is written only after a successful send and a dropped frame is logged whole under `log`. The committed code is the source of truth.
+
 The adapter is tested with a fake socket object, no network. It owns: token check on `setup`, session create or resume, mapping inbound frames to core events, running turns through the store's queue, sending decision frames, and ending the call.
 
 - [ ] **Step 1: Write the failing test**
@@ -1447,6 +1449,8 @@ git commit -m "feat(server): add the ConversationRelay adapter"
 **Files:**
 - Create: `src/server/http.ts`, `src/server/http.test.ts`
 
+Deviation, added after review: the committed `decideActionTwiml` reads `SessionStatus`: a `completed` session (the caller hung up) ends the stored session and returns `<Hangup/>` rather than reconnecting or dialing; reconnect requires `SessionStatus` other than `completed` and `CallStatus` in-progress, and detaches the dead socket; an empty or whitespace `HandoffData` counts as absent; `/voice` without a `CallSid` returns 400; an oversized body gets 413 before the socket is destroyed; `HEAD /health` is served. The committed code is the source of truth.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/server/http.test.ts`:
@@ -1718,6 +1722,8 @@ git commit -m "feat(server): add voice webhook, action callback and health route
 **Files:**
 - Create: `src/server/ws.ts`, `src/server/index.ts`, `src/testing/fakeRelay.ts`, `src/server/server.test.ts`
 
+Deviation, added after review: the committed `startServer` rejects on a listen error so a port in use prints one clean line; `ws.ts` refuses upgrades whose token is missing or not 32 hex characters, closes any connection that has not completed `setup` within 10 s, calls the connection handler directly instead of re-emitting `connection`, and attaches `.catch` handlers to the fire-and-forget message and close paths; `close()` waits (bounded) for in-flight turns. `safeFileStem` uses the strict class `[A-Za-z0-9_-]` (the earlier test vector was wrong). The committed code is the source of truth.
+
 - [ ] **Step 1: Write the fake relay client**
 
 `src/testing/fakeRelay.ts` (not a test file):
@@ -1923,7 +1929,8 @@ describe('server end to end', () => {
   it('sanitizes call sids before building file names', async () => {
     const { safeFileStem } = await import('./index');
     expect(safeFileStem('CA' + 'a'.repeat(32))).toBe('CA' + 'a'.repeat(32));
-    expect(safeFileStem('../etc/passwd')).toBe('.._etc_passwd');
+    expect(safeFileStem('../etc/passwd')).toBe('___etc_passwd');
+    expect(safeFileStem('CA1.frames')).toBe('CA1_frames');
     expect(safeFileStem('')).toBe('unknown');
   });
 
@@ -2028,7 +2035,7 @@ const EVICT_EVERY_MS = 60 * 1000;
 
 /** Call SIDs come from Twilio (CA + 32 hex), but they arrive over the socket, so never let one shape a path. */
 export function safeFileStem(callSid: string): string {
-  const cleaned = callSid.replace(/[^A-Za-z0-9_-]/g, '_');
+  const cleaned = callSid.replace(/[^A-Za-z0-9_-]/g, '_'); // no '.', so one SID can never forge another call's '.frames.jsonl' name
   return cleaned.length ? cleaned.slice(0, 64) : 'unknown';
 }
 
