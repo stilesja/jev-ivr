@@ -11,6 +11,9 @@ export interface FrameLogLine {
   line?: number;
 }
 
+/** What readFrameLog actually returns: `line` is always populated. */
+export type ReadFrameLogLine = FrameLogLine & { line: number };
+
 /** Every socket message and webhook for one call, in arrival order. This is what replay consumes. */
 export class FrameLog {
   constructor(private readonly path: string, private readonly now: () => number = Date.now) {
@@ -23,8 +26,8 @@ export class FrameLog {
   }
 }
 
-export function readFrameLog(path: string, onSkip?: (lineNumber: number) => void): FrameLogLine[] {
-  const lines: FrameLogLine[] = [];
+export function readFrameLog(path: string, onSkip?: (lineNumber: number) => void): ReadFrameLogLine[] {
+  const lines: ReadFrameLogLine[] = [];
   const raw = readFileSync(path, 'utf8').split('\n');
   raw.forEach((l, i) => {
     if (!l.trim()) return;

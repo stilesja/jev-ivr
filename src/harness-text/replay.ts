@@ -20,7 +20,9 @@ function rawType(msg: unknown): string {
  * Feed every inbound message of a recorded call through runTurn, in order, exactly as the
  * adapter did: prompts are forced final, a repeated setup (reconnect) is skipped, `#`/`*` DTMF
  * digits are skipped since the adapter logs them as `in` before dropping them, and everything
- * after the call ends is skipped and reported rather than fed to a dead session.
+ * after the call ends is skipped and reported rather than fed to a dead session. A line with a
+ * missing or unparsable `ts` is skipped and reported rather than throwing or driving the clock
+ * with `NaN`.
  *
  * Each turn runs with the clock and default date the recording actually happened under: `now`
  * returns the frame line's own timestamp, and `todayIso` is the setup line's date unless the
@@ -40,7 +42,12 @@ export async function replayFrameLog(
   let ended = false;
   for (const line of lines) {
     if (line.dir !== 'in') continue;
-    const lineNumber = line.line!;
+    const lineNumber = line.line;
+    const lineMs = typeof line.ts === 'string' ? Date.parse(line.ts) : NaN;
+    if (Number.isNaN(lineMs)) {
+      skipped.push(`line ${lineNumber}: missing or invalid ts`);
+      continue;
+    }
     if (ended) {
       skipped.push(`line ${lineNumber}: ${rawType(line.msg)} after the call ended`);
       continue;
@@ -56,7 +63,7 @@ export async function replayFrameLog(
         continue;
       }
       setupDate = line.ts.slice(0, 10);
-      session = newSession(frame.callSid, Date.parse(line.ts));
+      session = newSession(frame.callSid, lineMs);
     }
     if (!session) {
       skipped.push(`line ${lineNumber}: ${frame.type} before setup`);
@@ -66,7 +73,6 @@ export async function replayFrameLog(
     // dropped there without ever reaching runTurn, so replay must drop them too.
     if (frame.type === 'dtmf' && (frame.digit === '#' || frame.digit === '*')) continue;
     const event = frame.type === 'prompt' ? { ...frame, last: true } : frame;
-    const lineMs = Date.parse(line.ts);
     const turnOpts: RunOptions = { ...opts, now: () => lineMs, todayIso: options?.todayIso ?? setupDate! };
     try {
       const run = await runTurn(session, event, turnOpts);

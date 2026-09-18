@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { replayFrameLog } from './replay';
@@ -138,5 +138,24 @@ describe('replayFrameLog', () => {
     expect(replay.skipped).toEqual(['line 3: turn failed: boom']);
     // setup + the first and third prompt turns; the second turn threw and produced no record.
     expect(replay.records).toHaveLength(3);
+  });
+
+  it('skips a line with a missing or unparsable ts instead of throwing or using NaN', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'replay-badts-'));
+    const path = join(dir, 'CA1.frames.jsonl');
+    const write = (obj: unknown) => appendFileSync(path, JSON.stringify(obj) + '\n');
+    write({ ts: new Date(0).toISOString(), dir: 'in', msg: { type: 'setup', sessionId: 'VX1', callSid: 'CA1', from: '+1', to: '+2', customParameters: {} } });
+    // line 2: no ts field at all
+    write({ dir: 'in', msg: { type: 'prompt', voicePrompt: 'hi', lang: 'en-US', last: true } });
+    // line 3: ts is present but not a parsable date
+    write({ ts: 'not-a-date', dir: 'in', msg: { type: 'prompt', voicePrompt: 'still there', lang: 'en-US', last: true } });
+    write({ ts: new Date(1_000).toISOString(), dir: 'in', msg: { type: 'prompt', voicePrompt: 'yes', lang: 'en-US', last: true } });
+
+    const client = new HeuristicStubClient();
+    const opts = { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', now: () => 0, trace: null };
+    const replay = await replayFrameLog(path, opts);
+    expect(replay.skipped).toEqual(['line 2: missing or invalid ts', 'line 3: missing or invalid ts']);
+    // setup (line 1) + the valid prompt (line 4); the two bad-ts lines never reach runTurn.
+    expect(replay.records).toHaveLength(2);
   });
 });

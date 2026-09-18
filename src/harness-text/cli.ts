@@ -24,7 +24,7 @@ function parseCliArgs() {
       client: { type: 'string', default: 'stub' },
       trace: { type: 'string' },
       threshold: { type: 'string', multiple: true, default: [] },
-      today: { type: 'string', default: new Date().toISOString().slice(0, 10) },
+      today: { type: 'string' },
       quiet: { type: 'boolean', default: false },
       'corpus-file': { type: 'string' },
     },
@@ -34,6 +34,11 @@ function parseCliArgs() {
 /** The fixture stub reads --corpus-file; running a corpus defaults it to that same file. */
 export function corpusFileOf(corpusFile: string | undefined, corpus: string | undefined): string {
   return corpusFile ?? corpus ?? DEFAULT_CORPUS_FILE;
+}
+
+/** --today is unset (not merely defaulted by parseArgs) only when the caller never passed it. */
+export function resolveTodayIso(today: string | undefined): string {
+  return today ?? new Date().toISOString().slice(0, 10);
 }
 
 function printRun(run: TurnRun, quiet: boolean): void {
@@ -96,7 +101,7 @@ async function main(): Promise<void> {
   const thresholds = buildThresholds(args.threshold ?? []);
   const client = buildClient(args.client!, corpusFileOf(args['corpus-file'], args.corpus), thresholds);
   const trace = args.trace ? new TraceWriter(args.trace) : null;
-  const opts: RunOptions = { client, thresholds, todayIso: args.today!, trace };
+  const opts: RunOptions = { client, thresholds, todayIso: resolveTodayIso(args.today), trace };
   const records: TraceRecord[] = [];
 
   if (args.corpus) {
@@ -127,8 +132,8 @@ async function main(): Promise<void> {
 
   if (args.replay) {
     // A replay defaults to the call's own date; --today only overrides it when the flag was
-    // actually passed, since parseArgs always fills `args.today` with a default.
-    const replayOptions = process.argv.includes('--today') ? { todayIso: args.today! } : undefined;
+    // actually passed (in either `--today VALUE` or `--today=VALUE` form).
+    const replayOptions = args.today !== undefined ? { todayIso: args.today } : undefined;
     const r = await replayFrameLog(args.replay, opts, (run) => printRun(run, args.quiet!), replayOptions);
     records.push(...r.records);
     for (const s of r.skipped) console.log(`skipped ${s}`);
