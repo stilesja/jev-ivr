@@ -16,10 +16,11 @@ export const TURN_ERROR_TEXT = 'Sorry, something went wrong on my end. Please sa
  */
 export const SEND_TIMEOUT_MS = 5_000;
 
-/** Consecutive unparsable messages before the connection is treated as something other than ConversationRelay. */
+/** Unparsable messages (cumulative, never reset) before the connection is treated as something other than ConversationRelay. */
 export const MALFORMED_LIMIT = 10;
 
 /** Digit runs long enough that TTS would read them as a number ("4471" as "four thousand ..."). */
+// Runs of four or more digits are spelled out for TTS. A four-digit year would be spelled out too; no prompt speaks one today.
 const DIGIT_RUN = /\d{4,}(?: \d{4,})*/g;
 
 /**
@@ -147,7 +148,7 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
     entry?.frames.write('log', { malformed: raw.slice(0, 200) });
     // Whatever is on the other end is not ConversationRelay; stop paying for its messages.
     if (ctx.malformed >= MALFORMED_LIMIT) {
-      deps.log(`${ctx.callSid ?? 'unknown'}: closing after ${ctx.malformed} malformed messages`);
+      if (ctx.malformed === MALFORMED_LIMIT) deps.log(`${ctx.callSid ?? 'unknown'}: closing after ${ctx.malformed} malformed messages`);
       entry?.frames.write('log', { malformedLimit: ctx.malformed });
       socket.close(1007, 'malformed messages');
     }

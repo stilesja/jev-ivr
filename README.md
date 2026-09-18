@@ -120,7 +120,7 @@ takes to finalize a turn, whether an interrupted prompt also arrives as a
   specific call SID. A connection that is accepted but never sends a setup
   message is closed after ten seconds. The token travels in the WebSocket URL,
   so it appears in ngrok's request inspector and in anything else that logs
-  URLs; it is single-use per call and expires in ten minutes, but treat those
+  URLs; there is one live token per call, replaced on every re-mint, and it expires in ten minutes, but treat those
   logs accordingly.
 - Ten unparsable inbound messages close the socket with 1007. A prompt message
   with `last: false` is logged and dropped rather than run as a turn, since the
