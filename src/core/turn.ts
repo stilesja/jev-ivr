@@ -42,14 +42,21 @@ export interface TurnResult {
   frames: OutboundFrame[];
 }
 
-function slotContext(text: string, tc: TurnContext): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), todayIso: tc.todayIso, thresholds: tc.thresholds };
+function slotContext(session: Session, text: string, tc: TurnContext): SlotContext {
+  return {
+    text,
+    candidateSpans: candidateSpans(text),
+    todayIso: tc.todayIso,
+    thresholds: tc.thresholds,
+    // A pending window constrains what a bare weekday can mean on the next turn.
+    window: session.slots.date.window ?? null,
+  };
 }
 
 export function plan(session: Session, event: InboundFrame, tc: TurnContext): Plan {
   if (event.type !== 'prompt' || session.ended) return { needsModel: false, turnState: null, questions: null };
   const turnState = buildTurnState(session, { text: event.voicePrompt, isFinal: event.last, dtmf: null }, tc.nowMs);
-  const questions = buildQuestions(session, slotContext(event.voicePrompt, tc));
+  const questions = buildQuestions(session, slotContext(session, event.voicePrompt, tc));
   return { needsModel: true, turnState, questions };
 }
 
@@ -178,7 +185,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): Decision {
     setForm(s, option.intent);
     return continueForm(s, [], null);
   }
-  const result = applyDtmf(s, s.dtmfBuffer, slotContext('', tc));
+  const result = applyDtmf(s, s.dtmfBuffer, slotContext(s, '', tc));
   switch (result.kind) {
     case 'collecting':
       return { kind: 'ignore' };
@@ -245,7 +252,7 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
         return { ...base, turnState, decision, frames: decisionToFrames(decision) };
       }
       s.consecutiveFailures = 0;
-      const ctx = slotContext(event.voicePrompt, tc);
+      const ctx = slotContext(s, event.voicePrompt, tc);
       const { rows, verdict } = evaluateGates(s, turnState, answers, tc.thresholds);
       const { decision, events } = handleVerdict(s, verdict, answers, ctx, tc);
       bookkeep(s, decision, verdict.kind);

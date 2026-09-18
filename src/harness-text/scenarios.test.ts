@@ -16,8 +16,8 @@ const opts = {
 };
 
 describe('fixtures/scenarios', () => {
-  it('has at least 15 scenarios', () => {
-    expect(scenarios.length).toBeGreaterThanOrEqual(15);
+  it('has at least 30 scenarios', () => {
+    expect(scenarios.length).toBeGreaterThanOrEqual(30);
   });
 
   it('only says things that are in the corpus', () => {

@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -11,6 +11,17 @@ import { newSession } from '../core/session';
 import { promptFrame, setupFrame } from '../channel/frames';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import type { JevClient } from '../jev/types';
+import type { TraceRecord } from '../trace/types';
+import { TraceWriter } from '../trace/writer';
+
+/** Every record a run wrote, read back from a throwaway trace file. */
+function traceSink(): { trace: TraceWriter; records: () => TraceRecord[] } {
+  const path = join(mkdtempSync(join(tmpdir(), 'trace-')), 'run.jsonl');
+  return {
+    trace: new TraceWriter(path),
+    records: () => readFileSync(path, 'utf8').trim().split('\n').map((l) => JSON.parse(l) as TraceRecord),
+  };
+}
 
 const entries: CorpusEntry[] = [
   { id: 'c1', text: 'cancel my appointment with dr patel', intent: 'cancel', context: 'no_form', slots: { provider: 'patel' } },
@@ -43,6 +54,18 @@ describe('runTurn', () => {
   });
 });
 
+const prompted: CorpusEntry = {
+  id: 'd1', text: 'tomorrow', intent: 'none', context: 'reschedule', prompted: 'date',
+  slots: { date: { mode: 'relative_day', relativeDay: 'tomorrow' } },
+};
+const promptedClient = new FixtureStubClient([prompted], { sharpness: 0.9, fallback: new HeuristicStubClient() });
+
+/** The second entry is a trailing-off utterance the complete gate should hold on. */
+const partialClient = new FixtureStubClient([
+  entries[0]!,
+  { id: 'p1', text: 'four four seven one', intent: 'none', context: 'cancel', answers: { utteranceComplete: { noul: 0.25 } } },
+], { sharpness: 0.9, fallback: new HeuristicStubClient() });
+
 describe('runCorpusEntry', () => {
   it('runs a first-utterance entry from the greeting', async () => {
     const { outcome } = await runCorpusEntry(entries[0]!, opts);
@@ -57,16 +80,23 @@ describe('runCorpusEntry', () => {
   });
 
   it('prompts the requested slot for an in-form entry', async () => {
-    const entry: CorpusEntry = {
-      id: 'd1', text: 'tomorrow', intent: 'none', context: 'reschedule', prompted: 'date',
-      slots: { date: { mode: 'relative_day', relativeDay: 'tomorrow' } },
-    };
-    const client = new FixtureStubClient([entry], { sharpness: 0.9, fallback: new HeuristicStubClient() });
-    const { outcome } = await runCorpusEntry(entry, { ...opts, client });
+    const { outcome } = await runCorpusEntry(prompted, { ...opts, client: promptedClient });
     expect(outcome.decision).toBe('complete');
     expect(outcome.slots.date).toBe('2026-09-19');
     expect(outcome.slots.memberId).toBe('00000000');
     expect(outcome.slots.provider).toBe('patel');
+  });
+
+  it('credits a seeded entry only with what its own utterance fills', async () => {
+    const sink = traceSink();
+    const { run } = await runCorpusEntry(prompted, { ...opts, client: promptedClient, trace: sink.trace });
+    const m = summarize(sink.records());
+    expect(run.record.slots.memberId.value).toBe('00000000');
+    // the greeting already showed memberId and provider filled, so only the date counts
+    expect(m.promptTurns).toBe(1);
+    expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
+    // a session that started mid-form is not a whole call to compare against the baseline
+    expect(m.completions).toEqual([]);
   });
 });
 
@@ -94,6 +124,38 @@ describe('runScenario', () => {
       expect: { decision: 'prompt', promptId: 'system_slow_dtmf_hint' },
     }, opts);
     expect(r.pass).toBe(true);
+  });
+
+  it('sends a partial step as a non-final prompt frame', async () => {
+    const r = await runScenario({
+      id: 'partial',
+      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one', partial: true }],
+      expect: { decision: 'hold', form: 'cancel' },
+    }, { ...opts, client: partialClient });
+    expect(r.mismatches).toEqual([]);
+    expect(r.runs.at(-1)!.record.event).toMatchObject({ type: 'prompt', last: false });
+  });
+
+  it('checks the spoken text of the last turn', async () => {
+    const steps = [{ say: 'cancel my appointment with dr patel' }];
+    const ok = await runScenario({ id: 'text-ok', steps, expect: { decision: 'prompt', text: 'member ID' } }, opts);
+    expect(ok.mismatches).toEqual([]);
+    const bad = await runScenario({ id: 'text-bad', steps, expect: { decision: 'prompt', text: 'not spoken' } }, opts);
+    expect(bad.mismatches[0]).toMatch(/text: expected to contain/);
+  });
+
+  it('records the ack prompt ids of the final decision', async () => {
+    const steps = [{ say: 'cancel my appointment with dr patel' }];
+    const silent = await runScenario({ id: 'acks-none', steps, expect: { decision: 'prompt' } }, opts);
+    expect(silent.outcome.acks).toEqual([]);
+
+    // an intent in the implicit band is acknowledged before the next prompt
+    const implicitClient = new FixtureStubClient(
+      [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.7, reschedule: 0.2 } } } }],
+      { sharpness: 0.9, fallback: new HeuristicStubClient() },
+    );
+    const acked = await runScenario({ id: 'acks-implicit', steps, expect: { decision: 'prompt' } }, { ...opts, client: implicitClient });
+    expect(acked.outcome.acks).toEqual(['ack_intent']);
   });
 
   it('reports mismatches', async () => {

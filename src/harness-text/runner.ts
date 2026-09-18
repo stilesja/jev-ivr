@@ -74,6 +74,8 @@ export interface Outcome {
   id: string;
   decision: string;
   promptId: string | null;
+  /** implicit-confirm prompts spoken before this decision's prompt */
+  acks: string[];
   reason: string | null;
   decidedGate: string | null;
   verdict: string | null;
@@ -87,6 +89,7 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
     id,
     decision: d.kind,
     promptId: 'promptId' in d ? d.promptId : null,
+    acks: d.kind === 'prompt' ? d.acks.map((a) => a.promptId) : [],
     reason: d.kind === 'handoff' ? d.reason : null,
     decidedGate: result.rows.find((r) => r.decided)?.gate ?? null,
     verdict: result.verdict?.kind ?? null,
@@ -95,40 +98,46 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
   };
 }
 
-async function startSession(id: string, opts: RunOptions): Promise<Session> {
-  const run = await runTurn(newSession(id, nowOf(opts)()), setupFrame(id), opts);
-  return run.result.session;
-}
-
 /** Stand-ins for the slots a corpus entry's form has already collected. */
 const PLACEHOLDER_SLOTS: Partial<Record<SlotId, SlotCandidate>> = {
   memberId: { value: '00000000', display: '0000 0000' },
   provider: { value: 'patel', display: 'Dr. Patel' },
 };
 
-export async function runCorpusEntry(entry: CorpusEntry, opts: RunOptions): Promise<{ outcome: Outcome; run: TurnRun }> {
-  const session = await startSession(entry.id, opts);
-  if (entry.context !== 'no_form') {
-    setForm(session, entry.context);
-    // An entry that targets a later slot starts from a form that already has the earlier ones.
-    if (entry.prompted) {
-      for (const id of FORMS[entry.context].slots) {
-        if (id === entry.prompted) break;
-        const placeholder = PLACEHOLDER_SLOTS[id];
-        if (!placeholder) throw new Error(`corpus ${entry.id}: no placeholder for slot ${id}`);
-        session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: true };
-      }
+/** The mid-call state a corpus entry's context implies: its form, the slots already collected, and the prompt being answered. */
+function seedCorpusSession(session: Session, entry: CorpusEntry): Session {
+  if (entry.context === 'no_form') return session;
+  setForm(session, entry.context);
+  // An entry that targets a later slot starts from a form that already has the earlier ones.
+  if (entry.prompted) {
+    for (const id of FORMS[entry.context].slots) {
+      if (id === entry.prompted) break;
+      const placeholder = PLACEHOLDER_SLOTS[id];
+      if (!placeholder) throw new Error(`corpus ${entry.id}: no placeholder for slot ${id}`);
+      session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: true };
     }
-    const slot = entry.prompted ?? missingSlots(session)[0] ?? null;
-    session.promptedFor = slot;
-    session.lastPromptId = slot ? `ask_${slot}` : null;
-    session.lastPromptText = slot ? promptText(`ask_${slot}`, {}) : '';
   }
-  const run = await runTurn(session, promptFrame(entry.text), opts);
-  return { outcome: outcomeOf(entry.id, run.result), run };
+  const slot = entry.prompted ?? missingSlots(session)[0] ?? null;
+  session.promptedFor = slot;
+  session.lastPromptId = slot ? `ask_${slot}` : null;
+  session.lastPromptText = slot ? promptText(`ask_${slot}`, {}) : '';
+  return session;
 }
 
-export type ScenarioStep = { say: string; fail?: boolean } | { dtmf: string };
+export async function runCorpusEntry(entry: CorpusEntry, opts: RunOptions): Promise<{ outcome: Outcome; run: TurnRun; setup: TurnRun }> {
+  // Seed before the greeting so the setup trace record already reports the placeholder slots
+  // as filled; otherwise summarize() credits the entry's one utterance with filling them.
+  const start = seedCorpusSession(newSession(entry.id, nowOf(opts)()), entry);
+  const setup = await runTurn(start, setupFrame(entry.id), opts);
+  // The greeting's own bookkeeping resets what the last prompt asked for, so re-apply it.
+  const session = seedCorpusSession(setup.result.session, entry);
+  const run = await runTurn(session, promptFrame(entry.text), opts);
+  // The setup run is returned as well as traced: a summary that leaves it out would read
+  // the seeded placeholders as slots this one utterance filled.
+  return { outcome: outcomeOf(entry.id, run.result), run, setup };
+}
+
+export type ScenarioStep = { say: string; fail?: boolean; partial?: boolean } | { dtmf: string };
 
 export interface ScenarioExpectation {
   decision: string;
@@ -136,6 +145,8 @@ export interface ScenarioExpectation {
   reason?: string;
   form?: string | null;
   slots?: Partial<Record<SlotId, string>>;
+  /** substring the last turn's spoken text must contain */
+  text?: string;
 }
 
 export interface Scenario {
@@ -165,7 +176,8 @@ export async function runScenario(scenario: Scenario, opts: RunOptions): Promise
   let last = setup;
   for (const step of scenario.steps) {
     if (session.ended) break;
-    const events = 'dtmf' in step ? dtmfFrames(step.dtmf) : [promptFrame(step.say)];
+    // A partial step is a non-final ASR result, which the complete gate may hold on.
+    const events = 'dtmf' in step ? dtmfFrames(step.dtmf) : [promptFrame(step.say, step.partial !== true)];
     failNext = 'say' in step && step.fail === true;
     for (const event of events) {
       last = await runTurn(session, event, o);
@@ -176,11 +188,16 @@ export async function runScenario(scenario: Scenario, opts: RunOptions): Promise
     failNext = false;
   }
   const outcome = outcomeOf(scenario.id, last.result);
-  const mismatches = checkExpectation(outcome, scenario.expect);
+  const mismatches = checkExpectation(outcome, scenario.expect, spokenText(last.result));
   return { outcome, runs, pass: mismatches.length === 0, mismatches };
 }
 
-export function checkExpectation(outcome: Outcome, expected: ScenarioExpectation): string[] {
+/** Everything the caller hears this turn, ack phrases included. */
+export function spokenText(result: TurnResult): string {
+  return result.frames.filter((f) => f.type === 'text').map((f) => f.token).join(' ');
+}
+
+export function checkExpectation(outcome: Outcome, expected: ScenarioExpectation, spoken = ''): string[] {
   const out: string[] = [];
   if (outcome.decision !== expected.decision) out.push(`decision: expected ${expected.decision}, got ${outcome.decision}`);
   if (expected.promptId !== undefined && outcome.promptId !== expected.promptId) out.push(`promptId: expected ${expected.promptId}, got ${outcome.promptId}`);
@@ -188,6 +205,9 @@ export function checkExpectation(outcome: Outcome, expected: ScenarioExpectation
   if (expected.form !== undefined && outcome.form !== expected.form) out.push(`form: expected ${expected.form}, got ${outcome.form}`);
   for (const [slot, value] of Object.entries(expected.slots ?? {})) {
     if (outcome.slots[slot as SlotId] !== value) out.push(`slot ${slot}: expected ${value}, got ${outcome.slots[slot as SlotId]}`);
+  }
+  if (expected.text !== undefined && !spoken.includes(expected.text)) {
+    out.push(`text: expected to contain ${JSON.stringify(expected.text)}, got ${JSON.stringify(spoken)}`);
   }
   return out;
 }

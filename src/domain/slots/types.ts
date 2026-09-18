@@ -8,6 +8,8 @@ export interface SlotContext {
   candidateSpans: string[];
   todayIso: string;
   thresholds: Thresholds;
+  /** the date window the caller already narrowed to, when one is pending */
+  window?: DateWindow | null;
 }
 
 export interface SlotCandidate {

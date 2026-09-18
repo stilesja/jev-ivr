@@ -163,3 +163,4 @@
 {"id":"sw-05","text":"what did you say","intent":"repeat_prompt","context":"reschedule","tags":["repeat"]}
 {"id":"sw-06","text":"repeat that","intent":"repeat_prompt","context":"billing","tags":["repeat"]}
 {"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","answers":{"intentSecondary":{"probabilities":{"billing":0.8}}},"tags":["secondary_intent"]}
+{"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}

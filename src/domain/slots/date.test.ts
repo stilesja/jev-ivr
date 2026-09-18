@@ -61,6 +61,36 @@ describe('dateSlot', () => {
     expect(dateSlot.fill(answers, ctx)).toMatchObject({ kind: 'invalid', reason: 'low_confidence', raw: '2026-10-05' });
   });
 
+  it('snaps a weekday into a pending month window', () => {
+    const windowed = { ...ctx, window: { start: '2026-12-01', end: '2026-12-31', label: 'december' } };
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['wednesday', 0.9] }), windowed);
+    expect(out).toMatchObject({ kind: 'filled', value: '2026-12-02', display: 'Wednesday, December 2' });
+  });
+
+  it('keeps a weekday that already falls inside a pending next-week window', () => {
+    const windowed = { ...ctx, window: { start: '2026-09-21', end: '2026-09-27', label: 'next_week' } };
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['friday', 0.9] }), windowed);
+    expect(out).toMatchObject({ kind: 'filled', value: '2026-09-25' });
+  });
+
+  it('snaps a weekday backwards into a pending window that already started', () => {
+    const windowed = { ...ctx, window: { start: '2026-09-21', end: '2026-09-27', label: 'next_week' } };
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['monday', 0.9] }), windowed);
+    expect(out).toMatchObject({ kind: 'filled', value: '2026-09-21' });
+  });
+
+  it('rejects a weekday with no occurrence inside the window', () => {
+    const windowed = { ...ctx, window: { start: '2026-12-01', end: '2026-12-02', label: 'december' } };
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['weekday', 0.9], dateWeekday: ['friday', 0.9] }), windowed);
+    expect(out).toEqual({ kind: 'invalid', reason: 'outside_window', raw: '2026-09-25' });
+  });
+
+  it('takes an absolute day outside the window as spoken', () => {
+    const windowed = { ...ctx, window: { start: '2026-12-01', end: '2026-12-31', label: 'december' } };
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['absolute', 0.9], dateMonth: ['october', 0.9], dateDay: ['5', 0.9] }), windowed);
+    expect(out).toMatchObject({ kind: 'filled', value: '2026-10-05' });
+  });
+
   it('parses MMDD dtmf', () => {
     expect(dateSlot.dtmf.parse('1005', ctx)).toEqual({ value: '2026-10-05', display: 'Monday, October 5' });
     expect(dateSlot.dtmf.parse('1305', ctx)).toBeNull();

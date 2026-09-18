@@ -2,10 +2,26 @@ import type { SlotSpec, SlotOutcome } from './types';
 import { isChoice, type AnswerMap, type QuestionMap } from '../../jev/types';
 import {
   DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS,
-  resolveDate, describeDay, type DateComponents, type ComponentPick,
+  resolveDate, describeDay, addDays, parseIso,
+  type DateComponents, type ComponentPick, type DateWindow,
 } from '../../core/extract/date';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+const DAY_MS = 86_400_000;
+
+/**
+ * A bare weekday answered while a window is pending narrows that window: "Wednesday"
+ * after "sometime in December" means the first Wednesday in December, not the one this
+ * week. Absolute and relative days are taken as spoken, since they name a day outright.
+ * Returns null when the weekday has no occurrence inside the window.
+ */
+export function constrainToWindow(iso: string, mode: string, window: DateWindow | null): string | null {
+  if (!window || mode !== 'weekday') return iso;
+  if (iso >= window.start && iso <= window.end) return iso;
+  const offsetDays = Math.round((parseIso(iso) - parseIso(window.start)) / DAY_MS);
+  const snapped = addDays(window.start, ((offsetDays % 7) + 7) % 7);
+  return snapped <= window.end ? snapped : null;
+}
 
 function criteriaOf(labels: readonly string[]): Record<string, null> {
   return Object.fromEntries(labels.map((l) => [l, null]));
@@ -90,17 +106,20 @@ export const dateSlot: SlotSpec = {
           window: { start: resolved.start, end: resolved.end, label: resolved.label },
           confidence: resolved.confidence,
         };
-      case 'day':
+      case 'day': {
         if (resolved.confidence < t.SLOT_CHOICE_CONFIRM) {
           return { kind: 'invalid', reason: 'low_confidence', raw: resolved.iso };
         }
+        const iso = constrainToWindow(resolved.iso, components.mode.choice, ctx.window ?? null);
+        if (iso === null) return { kind: 'invalid', reason: 'outside_window', raw: resolved.iso };
         return {
           kind: 'filled',
-          value: resolved.iso,
-          display: describeDay(resolved.iso),
+          value: iso,
+          display: describeDay(iso),
           confidence: resolved.confidence,
           confirm: resolved.confidence >= t.SLOT_CHOICE_FILL ? 'none' : 'implicit',
         };
+      }
     }
   },
 

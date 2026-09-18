@@ -68,7 +68,9 @@ export function summarize(records: TraceRecord[]): Metrics {
           const gate = r.gates.find((g) => g.decided)?.gate ?? 'none';
           byDecidingGate[gate] = (byDecidingGate[gate] ?? 0) + 1;
         }
-      } else if (r.event.type === 'dtmf') {
+      } else {
+        // setup and dtmf turns are not caller utterances: they only re-baseline the
+        // slot count, so a seeded session's placeholders are never credited to a turn.
         prevFilled = filledCount(r.slots);
       }
       if (r.decision.kind === 'complete') {
@@ -78,7 +80,10 @@ export function summarize(records: TraceRecord[]): Metrics {
         completionTurns = r.turnIndex - 1;
       }
     }
-    if (form && completionTurns !== null) {
+    // A session that began with slots already filled (a corpus entry replayed mid-form)
+    // is not a whole call, so its turn count is not comparable to the DTMF baseline.
+    const preSeeded = list.length > 0 && filledCount(list[0]!.slots) > 0;
+    if (form && completionTurns !== null && !preSeeded) {
       completions.push({ sessionId, form, turns: completionTurns, baseline: (baseline as Record<string, number>)[form] ?? 0 });
     }
   }

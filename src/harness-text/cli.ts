@@ -101,8 +101,8 @@ async function main(): Promise<void> {
 
   if (args.corpus) {
     for (const entry of loadCorpus(args.corpus)) {
-      const { run, outcome } = await runCorpusEntry(entry, opts);
-      records.push(run.record);
+      const { run, setup, outcome } = await runCorpusEntry(entry, opts);
+      records.push(setup.record, run.record);
       if (!args.quiet) {
         console.log(`=== ${entry.id}  "${entry.text}"  [${entry.context}]`);
         printRun(run, false);
