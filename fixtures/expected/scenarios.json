@@ -1,0 +1,386 @@
+{
+  "reschedule-happy": {
+    "id": "reschedule-happy",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "schedule-dtmf-id": {
+    "id": "schedule-dtmf-id",
+    "decision": "complete",
+    "promptId": "schedule_confirmed",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "schedule_new",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "cancel-happy": {
+    "id": "cancel-happy",
+    "decision": "complete",
+    "promptId": "cancel_confirmed",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "okafor",
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "confirm-happy": {
+    "id": "confirm-happy",
+    "decision": "complete",
+    "promptId": "appointment_details",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "confirm_appointment",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "okafor",
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "billing-handoff": {
+    "id": "billing-handoff",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
+    "reason": "billing",
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "billing",
+    "slots": {
+      "memberId": "81204457",
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "over-answer-one-turn": {
+    "id": "over-answer-one-turn",
+    "decision": "complete",
+    "promptId": "schedule_confirmed",
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "schedule_new",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "okafor",
+      "date": "2026-09-25"
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "intent-switch-mid-form": {
+    "id": "intent-switch-mid-form",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "cancel",
+    "slots": {
+      "memberId": null,
+      "provider": "cheng",
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "window-then-day": {
+    "id": "window-then-day",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-23"
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "month-window-narrow": {
+    "id": "month-window-narrow",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "intent-retry-to-agent": {
+    "id": "intent-retry-to-agent",
+    "decision": "handoff",
+    "promptId": "handoff_max_attempts",
+    "reason": "max-attempts",
+    "decidedGate": "intent",
+    "verdict": "intent_failed",
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "slot-retry-to-dtmf": {
+    "id": "slot-retry-to-dtmf",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "cancel",
+    "slots": {
+      "memberId": "44718293",
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "dtmf-menu": {
+    "id": "dtmf-menu",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "spoken-menu-number": {
+    "id": "spoken-menu-number",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": "menuNumber",
+    "verdict": "route",
+    "form": "cancel",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "explicit-confirm-yes": {
+    "id": "explicit-confirm-yes",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "cancel",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "explicit-confirm-no": {
+    "id": "explicit-confirm-no",
+    "decision": "prompt",
+    "promptId": "nomatch_open",
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "disambiguate-intent": {
+    "id": "disambiguate-intent",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "disambiguate-provider": {
+    "id": "disambiguate-provider",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": "cheng",
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "frustration-escalation": {
+    "id": "frustration-escalation",
+    "decision": "handoff",
+    "promptId": "handoff_frustrated",
+    "reason": "frustrated",
+    "decidedGate": "frustration",
+    "verdict": "handoff",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "wants-human-mid-form": {
+    "id": "wants-human-mid-form",
+    "decision": "handoff",
+    "promptId": "handoff_live_agent",
+    "reason": "live-agent",
+    "decidedGate": "wantsHuman",
+    "verdict": "handoff",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "repeat-prompt": {
+    "id": "repeat-prompt",
+    "decision": "replay",
+    "promptId": null,
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "replay",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "client-failure-once": {
+    "id": "client-failure-once",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "client-failure-twice": {
+    "id": "client-failure-twice",
+    "decision": "handoff",
+    "promptId": "handoff_system_failure",
+    "reason": "system-failure",
+    "decidedGate": null,
+    "verdict": null,
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "side-speech-ignored": {
+    "id": "side-speech-ignored",
+    "decision": "ignore",
+    "promptId": null,
+    "reason": null,
+    "decidedGate": "addressedToSystem",
+    "verdict": "ignore",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  },
+  "invalid-date-retry": {
+    "id": "invalid-date-retry",
+    "decision": "prompt",
+    "promptId": "ask_date_retry",
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": null
+    },
+    "pass": true,
+    "mismatches": []
+  }
+}
