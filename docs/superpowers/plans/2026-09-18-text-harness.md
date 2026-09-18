@@ -4671,7 +4671,7 @@ git commit -m "feat(jev): add corpus format and deterministic fixture stub"
 **Files:**
 - Create: `src/jev/sdkClient.ts`, `src/jev/sdkClient.test.ts`
 
-The SDK is only imported here. The wire shapes come from the TypeSafe docs: request `{ state, questions, model }`; response `{ model, answers: { id: {...} }, usage: { input_tokens, output_tokens } }`; Score `probabilities` keyed by level number (1-based); Noul criteria is an optional `{ true, false }` object.
+The SDK is only imported here. The wire shapes come from the TypeSafe docs: request `{ state, questions, model }`; response `{ model, answers: { id: {...} }, usage: { input_tokens, output_tokens } }`; Score `probabilities` keyed by level index as strings, zero-based ("0".."n-1", confirmed from the installed SDK declarations; the first implementation assumed 1-based and was corrected in review); Noul criteria is an optional `{ true, false }` object.
 
 - [ ] **Step 1: Write the failing test**
 
