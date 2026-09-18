@@ -207,7 +207,7 @@ after the deciding gate, is still evaluated and written to the trace with
 | 5 | intent switch | see below | routes or confirms |
 | 6 | intent margin | top1 − top2 ≥ `GATE_INTENT_MARGIN` (0.15), only when gate 5 routed | disambiguate top two. With normalized probabilities a top-1 ≥ 0.60 always clears the margin, so in practice this fires inside the explicit-confirm band and turns "confirm the top one" into "ask which of two" |
 | 7 | escalation | not (`frustration.probabilities.high` ≥ `GATE_FRUSTRATION_HIGH` (0.60) and attempt ≠ first) | end, handoff `live-agent` |
-| 8 | slot fill | per slot kind, section 3 | per slot outcome |
+| 8 | slot fill | per slot kind, section 3 | per slot outcome. Traced as one row per slot named `slot:<id>` with outcome `filled`, `window`, `disambiguate`, `invalid:<reason>`, or `dtmf` for a keypad fill; these rows never decide |
 
 Gate 5 uses the top-1 probability from `intent.probabilities`, not the
 reported `confidence` statistic, so the bands stay comparable to the margin.
@@ -419,6 +419,7 @@ interface TraceRecord {
                  passed: boolean; outcome: string; decided: boolean }>;
   decision: Decision;
   frames: OutboundFrame[];
+  form: string | null;                         // active form after the turn; non-null on a greeting record means the session was seeded
   slots: Record<string, SlotState>;            // after the turn
   timing: { planMs: number; askMs: number; resolveMs: number; totalMs: number };
   usage: { inputTokens: number; outputTokens: number; estimated: boolean; costUsd: number };
