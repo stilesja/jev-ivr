@@ -4,19 +4,14 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dtmfFrames, promptFrame, setupFrame } from '../channel/frames';
 import { newSession, type Session } from '../core/session';
-import { parseOverride, withOverrides, type Thresholds } from '../core/thresholds';
 import { loadCorpus } from '../jev/corpus';
-import { FixtureStubClient } from '../jev/fixtureStub';
-import { HeuristicStubClient } from '../jev/heuristicStub';
-import { SdkJevClient } from '../jev/sdkClient';
-import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 import { loadScenarios, runCorpusEntry, runScenario, runTurn, type RunOptions, type TurnRun } from './runner';
 import { summarize } from './metrics';
 import { formatAnswers, formatDecision, formatGates, formatMetrics } from './print';
-
-export const DEFAULT_CORPUS_FILE = 'fixtures/corpus.jsonl';
+export { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
+import { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 
 /** Parsed inside main() so a bad flag reports through the same clean error path as a bad run. */
 function parseCliArgs() {
@@ -32,16 +27,6 @@ function parseCliArgs() {
       'corpus-file': { type: 'string' },
     },
   }).values;
-}
-
-export function buildThresholds(overrides: string[]): Thresholds {
-  return withOverrides(Object.assign({}, ...overrides.map(parseOverride)));
-}
-
-export function buildClient(kind: string, corpusFile: string, thresholds: Thresholds): JevClient {
-  if (kind === 'jev') return new SdkJevClient({ timeoutMs: thresholds.JEV_TIMEOUT_MS });
-  if (kind === 'heuristic') return new HeuristicStubClient();
-  return new FixtureStubClient(loadCorpus(corpusFile), { sharpness: thresholds.STUB_SHARPNESS, fallback: new HeuristicStubClient() });
 }
 
 /** The fixture stub reads --corpus-file; running a corpus defaults it to that same file. */
