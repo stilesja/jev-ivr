@@ -32,8 +32,12 @@ function integer(env: Env, name: string, fallback: number): number {
 
 export function loadConfig(env: Env): ServerConfig {
   const publicHost = required(env, 'PUBLIC_HOST').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  if (/[/?:]/.test(publicHost)) throw new Error(`PUBLIC_HOST must be a bare hostname, got "${publicHost}"`);
   const twilioAuthToken = required(env, 'TWILIO_AUTH_TOKEN');
   const handoffNumber = required(env, 'HANDOFF_NUMBER');
+  if (!/^\+\d{8,15}$/.test(handoffNumber)) throw new Error(`HANDOFF_NUMBER must be an E.164 number like +15551234567, got "${handoffNumber}"`);
+  const port = integer(env, 'PORT', 3000);
+  if (port < 0 || port > 65535) throw new Error(`PORT must be between 0 and 65535, got "${env.PORT}"`);
   const jevClientRaw = env.JEV_CLIENT ?? 'stub';
   if (jevClientRaw !== 'stub' && jevClientRaw !== 'heuristic' && jevClientRaw !== 'jev') {
     throw new Error(`JEV_CLIENT must be stub, heuristic, or jev, got "${jevClientRaw}"`);
@@ -45,7 +49,7 @@ export function loadConfig(env: Env): ServerConfig {
   const sig = (env.SIGNATURE_CHECK ?? 'on').toLowerCase();
   if (sig !== 'on' && sig !== 'off') throw new Error(`SIGNATURE_CHECK must be on or off, got "${env.SIGNATURE_CHECK}"`);
   return {
-    port: integer(env, 'PORT', 3000),
+    port,
     publicHost,
     twilioAuthToken,
     handoffNumber,

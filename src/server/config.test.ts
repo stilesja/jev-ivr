@@ -37,4 +37,17 @@ describe('loadConfig', () => {
     expect(text).not.toContain('supersecret');
     expect(text).toContain('demo.ngrok.app');
   });
+
+  it('rejects a PORT outside 0..65535', () => {
+    expect(() => loadConfig({ ...base, PORT: '70000' })).toThrow(/between 0 and 65535/);
+  });
+
+  it('rejects a HANDOFF_NUMBER that is not E.164', () => {
+    expect(() => loadConfig({ ...base, HANDOFF_NUMBER: 'cell' })).toThrow(/E\.164/);
+  });
+
+  it('rejects a PUBLIC_HOST with a path, query, or port', () => {
+    expect(() => loadConfig({ ...base, PUBLIC_HOST: 'demo.ngrok.app/foo' })).toThrow(/bare hostname/);
+    expect(loadConfig({ ...base, PUBLIC_HOST: 'https://demo.ngrok.app/' }).publicHost).toBe('demo.ngrok.app');
+  });
 });
