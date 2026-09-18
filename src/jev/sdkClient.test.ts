@@ -22,12 +22,22 @@ describe('fromSdkAnswers', () => {
   it('relabels score probabilities by level and passes choice and noul through', () => {
     const answers = fromSdkAnswers(questions, {
       intent: { type: 'choice', choice: 'a', probabilities: { a: 0.7, b: 0.3 }, confidence: 0.7 },
-      frustration: { type: 'score', score: 1.8, legend: { 1: 'none: calm', 2: 'high: angry' }, probabilities: { 1: 0.2, 2: 0.8 }, confidence: 0.8 },
+      frustration: { type: 'score', score: 1.8, legend: { 0: 'none: calm', 1: 'high: angry' }, probabilities: { 0: 0.2, 1: 0.8 }, confidence: 0.8 },
       ok: { type: 'noul', noul: 0.42 },
     });
     expect(answers.intent).toEqual({ type: 'choice', choice: 'a', probabilities: { a: 0.7, b: 0.3 }, confidence: 0.7 });
     expect(answers.frustration).toEqual({ type: 'score', score: 1.8, probabilities: { none: 0.2, high: 0.8 }, confidence: 0.8 });
     expect(answers.ok).toEqual({ type: 'noul', noul: 0.42 });
+  });
+
+  it('throws when a score level probability is missing', () => {
+    expect(() =>
+      fromSdkAnswers(questions, {
+        intent: { type: 'choice', choice: 'a', probabilities: { a: 0.7, b: 0.3 }, confidence: 0.7 },
+        frustration: { type: 'score', score: 1.8, legend: { 0: 'none: calm' }, probabilities: { 0: 1 }, confidence: 0.8 },
+        ok: { type: 'noul', noul: 0.42 },
+      }),
+    ).toThrow(/missing score probability/);
   });
 });
 

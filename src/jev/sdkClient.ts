@@ -42,8 +42,8 @@ interface RawAnswer {
   choice?: string;
   score?: number;
   noul?: number;
-  /** Present on real score answers (rubric text keyed by level); unused here. */
-  legend?: Record<string, string>;
+  /** Present on real score answers (rubric text keyed by zero-based index string); unused here. */
+  legend?: Record<string, unknown>;
   probabilities?: Record<string, number>;
   confidence?: number;
 }
@@ -67,7 +67,9 @@ function convert(q: Question, a: RawAnswer, id: string): AnswerMap[string] {
       if (a.type !== 'score' || a.score === undefined || !a.probabilities) throw new JevClientError(`bad score answer for ${id}`);
       const probabilities: Record<string, number> = {};
       q.levels.forEach((level, i) => {
-        probabilities[level.label] = a.probabilities![String(i + 1)] ?? a.probabilities![i + 1] ?? 0;
+        const p = a.probabilities![String(i)];
+        if (p === undefined) throw new JevClientError(`missing score probability for ${id} level ${i}`);
+        probabilities[level.label] = p;
       });
       return { type: 'score', score: a.score, probabilities, confidence: a.confidence ?? 0 };
     }
