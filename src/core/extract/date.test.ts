@@ -77,4 +77,34 @@ describe('resolveDate', () => {
     c.day.p = 0.55;
     expect(resolveDate(c, TODAY)).toMatchObject({ confidence: 0.55 });
   });
+
+  it('rejects an absolute day in the recent past', () => {
+    expect(resolveDate(comps({ mode: 'absolute', month: 'september', day: '17' }), TODAY))
+      .toEqual({ kind: 'none' });
+  });
+
+  it('starts a current-month window at today', () => {
+    expect(resolveDate(comps({ mode: 'absolute', month: 'september' }), TODAY))
+      .toMatchObject({ kind: 'window', start: '2026-09-18', end: '2026-09-30' });
+  });
+
+  it('collapses a one-day window to a day', () => {
+    expect(resolveDate(comps({ mode: 'window', window: 'this_week' }), '2026-09-20'))
+      .toEqual({ kind: 'day', iso: '2026-09-20', confidence: 0.9 });
+  });
+
+  it('resolves "this friday" on a monday to that week', () => {
+    expect(resolveDate(comps({ mode: 'weekday', weekday: 'friday', weekdayQualifier: 'this' }), '2026-09-21'))
+      .toMatchObject({ kind: 'day', iso: '2026-09-25' });
+  });
+
+  it('resolves "this monday" on a monday to today', () => {
+    expect(resolveDate(comps({ mode: 'weekday', weekday: 'monday', weekdayQualifier: 'this' }), '2026-09-21'))
+      .toMatchObject({ kind: 'day', iso: '2026-09-21' });
+  });
+
+  it('returns none for a prototype-name relative day', () => {
+    expect(resolveDate(comps({ mode: 'relative_day', relativeDay: 'constructor' }), TODAY))
+      .toEqual({ kind: 'none' });
+  });
 });
