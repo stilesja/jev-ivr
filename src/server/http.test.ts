@@ -79,6 +79,26 @@ describe('http routes', () => {
     const base = await listen(deps());
     expect((await fetch(base + '/nope')).status).toBe(404);
   });
+
+  it('returns 413 for an oversized body', async () => {
+    const base = await listen(deps());
+    const big = 'x'.repeat(70 * 1024);
+    const r = await post(base, '/voice', { CallSid: 'CA1', Big: big });
+    expect(r.status).toBe(413);
+  });
+
+  it('returns 400 for /voice without CallSid', async () => {
+    const base = await listen(deps());
+    const r = await post(base, '/voice', { From: '+1' });
+    expect(r.status).toBe(400);
+  });
+
+  it('answers HEAD /health', async () => {
+    const base = await listen(deps());
+    const res = await fetch(base + '/health', { method: 'HEAD' });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('');
+  });
 });
 
 describe('decideActionTwiml', () => {
@@ -111,5 +131,23 @@ describe('decideActionTwiml', () => {
     d.store.create('CA1', { send: () => {}, close: () => {} });
     d.store.end('CA1');
     expect(decideActionTwiml(d, { CallSid: 'CA1', CallStatus: 'in-progress' }).twiml).toContain('<Hangup/>');
+  });
+
+  it('hangs up when the caller hung up', () => {
+    const d = deps();
+    d.store.create('CA1', { send: () => {}, close: () => {} });
+    const token = d.tokens.mint('CA1');
+    const result = decideActionTwiml(d, { CallSid: 'CA1', CallStatus: 'completed', SessionStatus: 'completed' });
+    expect(result.twiml).toContain('<Hangup/>');
+    expect(d.store.get('CA1')?.ended).toBe(true);
+    expect(d.tokens.verify(token, 'CA1')).toBe(false);
+  });
+
+  it('treats empty HandoffData as absent', () => {
+    const d = deps();
+    d.store.create('CA1', { send: () => {}, close: () => {} });
+    const result = decideActionTwiml(d, { CallSid: 'CA1', HandoffData: '', CallStatus: 'in-progress', SessionStatus: 'failed' });
+    expect(result.twiml).toContain('<ConversationRelay');
+    expect(result.twiml).not.toContain('<Dial>');
   });
 });
