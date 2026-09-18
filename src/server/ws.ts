@@ -25,8 +25,8 @@ export function attachWebSocketServer(server: Server, deps: AdapterDeps): WebSoc
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, token));
   });
   wss.on('connection', (ws: WebSocket, token: string | null) => {
-    const ctx = newConnectionContext(token);
     const sock = wrap(ws);
+    const ctx = newConnectionContext(token, sock);
     ws.on('message', (data) => {
       void handleSocketMessage(deps, sock, ctx, data.toString());
     });
