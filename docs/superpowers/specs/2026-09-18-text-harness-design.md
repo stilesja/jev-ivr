@@ -249,9 +249,17 @@ turn fills or routes without a model call and the trace records
 `answers: null, source: 'dtmf'`. `setup` initializes the session and emits
 the greeting. `interrupt` and `error` are logged.
 
-Decisions are a closed union: `ignore`, `hold`, `prompt(promptId, slot?)`,
-`confirm(slot, value, mode)`, `disambiguate(slot, a, b)`, `route(form)`,
-`complete(form)`, `handoff(reason)`, `replay`.
+Decisions are a closed union of six kinds: `ignore`, `hold`,
+`prompt`, `complete(form)`, `handoff(reason)`, `replay(text)`. A `prompt`
+carries the prompt id, template vars, the implicit-confirm acks spoken before
+it, the target it asks for (`intent`, a slot, or null), the spoken options
+for menus and disambiguation, and a `menu` flag. Explicit confirmation,
+disambiguation, and routing are therefore all `prompt` decisions distinguished
+by prompt id and target; the gate ladder's internal `Verdict` union keeps
+`route`, `disambiguate_intent`, `confirmed`, `rejected` and
+`confirm_unanswered` as separate kinds. (Earlier drafts listed `confirm`,
+`disambiguate` and `route` as decision kinds; folding them into `prompt` keeps
+the frame renderer to one switch and the trace's `decision.kind` stable.)
 
 ## 8. Extraction tiers
 
@@ -453,4 +461,8 @@ Unchanged from the handoff's section 12, minus the ones the docs resolved
 open and blocked on a key or a real call: every threshold value, measured
 latency, whether partial `voicePrompt` is cumulative (the `hold` path for a
 `last: false` frame is implemented and pinned by a scenario, but the
-cancellation loop is not), smart-format effects.
+cancellation loop is not), smart-format effects. Design items deferred to the
+Twilio sub-project: the partial-prompt policy in `plan()` (today every
+`last: false` frame triggers a full model call, and a partial judged complete
+can act before the final frame arrives), and an `AbortController` path in
+`runTurn` (the `signal` field exists on `JevRequest` but nothing supplies it).

@@ -3249,6 +3249,12 @@ git commit -m "feat(core): add form interpretation loop, retry policy and dtmf f
 **Files:**
 - Create: `src/core/decision.ts`, `src/prompts/manifest.json`, `src/prompts/render.ts`, `src/prompts/render.test.ts`
 
+Deviation from spec §7 as first written: the `Decision` union has six kinds
+(`ignore`, `hold`, `prompt`, `complete`, `handoff`, `replay`); explicit
+confirmation, disambiguation and routing are all `prompt` decisions
+distinguished by prompt id, target and options. The spec has been amended to
+match.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/prompts/render.test.ts`:
