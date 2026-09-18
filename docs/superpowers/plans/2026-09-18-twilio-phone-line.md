@@ -731,6 +731,8 @@ git commit -m "feat(server): add TwiML documents and transcription hints"
 **Files:**
 - Create: `src/server/tokens.ts`, `src/server/tokens.test.ts`
 
+Deviation, added after review: `CallTokens` also has `evictExpired(): number`, called from the server's eviction interval (Task 11), so tokens minted for calls that never connect do not accumulate.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/server/tokens.test.ts`:
@@ -831,6 +833,8 @@ git commit -m "feat(server): add per-call socket tokens"
 
 **Files:**
 - Create: `src/server/frameLog.ts`, `src/server/frameLog.test.ts`
+
+Deviation, added after review: `readFrameLog` skips a line that fails to parse (a truncated last line after a crash) instead of throwing, so a crashed call stays replayable. The committed code is the source of truth.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1912,6 +1916,13 @@ describe('server end to end', () => {
     expect(records.at(-1).turnState.asr.bargeIn).toBe(true);
   });
 
+  it('sanitizes call sids before building file names', async () => {
+    const { safeFileStem } = await import('./index');
+    expect(safeFileStem('CA' + 'a'.repeat(32))).toBe('CA' + 'a'.repeat(32));
+    expect(safeFileStem('../etc/passwd')).toBe('.._etc_passwd');
+    expect(safeFileStem('')).toBe('unknown');
+  });
+
   it('exposes health and refuses upgrades on other paths', async () => {
     const s = await start();
     const res = await fetch(`${s.base}/health`);
@@ -2011,6 +2022,12 @@ export interface ServerOverrides {
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 const EVICT_EVERY_MS = 60 * 1000;
 
+/** Call SIDs come from Twilio (CA + 32 hex), but they arrive over the socket, so never let one shape a path. */
+export function safeFileStem(callSid: string): string {
+  const cleaned = callSid.replace(/[^A-Za-z0-9_-]/g, '_');
+  return cleaned.length ? cleaned.slice(0, 64) : 'unknown';
+}
+
 export async function startServer(config: ServerConfig, overrides: ServerOverrides = {}): Promise<RunningServer> {
   const log = overrides.log ?? ((line: string) => console.log(`[server] ${line}`));
   const now = overrides.now ?? (() => Date.now());
@@ -2019,12 +2036,13 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const todayIso = () => config.todayOverride ?? new Date(now()).toISOString().slice(0, 10);
 
   const store = new SessionStore((callSid) => {
-    const trace = new TraceWriter(join(config.traceDir, `${callSid}.jsonl`));
+    const file = safeFileStem(callSid);
+    const trace = new TraceWriter(join(config.traceDir, `${file}.jsonl`));
     return {
       session: newSession(callSid, now()),
       opts: { client, thresholds, todayIso: todayIso(), trace, now },
       trace,
-      frames: new FrameLog(join(config.traceDir, `${callSid}.frames.jsonl`), now),
+      frames: new FrameLog(join(config.traceDir, `${file}.frames.jsonl`), now),
     };
   }, config.sessionTtlMs, now);
   const tokens = new CallTokens(TOKEN_TTL_MS, now);
@@ -2034,6 +2052,8 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const wss = attachWebSocketServer(server, { store, tokens, log });
   const evictor = setInterval(() => {
     for (const sid of store.evictIdle()) log(`${sid}: evicted idle session`);
+    const swept = tokens.evictExpired();
+    if (swept) log(`swept ${swept} expired call tokens`);
   }, EVICT_EVERY_MS);
   evictor.unref();
 
