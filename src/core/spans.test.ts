@@ -22,7 +22,10 @@ describe('candidateSpans', () => {
   });
 
   it('caps the list', () => {
-    const long = Array.from({ length: 60 }, (_, i) => (i % 2 ? 'four' : 'x')).join(' ');
-    expect(candidateSpans(long).length).toBeLessThanOrEqual(MAX_SPANS);
+    const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero'];
+    const long = Array.from({ length: 40 }, (_, i) => words[i % 10] + (i >= 10 ? String(i) : '')).join(' ');
+    const spans = candidateSpans(long);
+    expect(spans).toHaveLength(MAX_SPANS);
+    expect(spans[0]!.split(' ')).toHaveLength(1);
   });
 });
