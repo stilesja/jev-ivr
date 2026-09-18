@@ -157,8 +157,11 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
   };
 
   // A pending confirmation the caller neither answered nor talked past is a
-  // confirmation retry, not an intent failure.
-  if (session.pendingConfirmation && confirmationUnanswered && routeVerdict.kind === 'intent_failed') {
+  // confirmation retry, not an intent failure or a slot turn. Mid-form the
+  // intent gate returns 'proceed', so that case has to be rescued too or the
+  // confirmation goes stale and captures a later yes. A clear new route still
+  // wins; enterForm/setForm clears the pending state.
+  if (confirmationUnanswered && (routeVerdict.kind === 'intent_failed' || routeVerdict.kind === 'proceed')) {
     routeVerdict = { kind: 'confirm_unanswered' };
     intentRow.outcome = `confirm_unanswered:${label}`;
   }

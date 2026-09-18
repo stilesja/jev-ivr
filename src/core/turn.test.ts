@@ -121,6 +121,41 @@ describe('turn', () => {
     expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
   });
 
+  it('does not let a stale mid-form confirmation hijack a later yes', () => {
+    let r = say(started(), 'reschedule with dr chen', {
+      intent: choice({ reschedule: 0.94, none: 0.06 }),
+      provider: choice({ chen: 0.91, none: 0.09 }),
+    });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+    r = say(r.session, 'four four seven one eight two nine three', {
+      containsMemberId: noul(0.95),
+      memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
+      memberIdComplete: noul(0.9),
+    });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date' });
+
+    r = say(r.session, 'actually cancel', { intent: choice({ cancel: 0.7, none: 0.3 }) });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
+    expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
+
+    r = say(r.session, 'um', { confirmsYes: noul(0.3), confirmsNo: noul(0.3) });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
+    expect(r.session.form).toBe('reschedule');
+    expect(r.session.intentAttempts).toBe(1);
+
+    r = say(r.session, 'no', { confirmsNo: noul(0.9), confirmsYes: noul(0.05) });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date' });
+    expect(r.session.pendingConfirmation).toBeNull();
+    expect(r.session.form).toBe('reschedule');
+  });
+
+  it('counts a wrong menu key as an attempt', () => {
+    let r = say(started(), 'blah', { intent: choice({ none: 0.7, other: 0.3 }) });
+    r = say(r.session, 'blah', { intent: choice({ none: 0.7, other: 0.3 }) });
+    r = resolve(r.session, dtmfFrames('9')[0]!, null, tc);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
   it('handles a client failure once with a hint and twice with a handoff', () => {
     const err = { name: 'JevClientError', message: 'timeout' };
     let r = resolve(started(), promptFrame('hello'), null, tc, err);

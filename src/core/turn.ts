@@ -85,6 +85,17 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
   return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target);
 }
 
+/** A confirmation the caller did not answer stands; re-ask it until the retry policy runs out. */
+function reaskConfirmation(s: Session, t: Thresholds): Decision {
+  const intent = s.pendingConfirmation!.intent;
+  s.intentAttempts += 1;
+  if (retryStep(s.intentAttempts, t) === 'agent') {
+    s.pendingConfirmation = null;
+    return handoff('max-attempts');
+  }
+  return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[intent] }, [], ['yes', 'no']);
+}
+
 /** After slots changed: disambiguate, ask the next slot, or complete. */
 function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: { display: string }; b: { display: string } } | null): Decision {
   if (disambiguate) {
@@ -110,6 +121,9 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     case 'hold':
       return { decision: { kind: 'hold' }, events: [] };
     case 'nomatch':
+      // An unintelligible answer to a confirmation is an unanswered confirmation,
+      // not a slot nomatch; leaving the confirmation pending would let it go stale.
+      if (s.pendingConfirmation) return { decision: reaskConfirmation(s, t), events: [] };
       return { decision: failAttempt(s, s.promptedFor ?? 'intent', t), events: [] };
     case 'handoff':
       return { decision: handoff(verdict.reason), events: [] };
@@ -124,17 +138,12 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     }
     case 'rejected':
       s.pendingConfirmation = null;
+      // Declining a mid-form switch means "stay where we were", so resume the form
+      // rather than counting an intent failure against the caller.
+      if (s.form) return { decision: continueForm(s, [], null), events: [] };
       return { decision: failAttempt(s, 'intent', t), events: [] };
-    case 'confirm_unanswered': {
-      // The confirmation stands; re-ask it until the retry policy runs out.
-      const intent = s.pendingConfirmation!.intent;
-      s.intentAttempts += 1;
-      if (retryStep(s.intentAttempts, t) === 'agent') {
-        s.pendingConfirmation = null;
-        return { decision: handoff('max-attempts'), events: [] };
-      }
-      return { decision: prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[intent] }, [], ['yes', 'no']), events: [] };
-    }
+    case 'confirm_unanswered':
+      return { decision: reaskConfirmation(s, t), events: [] };
     case 'route':
       if (verdict.confirm === 'explicit') {
         s.pendingConfirmation = { target: 'intent', intent: verdict.intent };
@@ -162,7 +171,8 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): Decision {
   if (s.menuActive) {
     const option = INTENT_MENU.find((m) => m.digit === digit);
     s.dtmfBuffer = '';
-    if (!option) return { kind: 'ignore' };
+    // A wrong key is a failed menu attempt, not dead air.
+    if (!option) return failAttempt(s, 'intent', tc.thresholds);
     if (option.intent === 'agent') return handoff('live-agent');
     if (!isFormIntent(option.intent)) return { kind: 'ignore' };
     setForm(s, option.intent);
@@ -171,7 +181,9 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): Decision {
   const result = applyDtmf(s, s.dtmfBuffer, slotContext('', tc));
   switch (result.kind) {
     case 'collecting':
+      return { kind: 'ignore' };
     case 'no_target':
+      s.dtmfBuffer = '';
       return { kind: 'ignore' };
     case 'invalid':
       s.dtmfBuffer = '';
@@ -185,7 +197,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): Decision {
 function handleFailure(s: Session): Decision {
   s.consecutiveFailures += 1;
   if (s.consecutiveFailures >= 2) return handoff('system-failure');
-  return prompt('system_slow_dtmf_hint', s.promptedFor);
+  return prompt('system_slow_dtmf_hint', s.promptedFor ?? 'intent');
 }
 
 function bookkeep(s: Session, decision: Decision, verdictLabel: string): void {
@@ -195,7 +207,7 @@ function bookkeep(s: Session, decision: Decision, verdictLabel: string): void {
   if (decision.kind === 'prompt') {
     s.lastPromptId = decision.promptId;
     s.lastPromptText = decisionText(decision);
-    s.lastPromptOptions = decision.options;
+    s.lastPromptOptions = [...decision.options];
     s.promptedFor = decision.target;
     s.menuActive = decision.promptId === 'nomatch_dtmf_menu';
     s.dtmfBuffer = '';
