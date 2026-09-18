@@ -37,11 +37,15 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
     if (id === 'intent') return pick(entry.intent);
     if (id === 'provider') return pick(slots.provider);
     if (id === 'memberIdSpan') {
-      const span = slots.memberId?.span;
+      const rawSpan = slots.memberId?.span;
+      const span = rawSpan ? normalizeText(rawSpan) : undefined;
       const exact = span && labels.includes(span) ? span : labels.find((l) => span && l.includes(span));
+      if (rawSpan && !exact) {
+        throw new Error(`corpus ${entry.id}: memberId span "${rawSpan}" is not a candidate span of the text`);
+      }
       return pick(exact);
     }
-    if (id in DATE_IDS) return pick(slots.date?.[DATE_IDS[id]!]);
+    if (Object.hasOwn(DATE_IDS, id)) return pick(slots.date?.[DATE_IDS[id]!]);
     return quietAnswer(id, q, sharpness);
   }
   if (q.type === 'noul') {
@@ -53,11 +57,30 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
   return quietAnswer(id, q, sharpness);
 }
 
-function applyOverride(answer: Answer, q: Question, override: { noul?: number; probabilities?: Record<string, number> }): Answer {
-  if (answer.type === 'noul') return override.noul === undefined ? answer : noulAnswer(override.noul);
+function applyOverride(
+  answer: Answer,
+  q: Question,
+  override: { noul?: number; probabilities?: Record<string, number> },
+  entryId: string,
+  questionId: string,
+): Answer {
+  if (answer.type === 'noul') {
+    if (override.probabilities !== undefined) {
+      throw new Error(`corpus ${entryId}: override for ${questionId} gives probabilities for a noul question`);
+    }
+    return override.noul === undefined ? answer : noulAnswer(override.noul);
+  }
+  if (override.noul !== undefined) {
+    throw new Error(`corpus ${entryId}: override for ${questionId} gives noul for a ${answer.type} question`);
+  }
   if (!override.probabilities) return answer;
   const labels = answer.type === 'choice' ? choiceLabels(q as Extract<Question, { type: 'choice' }>) : (q as Extract<Question, { type: 'score' }>).levels.map((l) => l.label);
   const given = override.probabilities;
+  for (const key of Object.keys(given)) {
+    if (!labels.includes(key)) {
+      throw new Error(`corpus ${entryId}: override for ${questionId} names unknown label ${key}`);
+    }
+  }
   const givenMass = Object.values(given).reduce((a, b) => a + b, 0);
   const rest = labels.filter((l) => !(l in given));
   const probs: Record<string, number> = {};
@@ -88,7 +111,7 @@ export class FixtureStubClient implements JevClient {
     for (const [id, q] of Object.entries(req.questions)) {
       let a = labeledAnswer(id, q, entry, this.opts.sharpness);
       const override = entry.answers?.[id];
-      if (override) a = applyOverride(a, q, override);
+      if (override) a = applyOverride(a, q, override, entry.id, id);
       answers[id] = a;
     }
     return {

@@ -40,10 +40,53 @@ describe('parseCorpus', () => {
   it('normalizes text for lookup', () => {
     expect(normalizeText('Reschedule, with Dr. Chen!')).toBe('reschedule with dr chen');
   });
+
+  it('parseCorpus rejects an unknown context and duplicate normalized text', () => {
+    const badContext = { ...entries[0], context: 'not_a_form' };
+    expect(() => parseCorpus(JSON.stringify(badContext))).toThrow(/unknown context/);
+
+    const dup = { ...entries[0], id: 'r1-dup', text: 'Reschedule, with Dr. Chen next week!' };
+    const text = JSON.stringify(entries[0]) + '\n' + JSON.stringify(dup);
+    expect(() => parseCorpus(text)).toThrow(/duplicates/);
+  });
 });
 
 describe('FixtureStubClient', () => {
   const client = new FixtureStubClient(entries, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+
+  it('matches a labeled span regardless of case and punctuation', async () => {
+    const caseEntries: CorpusEntry[] = [
+      {
+        id: 'm2', text: 'My ID is Four Four Seven One Eight Two Nine Three', intent: 'none', context: 'billing',
+        slots: { memberId: { span: 'Four Four Seven One Eight Two Nine Three', value: '44718293' } },
+      },
+    ];
+    const caseClient = new FixtureStubClient(caseEntries, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    const res = await caseClient.ask(request('My ID is Four Four Seven One Eight Two Nine Three'));
+    expect(res.answers.memberIdSpan).toMatchObject({ choice: normalizeText('Four Four Seven One Eight Two Nine Three') });
+  });
+
+  it('throws when a labeled span is not a candidate', async () => {
+    const badEntries: CorpusEntry[] = [
+      {
+        id: 'm3', text: 'My ID is Four Four Seven One Eight Two Nine Three', intent: 'none', context: 'billing',
+        slots: { memberId: { span: 'nine nine nine', value: '999' } },
+      },
+    ];
+    const badClient = new FixtureStubClient(badEntries, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    await expect(badClient.ask(request('My ID is Four Four Seven One Eight Two Nine Three'))).rejects.toThrow(/not a candidate span/);
+  });
+
+  it('throws on an override naming an unknown label', async () => {
+    const badEntries: CorpusEntry[] = [
+      {
+        id: 'bad-lo', text: 'maybe cancel it now', intent: 'cancel', context: 'no_form',
+        answers: { intent: { probabilities: { reschedul: 0.8 } } },
+      },
+    ];
+    const badClient = new FixtureStubClient(badEntries, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    await expect(badClient.ask(request('maybe cancel it now'))).rejects.toThrow(/unknown label/);
+  });
 
   it('answers from labels with sharp distributions', async () => {
     const res = await client.ask(request('reschedule with dr chen next week'));
