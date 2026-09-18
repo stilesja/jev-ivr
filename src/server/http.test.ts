@@ -46,11 +46,18 @@ async function post(base: string, path: string, params: Record<string, string>, 
 }
 
 describe('http routes', () => {
-  it('serves health', async () => {
-    const base = await listen(deps());
+  it('serves health, counting live sessions apart from ended ones still retained', async () => {
+    const d = deps();
+    const base = await listen(d);
+    expect(await (await fetch(base + '/health')).json()).toEqual({ ok: true, sessions: 0, retained: 0 });
+    const sock = { send: () => {}, close: () => {} };
+    d.store.create('CA1', sock);
+    d.store.create('CA2', sock);
+    expect(await (await fetch(base + '/health')).json()).toEqual({ ok: true, sessions: 2, retained: 0 });
+    d.store.end('CA2');
     const res = await fetch(base + '/health');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, sessions: 0 });
+    expect(await res.json()).toEqual({ ok: true, sessions: 1, retained: 1 });
   });
 
   it('answers /voice with connect TwiML and a token bound to the call', async () => {

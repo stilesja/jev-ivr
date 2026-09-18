@@ -115,6 +115,21 @@ describe('replayFrameLog', () => {
     expect(replay.records[1]!.turnState?.turn.elapsed).toBe('over_2m');
   });
 
+  it('skips a non-final prompt, as the adapter did when it recorded the call', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'replay-partial-'));
+    const path = join(dir, 'CA1.frames.jsonl');
+    const log = new FrameLog(path, () => 0);
+    log.write('in', { type: 'setup', sessionId: 'VX1', callSid: 'CA1', from: '+1', to: '+2', customParameters: {} });
+    log.write('in', { type: 'prompt', voicePrompt: 'I need to', lang: 'en-US', last: false });
+    log.write('in', { type: 'prompt', voicePrompt: 'I need to reschedule', lang: 'en-US', last: true });
+
+    const opts = { client: new HeuristicStubClient(), thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', trace: null };
+    const replay = await replayFrameLog(path, opts);
+    expect(replay.skipped).toEqual(['line 2: non-final prompt']);
+    expect(replay.records).toHaveLength(2);
+    expect(replay.records[1]!.event.type).toBe('prompt');
+  });
+
   it('continues after a turn throws', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'replay-throws-'));
     const path = join(dir, 'CA1.frames.jsonl');

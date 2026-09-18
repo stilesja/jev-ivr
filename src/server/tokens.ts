@@ -27,6 +27,24 @@ export class CallTokens {
     return e.token === token;
   }
 
+  /**
+   * Whether this token is live for some call. The WebSocket upgrade knows the token but not the
+   * call SID (that arrives in `setup`), so this is the only check available at that point; the
+   * binding to a specific call is still verified at `setup` by `verify`.
+   */
+  has(token: string): boolean {
+    const now = this.now();
+    for (const [callSid, e] of this.byCall) {
+      if (e.token !== token) continue;
+      if (now > e.expiresAt) {
+        this.byCall.delete(callSid);
+        return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
   revoke(callSid: string): void {
     this.byCall.delete(callSid);
   }

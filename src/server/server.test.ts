@@ -13,7 +13,7 @@ afterEach(async () => {
   running = null;
 });
 
-/** Shaped like a minted token (32 hex) so the upgrade is accepted and setup does the refusing. */
+/** Shaped like a minted token (32 hex), but never minted: the upgrade itself must refuse it. */
 const UNMINTED_TOKEN = 'f'.repeat(32);
 
 function makeConfig(extra: Record<string, string> = {}) {
@@ -59,14 +59,42 @@ async function fixtureStub(): Promise<JevClient> {
 }
 
 describe('server end to end', () => {
-  it('greets on setup and rejects a bad token', async () => {
+  it('greets on setup and refuses a well-shaped token that was never minted', async () => {
     const { relay, ws } = await connected();
     expect(relay.texts()).toEqual(['Thanks for calling the clinic. How can I help you today?']);
-    const bad = await FakeRelay.connect(`${ws}?token=${UNMINTED_TOKEN}`);
+    // The upgrade knows the token but not the call SID, and this one is live for no call at all,
+    // so it never gets a socket to send setup on.
+    await expect(FakeRelay.connect(`${ws}?token=${UNMINTED_TOKEN}`)).rejects.toThrow(/401/);
+  });
+
+  it('refuses a setup whose token belongs to another call', async () => {
+    const s = await start();
+    // Minted for CA1, so the upgrade passes; the binding to a call SID is still checked at setup.
+    const token = running!.tokens.mint('CA1');
+    const bad = await FakeRelay.connect(`${s.ws}?token=${token}`);
     bad.setup('CA2');
     const end = await bad.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"unauthorized"}');
     expect((await bad.closed).code).toBe(1008);
+    expect(running!.store.get('CA2')).toBeUndefined();
+  });
+
+  it('logs a relay error frame and keeps the call going', async () => {
+    const { relay, traceDir, callSid } = await connected();
+    relay.error('Text-to-speech failed for the previous token');
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your member ID?");
+    const frames = readFileSync(join(traceDir, `${callSid}.frames.jsonl`), 'utf8')
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l) as { dir: string; msg: Record<string, unknown> });
+    const err = frames.find((f) => f.dir === 'in' && f.msg.type === 'error');
+    expect(err?.msg.description).toBe('Text-to-speech failed for the previous token');
+    // An error frame is state, not a turn: it produces no decision and no frames of its own.
+    const records = readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    expect(records.map((r) => r.event.type)).toEqual(['setup', 'error', 'prompt']);
+    expect(records[1].decision.kind).toBe('ignore');
+    relay.assertKnownTypes();
   });
 
   it('refuses an upgrade without a token', async () => {
@@ -76,19 +104,19 @@ describe('server end to end', () => {
   });
 
   it('closes a connection that never sends setup', async () => {
-    const s = await start(undefined, { setupTimeoutMs: 200 });
+    const s = await start(undefined, { setupTimeoutMs: 500 });
     const token = running!.tokens.mint('CA9');
     const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
     expect((await relay.closed).code).toBe(1008);
   });
 
   it('keeps a call open after the setup deadline once setup succeeded', async () => {
-    const s = await start(undefined, { setupTimeoutMs: 200 });
+    const s = await start(undefined, { setupTimeoutMs: 500 });
     const token = running!.tokens.mint('CA8');
     const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
     relay.setup('CA8');
     await relay.waitForTexts(1);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 1000));
     relay.prompt('I need to reschedule my appointment');
     expect((await relay.waitForTexts(2)).length).toBe(2);
     const stillOpen = Symbol('open');
@@ -104,7 +132,7 @@ describe('server end to end', () => {
         return stub.ask(req);
       },
     };
-    const s = await start(slow, { setupTimeoutMs: 200 });
+    const s = await start(slow, { setupTimeoutMs: 500 });
     const token = running!.tokens.mint('CA10');
     const first = await FakeRelay.connect(`${s.ws}?token=${token}`);
     first.setup('CA10');
@@ -115,7 +143,7 @@ describe('server end to end', () => {
     const again = await FakeRelay.connect(`${s.ws}?token=${token}`);
     again.setup('CA10', 'VX-slow');
     const stillOpen = Symbol('open');
-    const settled = await Promise.race([again.closed, new Promise((r) => setTimeout(() => r(stillOpen), 400))]);
+    const settled = await Promise.race([again.closed, new Promise((r) => setTimeout(() => r(stillOpen), 1000))]);
     expect(settled).toBe(stillOpen);
     // The reconnect hears the replayed prompt, and the slow turn's own frames land on this socket too.
     expect((await again.waitForTexts(1)).length).toBeGreaterThanOrEqual(1);
@@ -132,7 +160,8 @@ describe('server end to end', () => {
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
     expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your member ID?");
     relay.prompt('four four seven one eight two nine three');
-    expect((await relay.waitForTexts(4)).slice(-2)).toEqual(['Member ID 4471 8293.', 'Which day next week works for you?']);
+    // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
+    expect((await relay.waitForTexts(4)).slice(-2)).toEqual(['Member ID 4 4 7 1, 8 2 9 3.', 'Which day next week works for you?']);
     relay.prompt('Tuesday');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed"}');
@@ -141,6 +170,7 @@ describe('server end to end', () => {
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
     expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(4);
+    relay.assertKnownTypes();
   });
 
   it('handles dtmf and agent handoff', async () => {
@@ -212,7 +242,7 @@ describe('server end to end', () => {
   it('exposes health and refuses upgrades on other paths', async () => {
     const s = await start();
     const res = await fetch(`${s.base}/health`);
-    expect(await res.json()).toEqual({ ok: true, sessions: 0 });
+    expect(await res.json()).toEqual({ ok: true, sessions: 0, retained: 0 });
     await expect(FakeRelay.connect(`ws://127.0.0.1:${running!.port}/other`)).rejects.toBeDefined();
   });
 
@@ -237,11 +267,9 @@ describe('server end to end', () => {
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),
     });
     expect(await done.text()).toContain('<ConversationRelay');
-    // That callback minted a fresh token for the call, so the one this connection used is now stale.
-    const stale = await FakeRelay.connect(`${ws}?token=${token}`);
-    stale.setup(callSid, 'VX-stale');
-    const refused = await stale.waitFor((m) => m.type === 'end');
-    expect(refused.handoffData).toBe('{"reasonCode":"unauthorized"}');
+    // That callback minted a fresh token for the call, so the one this connection used is now
+    // stale: it is live for no call at all and the upgrade refuses it before any setup.
+    await expect(FakeRelay.connect(`${ws}?token=${token}`)).rejects.toThrow(/401/);
     const third = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),

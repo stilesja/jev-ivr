@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig, describeConfig } from './config';
+import { defaultTimeZone } from '../run/clock';
 
 const base = { PUBLIC_HOST: 'demo.ngrok.app', TWILIO_AUTH_TOKEN: 'tok', HANDOFF_NUMBER: '+15551234567' };
 
@@ -9,6 +10,7 @@ describe('loadConfig', () => {
     expect(c).toMatchObject({
       port: 3000, publicHost: 'demo.ngrok.app', jevClient: 'stub', todayOverride: null,
       traceDir: 'traces', signatureCheck: true, reconnectLimit: 2, sessionTtlMs: 1_800_000,
+      sessionMaxAgeMs: 7_200_000, timezone: defaultTimeZone(),
     });
   });
 
@@ -32,10 +34,30 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, TODAY_OVERRIDE: 'yesterday' })).toThrow('TODAY_OVERRIDE');
   });
 
-  it('masks secrets in the description', () => {
+  it('masks secrets in the description, prefix included', () => {
     const text = describeConfig(loadConfig({ ...base, TWILIO_AUTH_TOKEN: 'supersecret' }));
     expect(text).not.toContain('supersecret');
+    // Not even the first characters: the length alone says whether the variable is set.
+    expect(text).not.toContain('su');
+    expect(text).toContain('auth token set (11 chars)');
+    expect(text).toContain('api key unset');
     expect(text).toContain('demo.ngrok.app');
+  });
+
+  it('takes an IANA zone and rejects anything Intl does not know', () => {
+    expect(loadConfig({ ...base, TIMEZONE: 'America/Los_Angeles' }).timezone).toBe('America/Los_Angeles');
+    expect(() => loadConfig({ ...base, TIMEZONE: 'Pacific Time' })).toThrow(
+      'TIMEZONE must be an IANA zone like America/Los_Angeles, got "Pacific Time"',
+    );
+    // Blank falls back to the host zone rather than failing.
+    expect(loadConfig({ ...base, TIMEZONE: '  ' }).timezone).toBe(defaultTimeZone());
+  });
+
+  it('parses the session lifetimes', () => {
+    const c = loadConfig({ ...base, SESSION_TTL_MS: '5000', SESSION_MAX_AGE_MS: '9000' });
+    expect(c.sessionTtlMs).toBe(5000);
+    expect(c.sessionMaxAgeMs).toBe(9000);
+    expect(() => loadConfig({ ...base, SESSION_MAX_AGE_MS: '-1' })).toThrow('SESSION_MAX_AGE_MS');
   });
 
   it('rejects a PORT outside 0..65535', () => {

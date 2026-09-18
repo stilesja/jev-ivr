@@ -113,7 +113,10 @@ export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res
     void (async () => {
       const path = (req.url ?? '/').split('?')[0];
       if ((req.method === 'GET' || req.method === 'HEAD') && path === '/health') {
-        const body = JSON.stringify({ ok: true, sessions: deps.store.size() });
+        // `sessions` is what is live; `retained` is ended calls still inside their grace period,
+        // which are memory but not callers.
+        const live = deps.store.liveCount();
+        const body = JSON.stringify({ ok: true, sessions: live, retained: deps.store.size() - live });
         if (req.method === 'HEAD') {
           res.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
           res.end();

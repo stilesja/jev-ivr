@@ -64,6 +64,14 @@ export function attachWebSocketServer(server: Server, deps: AdapterDeps, setupTi
       socket.destroy();
       return;
     }
+    // A well-shaped token that was never minted (or has expired) cannot pass the `setup` check
+    // either, so it gets no socket. The binding to a particular call SID is still checked there.
+    if (!deps.tokens.has(token)) {
+      deps.log('upgrade refused: unknown or expired token');
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, token));
   });
 

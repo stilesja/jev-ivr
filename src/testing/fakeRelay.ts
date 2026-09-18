@@ -46,6 +46,21 @@ export class FakeRelay {
     this.send({ type: 'interrupt', utteranceUntilInterrupt: utterance, durationUntilInterruptMs: ms });
   }
 
+  /** ConversationRelay reports its own trouble (TTS or transcription failures) with an error message. */
+  error(description: string): void {
+    this.send({ type: 'error', description });
+  }
+
+  /**
+   * Twilio closes the session with error 64105 on anything outside the documented outbound set,
+   * so every test that drives a whole call asserts the server never sent one.
+   */
+  assertKnownTypes(): void {
+    const allowed = new Set(['text', 'play', 'sendDigits', 'language', 'end']);
+    const bad = this.received.filter((m) => !allowed.has(m.type));
+    if (bad.length) throw new Error(`undocumented outbound message type(s): ${JSON.stringify(bad)}`);
+  }
+
   /** Resolve once a received message satisfies pred (checking already-received ones first). */
   waitFor(pred: (m: Msg) => boolean, timeoutMs = 3000): Promise<Msg> {
     return new Promise((resolve, reject) => {

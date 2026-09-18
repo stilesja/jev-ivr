@@ -13,6 +13,7 @@ import { summarize } from './metrics';
 import { formatAnswers, formatDecision, formatGates, formatMetrics } from './print';
 export { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
+import { defaultTimeZone, localDateIso } from '../run/clock';
 
 /** Parsed inside main() so a bad flag reports through the same clean error path as a bad run. */
 function parseCliArgs() {
@@ -36,9 +37,13 @@ export function corpusFileOf(corpusFile: string | undefined, corpus: string | un
   return corpusFile ?? corpus ?? DEFAULT_CORPUS_FILE;
 }
 
-/** --today is unset (not merely defaulted by parseArgs) only when the caller never passed it. */
+/**
+ * --today is unset (not merely defaulted by parseArgs) only when the caller never passed it.
+ * The fallback is the host's wall-clock date, not the UTC one: an evening run west of Greenwich
+ * would otherwise resolve "tomorrow" a day early.
+ */
 export function resolveTodayIso(today: string | undefined): string {
-  return today ?? new Date().toISOString().slice(0, 10);
+  return today ?? localDateIso(Date.now(), defaultTimeZone());
 }
 
 function printRun(run: TurnRun, quiet: boolean): void {

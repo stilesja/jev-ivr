@@ -20,13 +20,26 @@ export interface CallEntry extends CallResources {
   callSid: string;
   socket: SocketLike | null;
   reconnects: number;
+  createdAtMs: number;
   lastActivityMs: number;
   ended: boolean;
+  /** When `ended` was first set, so an ended call is retained for a fixed grace period, not a TTL. */
+  endedAtMs: number | null;
   tail: Promise<void>;
   inFlight: number;
 }
 
 export type CallFactory = (callSid: string) => CallResources;
+
+/**
+ * How long an ended call is kept after it ends. Long enough for a late `/cr-action` callback or a
+ * stray frame to find the session it belongs to, short enough that a busy line does not accumulate
+ * finished calls for the half hour the idle TTL would allow.
+ */
+export const ENDED_GRACE_MS = 60_000;
+
+/** Nothing legitimate keeps one phone call alive this long; past it the entry is a leak. */
+export const DEFAULT_SESSION_MAX_AGE_MS = 7_200_000;
 
 export class SessionStore {
   private readonly calls = new Map<string, CallEntry>();
@@ -35,14 +48,23 @@ export class SessionStore {
     private readonly factory: CallFactory,
     private readonly ttlMs: number,
     private readonly now: () => number = Date.now,
+    private readonly maxAgeMs: number = DEFAULT_SESSION_MAX_AGE_MS,
   ) {}
 
   get(callSid: string): CallEntry | undefined {
     return this.calls.get(callSid);
   }
 
+  /** Every entry the store is holding, ended ones included. */
   size(): number {
     return this.calls.size;
+  }
+
+  /** Entries for calls that have not ended: the sessions that could still speak to a caller. */
+  liveCount(): number {
+    let n = 0;
+    for (const e of this.calls.values()) if (!e.ended) n += 1;
+    return n;
   }
 
   create(callSid: string, socket: SocketLike): CallEntry {
@@ -52,8 +74,10 @@ export class SessionStore {
       callSid,
       socket,
       reconnects: 0,
+      createdAtMs: this.now(),
       lastActivityMs: this.now(),
       ended: false,
+      endedAtMs: null,
       tail: Promise.resolve(),
       inFlight: 0,
     };
@@ -121,22 +145,36 @@ export class SessionStore {
   end(callSid: string): void {
     const e = this.calls.get(callSid);
     if (e) {
+      // `end` is idempotent and can arrive twice (the adapter and the action callback both call
+      // it), but the grace period runs from the first end, not the last.
+      if (!e.ended) e.endedAtMs = this.now();
       e.ended = true;
       e.lastActivityMs = this.now();
     }
   }
 
-  /** Remove sessions idle longer than the TTL. Skips sessions with in-flight work. Returns the evicted call SIDs. */
+  /**
+   * Remove sessions that have outlived their usefulness, and return the evicted call SIDs.
+   *
+   * Three reasons to go: the entry is older than `maxAgeMs` (a hard cap, which is the only one
+   * that ignores in-flight work - an entry that old is stuck, and waiting for a turn that will
+   * never finish is what leaked it), the call ended more than `ENDED_GRACE_MS` ago, or it has
+   * been idle longer than the TTL.
+   */
   evictIdle(): string[] {
-    const cutoff = this.now() - this.ttlMs;
+    const now = this.now();
+    const idleCutoff = now - this.ttlMs;
     const gone: string[] = [];
     for (const [sid, e] of this.calls) {
-      if (e.inFlight > 0) continue;
-      if (e.lastActivityMs < cutoff) {
-        if (e.socket) e.socket.close(1000, 'session evicted');
-        this.calls.delete(sid);
-        gone.push(sid);
+      const expired = now - e.createdAtMs >= this.maxAgeMs;
+      if (!expired) {
+        if (e.inFlight > 0) continue;
+        const graceOver = e.ended && e.endedAtMs !== null && now - e.endedAtMs >= ENDED_GRACE_MS;
+        if (!graceOver && e.lastActivityMs >= idleCutoff) continue;
       }
+      if (e.socket) e.socket.close(1000, expired ? 'session expired' : 'session evicted');
+      this.calls.delete(sid);
+      gone.push(sid);
     }
     return gone;
   }

@@ -18,7 +18,7 @@ function rawType(msg: unknown): string {
 
 /**
  * Feed every inbound message of a recorded call through runTurn, in order, exactly as the
- * adapter did: prompts are forced final, a repeated setup (reconnect) is skipped, `#`/`*` DTMF
+ * adapter did: non-final prompts are skipped, a repeated setup (reconnect) is skipped, `#`/`*` DTMF
  * digits are skipped since the adapter logs them as `in` before dropping them, and everything
  * after the call ends is skipped and reported rather than fed to a dead session. A line with a
  * missing or unparsable `ts` is skipped and reported rather than throwing or driving the clock
@@ -72,10 +72,15 @@ export async function replayFrameLog(
     // The adapter logs every inbound frame before deciding to ignore it; `#`/`*` digits are
     // dropped there without ever reaching runTurn, so replay must drop them too.
     if (frame.type === 'dtmf' && (frame.digit === '#' || frame.digit === '*')) continue;
-    const event = frame.type === 'prompt' ? { ...frame, last: true } : frame;
+    // The adapter logs a non-final prompt and waits for the final one rather than running a turn
+    // on half an utterance; replaying it would invent a turn the call never had.
+    if (frame.type === 'prompt' && !frame.last) {
+      skipped.push(`line ${lineNumber}: non-final prompt`);
+      continue;
+    }
     const turnOpts: RunOptions = { ...opts, now: () => lineMs, todayIso: options?.todayIso ?? setupDate! };
     try {
-      const run = await runTurn(session, event, turnOpts);
+      const run = await runTurn(session, frame, turnOpts);
       session = run.result.session;
       runs.push(run);
       onRun?.(run);

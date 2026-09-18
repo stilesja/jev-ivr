@@ -28,6 +28,20 @@ describe('CallTokens', () => {
     expect(tokens.verify(b, 'CA1')).toBe(true);
   });
 
+  it('has() finds a live token without knowing its call, and never an expired or unminted one', () => {
+    let t = 0;
+    const tokens = new CallTokens(1000, () => t);
+    const a = tokens.mint('CA1');
+    const b = tokens.mint('CA2');
+    expect(tokens.has(a)).toBe(true);
+    expect(tokens.has(b)).toBe(true);
+    expect(tokens.has('f'.repeat(32))).toBe(false);
+    tokens.revoke('CA1');
+    expect(tokens.has(a)).toBe(false);
+    t = 1001;
+    expect(tokens.has(b)).toBe(false);
+  });
+
   it('evicts expired tokens for calls that never connect', () => {
     let t = 0;
     const tokens = new CallTokens(1000, () => t);

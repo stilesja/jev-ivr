@@ -12,6 +12,7 @@ import { buildHints } from './hints';
 import { newSession } from '../core/session';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
+import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
 
@@ -51,7 +52,8 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const now = overrides.now ?? (() => Date.now());
   const thresholds = { ...DEFAULT_THRESHOLDS };
   const client = overrides.client ?? buildClient(config.jevClient, DEFAULT_CORPUS_FILE, thresholds);
-  const todayIso = () => config.todayOverride ?? new Date(now()).toISOString().slice(0, 10);
+  // Wall-clock date in the configured zone: a caller at 8pm Pacific means today, not tomorrow.
+  const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
 
   const store = new SessionStore(
     (callSid) => {
@@ -66,6 +68,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     },
     config.sessionTtlMs,
     now,
+    config.sessionMaxAgeMs,
   );
   const tokens = new CallTokens(TOKEN_TTL_MS, now);
   const deps = { config, store, tokens, hints: buildHints(), log };

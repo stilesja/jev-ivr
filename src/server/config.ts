@@ -1,3 +1,5 @@
+import { defaultTimeZone, localDateIso } from '../run/clock';
+
 export type ClientKind = 'stub' | 'heuristic' | 'jev';
 
 export interface ServerConfig {
@@ -12,6 +14,8 @@ export interface ServerConfig {
   signatureCheck: boolean;
   reconnectLimit: number;
   sessionTtlMs: number;
+  sessionMaxAgeMs: number;
+  timezone: string;
 }
 
 type Env = Record<string, string | undefined>;
@@ -28,6 +32,17 @@ function integer(env: Env, name: string, fallback: number): number {
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 0) throw new Error(`${name} must be a non-negative integer, got "${raw}"`);
   return n;
+}
+
+/** An IANA zone name the runtime actually knows; `Intl` is the only authority worth asking. */
+function timeZone(env: Env): string {
+  const raw = env.TIMEZONE?.trim() || defaultTimeZone();
+  try {
+    localDateIso(0, raw);
+  } catch {
+    throw new Error(`TIMEZONE must be an IANA zone like America/Los_Angeles, got "${raw}"`);
+  }
+  return raw;
 }
 
 export function loadConfig(env: Env): ServerConfig {
@@ -60,11 +75,15 @@ export function loadConfig(env: Env): ServerConfig {
     signatureCheck: sig === 'on',
     reconnectLimit: integer(env, 'RECONNECT_LIMIT', 2),
     sessionTtlMs: integer(env, 'SESSION_TTL_MS', 1_800_000),
+    sessionMaxAgeMs: integer(env, 'SESSION_MAX_AGE_MS', 7_200_000),
+    timezone: timeZone(env),
   };
 }
 
 export function describeConfig(c: ServerConfig): string {
-  const mask = (s: string | null) => (s ? `${s.slice(0, 2)}…(${s.length})` : 'unset');
+  // A prefix of a secret is still a piece of the secret; the length alone is enough to tell
+  // "the variable is set" from "the variable is the wrong value".
+  const mask = (s: string | null) => (s ? `set (${s.length} chars)` : 'unset');
   return [
     `port ${c.port}`,
     `public host ${c.publicHost}`,
@@ -74,6 +93,7 @@ export function describeConfig(c: ServerConfig): string {
     `auth token ${mask(c.twilioAuthToken)}`,
     `signature check ${c.signatureCheck ? 'on' : 'OFF'}`,
     `today ${c.todayOverride ?? 'wall clock'}`,
+    `timezone ${c.timezone}`,
     `traces ${c.traceDir}`,
     `reconnect limit ${c.reconnectLimit}`,
   ].join('  ');

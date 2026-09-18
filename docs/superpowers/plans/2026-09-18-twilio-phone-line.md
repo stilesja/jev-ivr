@@ -925,7 +925,7 @@ git commit -m "feat(server): add raw frame log per call"
 **Files:**
 - Create: `src/server/sessions.ts`, `src/server/sessions.test.ts`
 
-Deviation, added after review: the committed store makes the queue unpoisonable (a failing frame-log write cannot reject the tail), skips queued work once the entry has ended, tracks in-flight work so `evictIdle` never removes a session mid-turn, and closes a live socket on eviction. The committed code is the source of truth.
+Deviation, added after review: the committed store makes the queue unpoisonable (a failing frame-log write cannot reject the tail), skips queued work once the entry has ended, tracks in-flight work so `evictIdle` never removes a session mid-turn, and closes a live socket on eviction. A later review added two more lifetimes: an ended call is kept for `ENDED_GRACE_MS` (60 s) after it ends rather than for the idle TTL, so `/health` reports `sessions` (from the new `liveCount()`) apart from `retained` (`size() - liveCount()`), and `SESSION_MAX_AGE_MS` (default two hours) evicts any entry that old regardless of in-flight work, closing its socket with 1000 'session expired'. The committed code is the source of truth.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1146,7 +1146,7 @@ git commit -m "feat(server): add session store with a per-call turn queue"
 **Files:**
 - Create: `src/server/adapter.ts`, `src/server/adapter.test.ts`
 
-Deviation, added after review: the committed adapter carries the socket on the connection context and detaches only when the closing socket is the one attached (a late close from a replaced socket cannot mute a resumed call); a displaced socket is closed on resume; per-frame send failures are logged, detach the socket, and never skip end-of-call cleanup; a throwing turn is logged and answered with one apology text frame instead of dead air; every inbound frame is logged before any ignore decision; an `out` line is written only after a successful send and a dropped frame is logged whole under `log`. The committed code is the source of truth.
+Deviation, added after review: the committed adapter carries the socket on the connection context and detaches only when the closing socket is the one attached (a late close from a replaced socket cannot mute a resumed call); a displaced socket is closed on resume; per-frame send failures are logged, detach the socket, and never skip end-of-call cleanup; a throwing turn is logged and answered with one apology text frame instead of dead air; every inbound frame is logged before any ignore decision; an `out` line is written only after a successful send and a dropped frame is logged whole under `log`. A later review added that a prompt frame with `last: false` is logged as `droppedPartial` and does not run a turn at all (the earlier code forced every prompt to final, which would have scored half an utterance and then scored the whole of it again once the final arrived); `replayFrameLog` skips those lines for the same reason. The committed code is the source of truth.
 
 The adapter is tested with a fake socket object, no network. It owns: token check on `setup`, session create or resume, mapping inbound frames to core events, running turns through the store's queue, sending decision frames, and ending the call.
 
@@ -2464,7 +2464,7 @@ Spec coverage:
 | §9 testing (fake relay, adapter, queue, http, signature, reconnect, replay, manual checklist) | 4, 8, 9, 10, 11, 12, 13, 14 |
 | §10 operational notes | 14 |
 
-Deviations from the spec, all small: the WebSocket token is verified at `setup` against the call SID exactly as specified, but a connection that never sends `setup` is simply left open until the socket closes (no timeout; ConversationRelay always sends `setup` first). `SESSION_TTL_MS` eviction runs on a one-minute interval rather than per activity. Tokens live ten minutes, long enough for the Twilio round trip and any reconnect.
+Deviations from the spec, all small: the WebSocket token is verified at `setup` against the call SID exactly as specified, and the upgrade additionally refuses a token that is not live for any call; a connection that is accepted but never sends `setup` is closed after ten seconds (`SETUP_TIMEOUT_MS`), a deadline disarmed the moment a `setup` is accepted so a slow first turn cannot kill an authenticated call. `SESSION_TTL_MS` eviction runs on a one-minute interval rather than per activity. Tokens live ten minutes, long enough for the Twilio round trip and any reconnect.
 
 Type consistency checks: `SocketLike.send(data, cb)` is used by the adapter (`sendOne`), the fake sockets in tests, and `ws.ts`'s wrapper; `RunOptions` comes from `src/run/turn.ts` everywhere; `FrameLog.write(dir, msg)` directions are `'in' | 'out' | 'http' | 'log'` in Tasks 7, 8, 9, 10, 13; `CallEntry.session` is replaced after every turn, never mutated in place; `decideActionTwiml` and `createRequestHandler` share `HttpDeps`.
 
