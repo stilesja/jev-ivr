@@ -6233,7 +6233,7 @@ main().catch((e) => {
 - [ ] **Step 2: Record the baseline**
 
 Run: `pnpm regress --update`
-Expected: `recorded 149 corpus outcomes and 24 scenario outcomes` (counts match the files written in Tasks 27 and 28). Open `fixtures/expected/scenarios.json` and confirm every entry has `"pass": true`.
+Expected: `recorded 149 corpus outcomes and 24 scenario outcomes` (counts match the files written in Tasks 27 and 28). Deviation, after review: the corpus grew to 150 (sw-08) and the scenarios to 33, `Outcome` gained an `acks` field (implicit-confirm prompt ids) so that threshold changes affecting only spoken confirmations show up in the diff, scenario steps accept `partial: true` and expectations accept `text`, and `runCorpusEntry` seeds prompted-slot placeholders before the setup turn so seeded sessions do not inflate the metrics. Open `fixtures/expected/scenarios.json` and confirm every entry has `"pass": true`.
 
 - [ ] **Step 3: Verify a clean run and a threshold change**
 
@@ -6241,7 +6241,7 @@ Run: `pnpm regress`
 Expected: `no changes`, exit 0.
 
 Run: `pnpm regress --threshold INTENT_ROUTE=0.95`
-Expected: many `~ corpus <id>.promptId` and `~ corpus <id>.decidedGate` lines as silent routes become implicit confirms; exit 1. This is the "change a threshold, diff outcomes" loop working.
+Expected: many `~ corpus <id>.acks: [] -> ["ack_intent"]` lines as silent routes become implicit confirms; exit 1. (promptId and decidedGate do not change for this threshold; only the spoken ack does.) This is the "change a threshold, diff outcomes" loop working.
 
 - [ ] **Step 4: Commit**
 
