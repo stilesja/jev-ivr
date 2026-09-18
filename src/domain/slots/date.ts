@@ -83,7 +83,7 @@ export const dateSlot: SlotSpec = {
     const resolved = resolveDate(components, ctx.todayIso);
     switch (resolved.kind) {
       case 'none':
-        return { kind: 'absent' };
+        return { kind: 'invalid', reason: 'unresolvable', raw: components.mode.choice };
       case 'window':
         return {
           kind: 'window',
@@ -91,7 +91,9 @@ export const dateSlot: SlotSpec = {
           confidence: resolved.confidence,
         };
       case 'day':
-        if (resolved.confidence < t.SLOT_CHOICE_CONFIRM) return { kind: 'absent' };
+        if (resolved.confidence < t.SLOT_CHOICE_CONFIRM) {
+          return { kind: 'invalid', reason: 'low_confidence', raw: resolved.iso };
+        }
         return {
           kind: 'filled',
           value: resolved.iso,

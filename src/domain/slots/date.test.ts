@@ -48,6 +48,19 @@ describe('dateSlot', () => {
     expect(dateSlot.fill(dateAnswers({ dateMode: ['relative_day', 0.3], dateRelativeDay: ['tomorrow', 0.9] }), ctx)).toEqual({ kind: 'absent' });
   });
 
+  it('reports an unresolvable date as invalid', () => {
+    const out = dateSlot.fill(dateAnswers({ dateMode: ['absolute', 0.9], dateMonth: ['february', 0.9], dateDay: ['30', 0.9] }), ctx);
+    expect(out).toEqual({ kind: 'invalid', reason: 'unresolvable', raw: 'absolute' });
+  });
+
+  it('reports a low-confidence day as invalid', () => {
+    const answers = {
+      ...dateAnswers({ dateMode: ['absolute', 0.9], dateMonth: ['october', 0.9] }),
+      dateDay: choice({ '5': 0.3, '15': 0.25, '25': 0.25, none: 0.2 }),
+    };
+    expect(dateSlot.fill(answers, ctx)).toMatchObject({ kind: 'invalid', reason: 'low_confidence', raw: '2026-10-05' });
+  });
+
   it('parses MMDD dtmf', () => {
     expect(dateSlot.dtmf.parse('1005', ctx)).toEqual({ value: '2026-10-05', display: 'Monday, October 5' });
     expect(dateSlot.dtmf.parse('1305', ctx)).toBeNull();
