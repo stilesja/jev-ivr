@@ -33,7 +33,7 @@ describe('twiml', () => {
 describe('buildHints', () => {
   it('lists every provider, the intent vocabulary and number words', () => {
     const hints = buildHints();
-    for (const name of ['Dr. Chen', 'Dr. Cheng', 'Dr. Alvarez']) expect(hints).toContain(name);
+    for (const name of ['Doctor Chen', 'Doctor Cheng', 'Doctor Alvarez']) expect(hints).toContain(name);
     for (const w of ['reschedule', 'cancel', 'member ID', 'zero', 'nine']) expect(hints).toContain(w);
     expect(hints).not.toContain('"');
   });

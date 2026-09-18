@@ -8,6 +8,6 @@ const NUMBER_WORDS = ['zero', 'oh', 'one', 'two', 'three', 'four', 'five', 'six'
 
 /** Comma-separated vocabulary for the ConversationRelay `hints` attribute. */
 export function buildHints(): string {
-  const providers = PROVIDERS.map((p) => `Dr. ${p.name}`);
+  const providers = PROVIDERS.flatMap((p) => [`Doctor ${p.name}`, p.name]);
   return [...providers, ...INTENT_WORDS, ...NUMBER_WORDS].join(', ');
 }
