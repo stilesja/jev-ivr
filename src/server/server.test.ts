@@ -82,6 +82,20 @@ describe('server end to end', () => {
     expect((await relay.closed).code).toBe(1008);
   });
 
+  it('keeps a call open after the setup deadline once setup succeeded', async () => {
+    const s = await start(undefined, { setupTimeoutMs: 200 });
+    const token = running!.tokens.mint('CA8');
+    const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
+    relay.setup('CA8');
+    await relay.waitForTexts(1);
+    await new Promise((r) => setTimeout(r, 400));
+    relay.prompt('I need to reschedule my appointment');
+    expect((await relay.waitForTexts(2)).length).toBe(2);
+    const stillOpen = Symbol('open');
+    const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(stillOpen), 100))]);
+    expect(settled).toBe(stillOpen);
+  });
+
   it('reports a port in use as a clean error', async () => {
     await start();
     const { config } = makeConfig({ PORT: String(running!.port) });
@@ -198,6 +212,11 @@ describe('server end to end', () => {
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),
     });
     expect(await done.text()).toContain('<ConversationRelay');
+    // That callback minted a fresh token for the call, so the one this connection used is now stale.
+    const stale = await FakeRelay.connect(`${ws}?token=${token}`);
+    stale.setup(callSid, 'VX-stale');
+    const refused = await stale.waitFor((m) => m.type === 'end');
+    expect(refused.handoffData).toBe('{"reasonCode":"unauthorized"}');
     const third = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),

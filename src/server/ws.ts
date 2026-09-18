@@ -31,9 +31,14 @@ export function attachWebSocketServer(server: Server, deps: AdapterDeps, setupTi
     }, setupTimeoutMs);
     deadline.unref();
     ws.on('message', (data) => {
-      void handleSocketMessage(deps, sock, ctx, data.toString()).catch((err: unknown) =>
-        deps.log(`${ctx.callSid ?? 'unknown'}: message handler failed: ${err instanceof Error ? err.message : String(err)}`),
-      );
+      void handleSocketMessage(deps, sock, ctx, data.toString())
+        .then(() => {
+          // callSid is set only once a setup passed the token check, so this is the accepted-setup signal.
+          if (ctx.callSid) clearTimeout(deadline);
+        })
+        .catch((err: unknown) =>
+          deps.log(`${ctx.callSid ?? 'unknown'}: message handler failed: ${err instanceof Error ? err.message : String(err)}`),
+        );
     });
     ws.on('close', () => {
       clearTimeout(deadline);
