@@ -350,16 +350,25 @@ number forms, absolute and relative dates, near-collision providers, side
 speech, unintelligible text, frustration, human requests, menu numbers, and
 around twenty entries with explicit low-confidence or low-margin overrides.
 
-`fixtures/scenarios/*.json`, about fifteen multi-turn scripts, each a list of
-inbound frames with an expected final decision and expected slot values:
+`fixtures/scenarios/*.json`, around thirty multi-turn scripts (one file may
+hold many), each a list of steps (`say`, optionally with `partial: true` to
+send a non-final prompt frame or `fail: true` to inject a client failure, or
+`dtmf`) with an expected final decision, prompt id, handoff reason, form,
+slot values, and optionally `text`, a substring of the last turn's spoken
+output so implicit-confirm acks can be pinned:
 happy path per form, over-answering, intent switch mid-form, window then day,
 each retry policy step through to agent, DTMF entry, explicit confirm yes and
 no, disambiguation both ways, frustration escalation, client failure once and
 twice.
 
 `fixtures/expected/` holds the regression runner's recorded outcomes: for each
-corpus entry and scenario, the decision, filled slots, and the gate that
-decided.
+corpus entry and scenario, the decision, prompt id, handoff reason, the gate
+that decided, the active form, filled slots, and the implicit-confirm ack
+prompt ids, so a threshold change that only alters spoken confirmations
+still shows up in the diff. Corpus entries in an active form may name a
+`prompted` slot; the runner then seeds the preceding slots with placeholders
+before the greeting so the utterance exercises its own slot, and such seeded
+sessions are excluded from turns-to-completion.
 
 ## 13. Text harness
 
@@ -442,4 +451,6 @@ docs/superpowers/specs/
 Unchanged from the handoff's section 12, minus the ones the docs resolved
 (probabilities exposure, Noul field name, SDK choice, retry semantics). Still
 open and blocked on a key or a real call: every threshold value, measured
-latency, partial prompt semantics, smart-format effects.
+latency, whether partial `voicePrompt` is cumulative (the `hold` path for a
+`last: false` frame is implemented and pinned by a scenario, but the
+cancellation loop is not), smart-format effects.
