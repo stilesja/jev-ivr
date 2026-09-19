@@ -219,6 +219,14 @@ exports[`question redesign > pins every question the model sees inside a form (a
     "instructions": "Read asr.text. Which provider, if any, does the caller name?",
     "type": "choice",
   },
+  "providerUnsure": {
+    "criteria": {
+      "false": "The caller names a provider plainly, or names none. A caller correcting themselves, as in Dr. Chen, not Dr. Cheng, is sure, and so is a caller who hedges only about what they want done, as in maybe cancel it with Dr. Chen",
+      "true": "The caller hedges about the provider, as in it might be Dr. Kim or Dr. Rossi I think, or offers two names for one provider, as in Dr. Chen or Cheng, I am not sure",
+    },
+    "instructions": "Read asr.text. Is the caller unsure which provider they mean, or unsure of that provider's name?",
+    "type": "noul",
+  },
   "rephrasingLastTurn": {
     "instructions": "Read asr.text and history. Is the caller repeating or rewording a request because the previous turn's outcome in history shows the system did not act on it?",
     "type": "noul",
@@ -469,6 +477,14 @@ exports[`question redesign > pins every question the model sees outside a form (
     },
     "instructions": "Read asr.text. Which provider, if any, does the caller name?",
     "type": "choice",
+  },
+  "providerUnsure": {
+    "criteria": {
+      "false": "The caller names a provider plainly, or names none. A caller correcting themselves, as in Dr. Chen, not Dr. Cheng, is sure, and so is a caller who hedges only about what they want done, as in maybe cancel it with Dr. Chen",
+      "true": "The caller hedges about the provider, as in it might be Dr. Kim or Dr. Rossi I think, or offers two names for one provider, as in Dr. Chen or Cheng, I am not sure",
+    },
+    "instructions": "Read asr.text. Is the caller unsure which provider they mean, or unsure of that provider's name?",
+    "type": "noul",
   },
   "rephrasingLastTurn": {
     "instructions": "Read asr.text and history. Is the caller repeating or rewording a request because the previous turn's outcome in history shows the system did not act on it?",
