@@ -15,6 +15,8 @@ export const QUIET_NOUL: Record<string, number> = {
   memberIdComplete: 0.4,
   confirmsYes: 0.1,
   confirmsNo: 0.1,
+  intentTentative: 0.05,
+  providerUnsure: 0.05,
 };
 
 export const QUIET_SCORE_WINNER: Record<string, string> = {

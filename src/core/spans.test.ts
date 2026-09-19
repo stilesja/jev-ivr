@@ -21,6 +21,14 @@ describe('candidateSpans', () => {
     expect(candidateSpans('I want to cancel')).toEqual([]);
   });
 
+  it('does not let a lone multiplier word qualify a span', () => {
+    expect(candidateSpans('I am a hundred percent sure')).toEqual([]);
+  });
+
+  it('still includes a multiplier word alongside a real number word', () => {
+    expect(candidateSpans('three hundred fifty five')).toContain('three hundred fifty five');
+  });
+
   it('caps the list', () => {
     const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero'];
     const long = Array.from({ length: 40 }, (_, i) => words[i % 10] + (i >= 10 ? String(i) : '')).join(' ');

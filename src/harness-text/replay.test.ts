@@ -68,8 +68,8 @@ describe('replayFrameLog', () => {
     const opts = { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', now: () => 0, trace: null };
 
     // Drive the same events straight through runTurn (bypassing the adapter) to build up a log
-    // that completes in two user turns: a billing question, then the member ID, which the
-    // billing form's handoff worked example resolves in a `handoff` decision.
+    // that completes in three user turns: a billing question, the member ID, then the yes that
+    // confirms it, which the billing form's handoff worked example resolves in a `handoff` decision.
     let session = newSession('CA1', 0);
     const setup = { type: 'setup' as const, sessionId: 'VX1', callSid: 'CA1', from: '+1', to: '+2', customParameters: {} };
     log.write('in', setup);
@@ -79,7 +79,10 @@ describe('replayFrameLog', () => {
     session = (await runTurn(session, prompt1, opts)).result.session;
     const prompt2 = { type: 'prompt' as const, voicePrompt: 'my member ID is eight one two zero four four five seven', lang: 'en-US', last: true };
     log.write('in', prompt2);
-    const finalRun = await runTurn(session, prompt2, opts);
+    session = (await runTurn(session, prompt2, opts)).result.session;
+    const prompt3 = { type: 'prompt' as const, voicePrompt: 'yes', lang: 'en-US', last: true };
+    log.write('in', prompt3);
+    const finalRun = await runTurn(session, prompt3, opts);
     session = finalRun.result.session;
     expect(finalRun.result.decision.kind).toBe('handoff');
     expect(session.ended).toBe(true);
@@ -89,9 +92,9 @@ describe('replayFrameLog', () => {
     log.write('in', { type: 'prompt', voicePrompt: 'hello?', lang: 'en-US', last: true });
 
     const replay = await replayFrameLog(path, opts);
-    expect(replay.records).toHaveLength(3);
+    expect(replay.records).toHaveLength(4);
     expect(replay.records.at(-1)!.decision.kind).toBe('handoff');
-    expect(replay.skipped).toEqual(['line 4: prompt after the call ended']);
+    expect(replay.skipped).toEqual(['line 5: prompt after the call ended']);
   });
 
   it('uses the frame log clock and date', async () => {

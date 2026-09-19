@@ -16,10 +16,31 @@ export interface PromptDecision {
   menu?: boolean;
 }
 
+export interface CompleteDecision {
+  kind: 'complete';
+  form: FormId;
+  promptId: string;
+  vars: Record<string, string>;
+  /** implicit-confirm and bridge phrases spoken before the completion */
+  acks: Ack[];
+  /** forms closed by a completion prompt on this call */
+  completed: FormId[];
+}
+
+export interface HandoffDecision {
+  kind: 'handoff';
+  reason: string;
+  promptId: string;
+  acks: Ack[];
+  completed: FormId[];
+  /** intents the caller added that the call never started */
+  queued: FormId[];
+}
+
 export type Decision =
   | { kind: 'ignore' }
   | { kind: 'hold' }
   | PromptDecision
-  | { kind: 'complete'; form: FormId; promptId: string; vars: Record<string, string> }
-  | { kind: 'handoff'; reason: string; promptId: string }
+  | CompleteDecision
+  | HandoffDecision
   | { kind: 'replay'; text: string };

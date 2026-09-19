@@ -1,7 +1,7 @@
 import { choiceAnswer, choiceLabels, noulAnswer, normalize, scoreAnswer, sharp } from './distributions';
 import { quietAnswer } from './defaults';
 import { estimateTokens, type Answer, type AnswerMap, type JevClient, type JevRequest, type JevResponse, type Question } from './types';
-import { spokenToDigits } from '../core/extract/spokenNumber';
+import { NUMBER_WORDS, spokenToDigits } from '../core/extract/spokenNumber';
 import { MONTHS, WEEKDAYS } from '../core/extract/date';
 import { INTENT_MENU } from '../domain/intents';
 import { PROVIDERS } from '../domain/slots/provider';
@@ -47,12 +47,23 @@ function providerAnswer(text: string, labels: string[]): Answer {
   return choiceAnswer(normalize(probs));
 }
 
+function numberWordCount(span: string): number {
+  return span.split(' ').filter((tok) => /\d/.test(tok) || NUMBER_WORDS.has(tok)).length;
+}
+
 function spanAnswer(labels: string[]): Answer {
+  // Among spans whose digits satisfy the mask, prefer the most number-bearing
+  // tokens, not the most tokens overall: a chunked group ("three hundred
+  // fifty five") can mask to eight digits on a truncated prefix that drops
+  // trailing number words, so "fewest tokens" picks that truncation over the
+  // full phrase. But raw "most tokens" over-corrects the other way, letting
+  // non-number filler ("my member id is ...") outweigh a shorter, complete
+  // phrase. Break remaining ties toward fewer total tokens to shed that filler.
   const scored = labels
     .filter((l) => l !== 'none')
-    .map((l) => ({ l, digits: spokenToDigits(l), tokens: l.split(' ').length }))
+    .map((l) => ({ l, digits: spokenToDigits(l), numberWords: numberWordCount(l), tokens: l.split(' ').length }))
     .filter((x) => x.digits.length === 8)
-    .sort((a, b) => a.tokens - b.tokens);
+    .sort((a, b) => b.numberWords - a.numberWords || a.tokens - b.tokens);
   return choiceAnswer(sharp(labels, scored[0]?.l ?? 'none', 0.9));
 }
 

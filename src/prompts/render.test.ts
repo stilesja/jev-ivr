@@ -76,7 +76,7 @@ describe('decisionToFrames', () => {
   });
 
   it('ends the call after a handoff prompt', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing' });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [], completed: [], queued: [] });
     expect(frames[1]).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing"}' });
   });
 
@@ -93,5 +93,30 @@ describe('completion prompts', () => {
       const text = promptEntry(spec.completion.promptId).text;
       for (const slot of spec.slots) expect(text, `${form}: ${spec.completion.promptId}`).toContain(`{${slot}}`);
     }
+  });
+});
+
+describe('completion and chaining', () => {
+  it('no completion prompt ends the call by itself', () => {
+    for (const spec of Object.values(FORMS)) {
+      if (spec.completion.kind === 'prompt') expect(promptEntry(spec.completion.promptId).text).not.toMatch(/goodbye/i);
+    }
+  });
+
+  it('speaks acks, the completion, then goodbye, then ends', () => {
+    const frames = decisionToFrames({ kind: 'complete', form: 'cancel', promptId: 'cancel_confirmed', vars: { memberId: '4471 8293', provider: 'Dr. Kim' }, acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Kim' } }], completed: ['cancel'] });
+    expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(['With Dr. Kim.', promptText('cancel_confirmed', { memberId: '4471 8293', provider: 'Dr. Kim' }), 'Goodbye.', 'end']);
+    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed","completed":["cancel"]}' });
+  });
+
+  it('speaks acks before a handoff and reports completed forms', () => {
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [] });
+    expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's ask about billing.", 'Connecting you to billing now.', 'end']);
+    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"]}' });
+  });
+
+  it('reports intents the call never started in the handoff data', () => {
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent', acks: [], completed: ['cancel'], queued: ['schedule_new'] });
+    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"live-agent","completed":["cancel"],"queued":["schedule_new"]}' });
   });
 });

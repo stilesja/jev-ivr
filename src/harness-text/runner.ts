@@ -22,6 +22,8 @@ export interface Outcome {
   verdict: string | null;
   form: string | null;
   slots: Record<SlotId, string | null>;
+  /** intents added mid-form and not yet started */
+  queued: string[];
 }
 
 export function outcomeOf(id: string, result: TurnResult): Outcome {
@@ -30,12 +32,13 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
     id,
     decision: d.kind,
     promptId: 'promptId' in d ? d.promptId : null,
-    acks: d.kind === 'prompt' ? d.acks.map((a) => a.promptId) : [],
+    acks: 'acks' in d ? d.acks.map((a) => a.promptId) : [],
     reason: d.kind === 'handoff' ? d.reason : null,
     decidedGate: result.rows.find((r) => r.decided)?.gate ?? null,
     verdict: result.verdict?.kind ?? null,
     form: result.session.form,
     slots: Object.fromEntries(ALL_SLOTS.map((id) => [id, result.session.slots[id].value])) as Record<SlotId, string | null>,
+    queued: [...result.session.queued],
   };
 }
 

@@ -1,6 +1,7 @@
 import type { FormId, Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 import type { DateWindow } from './extract/date';
+import type { AnswerMap } from '../jev/types';
 
 export interface SlotState {
   value: string | null;
@@ -22,10 +23,19 @@ export interface CallerRecord {
   priorCalls7d: number;
 }
 
-export interface PendingConfirmation {
-  target: 'intent';
-  intent: Intent;
-}
+export type PendingConfirmation =
+  | {
+      target: 'intent';
+      intent: Intent;
+      /**
+       * the routing utterance's answers and text, so slots it spoke fill once the intent is confirmed (spec 2026-09-19 §3.3)
+       * Shared by reference across session clones; never mutated. Complete only when the route happened outside a form:
+       * a mid-form switch stashes the old form's slot answers, and the new form's other slots are asked normally.
+       */
+      answers: Readonly<AnswerMap>;
+      text: string;
+    }
+  | { target: 'slot'; slot: SlotId; value: string; display: string };
 
 export interface Interrupt {
   utteranceUntilInterrupt: string;
@@ -47,6 +57,10 @@ export interface Session {
   /** the intent DTMF menu was just played */
   menuActive: boolean;
   pendingConfirmation: PendingConfirmation | null;
+  /** intents the caller added mid-form, handled in order after the current form completes */
+  queued: FormId[];
+  /** forms closed by a completion prompt on this call, reported in handoff data */
+  completed: FormId[];
   history: HistoryEntry[];
   caller: CallerRecord;
   dtmfBuffer: string;
@@ -84,6 +98,8 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
     lastPromptOptions: [],
     menuActive: false,
     pendingConfirmation: null,
+    queued: [],
+    completed: [],
     history: [],
     caller: { ...caller },
     dtmfBuffer: '',
@@ -93,7 +109,10 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
   };
 }
 
-/** Deep enough copy that resolve() can mutate freely without touching the caller's object. */
+/**
+ * Deep enough copy that resolve() can mutate freely without touching the caller's object.
+ * the pending confirmation's stashed answers are shared by reference because they are read-only
+ */
 export function cloneSession(s: Session): Session {
   return {
     ...s,
@@ -106,6 +125,8 @@ export function cloneSession(s: Session): Session {
     history: s.history.map((h) => ({ ...h })),
     caller: { ...s.caller },
     pendingConfirmation: s.pendingConfirmation ? { ...s.pendingConfirmation } : null,
+    queued: [...s.queued],
+    completed: [...s.completed],
     lastInterrupt: s.lastInterrupt ? { ...s.lastInterrupt } : null,
   };
 }
@@ -133,6 +154,9 @@ export function bucketPriorCalls(n: number): PriorCallsBucket {
 
 export function setForm(session: Session, form: FormId): Session {
   session.form = form;
+  // The form in hand is never also waiting in the queue, however it was entered:
+  // a switch to a queued intent starts it now rather than promising it twice.
+  session.queued = session.queued.filter((q) => q !== form);
   session.intentAttempts = 0;
   session.pendingConfirmation = null;
   session.menuActive = false;

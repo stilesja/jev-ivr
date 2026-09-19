@@ -48,9 +48,18 @@ export function decisionToFrames(decision: Decision): OutboundFrame[] {
       return frames;
     }
     case 'complete':
-      return [textFrame(promptText(decision.promptId, decision.vars), false), endFrame('completed')];
+      return [
+        ...decision.acks.map((a) => textFrame(promptText(a.promptId, a.vars), false)),
+        textFrame(promptText(decision.promptId, decision.vars), false),
+        textFrame(promptText('goodbye', {}), false),
+        endFrame('completed', decision.completed),
+      ];
     case 'handoff':
-      return [textFrame(promptText(decision.promptId, {}), false), endFrame(decision.reason)];
+      return [
+        ...decision.acks.map((a) => textFrame(promptText(a.promptId, a.vars), false)),
+        textFrame(promptText(decision.promptId, {}), false),
+        endFrame(decision.reason, decision.completed, decision.queued),
+      ];
   }
 }
 
@@ -69,9 +78,9 @@ export function spokenText(decision: Decision): string {
     case 'prompt':
       return [...decision.acks.map((a) => promptText(a.promptId, a.vars)), promptText(decision.promptId, decision.vars)].join(' ');
     case 'complete':
-      return promptText(decision.promptId, decision.vars);
+      return [...decision.acks.map((a) => promptText(a.promptId, a.vars)), promptText(decision.promptId, decision.vars), promptText('goodbye', {})].join(' ');
     case 'handoff':
-      return promptText(decision.promptId, {});
+      return [...decision.acks.map((a) => promptText(a.promptId, a.vars)), promptText(decision.promptId, {})].join(' ');
   }
 }
 

@@ -81,13 +81,13 @@ describe('evaluateGates', () => {
 
   it('switches forms on a confident new intent', () => {
     const s = setForm(newSession('s', 0), 'cancel');
-    expect(run(s, baseAnswers({ intent: choice({ reschedule: 0.9, none: 0.1 }) })).verdict)
+    expect(run(s, baseAnswers({ intent: choice({ reschedule: 0.9, none: 0.1 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }) })).verdict)
       .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
   });
 
   it('resolves a pending explicit confirmation', () => {
     const s = newSession('s', 0);
-    s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+    s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
     expect(run(s, baseAnswers({ confirmsYes: noul(0.9), confirmsNo: noul(0.1) })).verdict).toEqual({ kind: 'confirmed' });
     expect(run(s, baseAnswers({ confirmsYes: noul(0.1), confirmsNo: noul(0.9) })).verdict).toEqual({ kind: 'rejected' });
   });
@@ -101,13 +101,13 @@ describe('evaluateGates', () => {
 
   it('asks to confirm a mid-confidence intent switch', () => {
     const s = setForm(newSession('s', 0), 'cancel');
-    expect(run(s, baseAnswers({ intent: choice({ reschedule: 0.7, none: 0.3 }) })).verdict)
+    expect(run(s, baseAnswers({ intent: choice({ reschedule: 0.7, none: 0.3 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }) })).verdict)
       .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'explicit' });
   });
 
   it('reports an unanswered confirmation when no new intent is expressed', () => {
     const s = newSession('s', 0);
-    s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+    s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
     const r = run(s, baseAnswers({
       confirmsYes: noul(0.5), confirmsNo: noul(0.5), intent: choice({ none: 0.9, other: 0.1 }),
     }));
@@ -117,5 +117,77 @@ describe('evaluateGates', () => {
   it('handles agent and repeat intents', () => {
     expect(run(newSession('s', 0), baseAnswers({ intent: choice({ agent: 0.8, none: 0.2 }) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
     expect(run(newSession('s', 0), baseAnswers({ intent: choice({ repeat_prompt: 0.8, none: 0.2 }) })).verdict).toEqual({ kind: 'replay' });
+  });
+  it('routes a tentative request with an explicit confirm even at full probability', () => {
+    const r = run(newSession('s', 0), baseAnswers({ intent: choice({ cancel: 0.98, none: 0.02 }), intentTentative: noul(0.9) }));
+    expect(r.verdict).toEqual({ kind: 'route', intent: 'cancel', confirm: 'explicit' });
+    expect(r.rows.find((g) => g.gate === 'intent')?.outcome).toBe('route_tentative:cancel');
+    expect(r.rows.find((g) => g.gate === 'intentTentative')).toMatchObject({ threshold: 0.5, passed: true, outcome: 'tentative' });
+  });
+
+  it('leaves agent and repeat requests alone when tentative', () => {
+    expect(run(newSession('s', 0), baseAnswers({ intent: choice({ agent: 0.9, none: 0.1 }), intentTentative: noul(0.9) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
+  });
+
+  it('still disambiguates a narrow margin when the request is tentative', () => {
+    expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.52, cancel: 0.48 }), intentTentative: noul(0.9) })).verdict)
+      .toEqual({ kind: 'disambiguate_intent', a: 'reschedule', b: 'cancel' });
+  });
+
+  describe('inside a form', () => {
+    const inForm = () => setForm(newSession('s', 0), 'reschedule');
+
+    it('treats a confident different intent as answering when intentChange says so', () => {
+      const r = run(inForm(), baseAnswers({ intent: choice({ billing: 0.95, none: 0.05 }), intentChange: choice({ answering: 0.9, adding: 0.05, replacing: 0.05 }) }));
+      expect(r.verdict).toEqual({ kind: 'proceed' });
+      expect(r.rows.find((g) => g.gate === 'intentChange')).toMatchObject({ outcome: 'answering', threshold: 0.6 });
+    });
+
+    it('queues an added intent', () => {
+      const r = run(inForm(), baseAnswers({ intent: choice({ billing: 0.95, none: 0.05 }), intentChange: choice({ adding: 0.85, answering: 0.1, replacing: 0.05 }) }));
+      expect(r.verdict).toEqual({ kind: 'queue', intent: 'billing' });
+      expect(r.rows.find((g) => g.gate === 'intent')?.outcome).toBe('queue:billing');
+    });
+
+    it('does not queue the active form or a weak intent', () => {
+      const same = run(inForm(), baseAnswers({ intent: choice({ reschedule: 0.95, none: 0.05 }), intentChange: choice({ adding: 0.85, answering: 0.1, replacing: 0.05 }) }));
+      expect(same.verdict).toEqual({ kind: 'proceed' });
+      expect(same.rows.find((g) => g.gate === 'intent')?.outcome).toBe('add_unused:reschedule');
+      expect(run(inForm(), baseAnswers({ intent: choice({ billing: 0.5, none: 0.5 }), intentChange: choice({ adding: 0.85, answering: 0.1, replacing: 0.05 }) })).verdict).toEqual({ kind: 'proceed' });
+    });
+
+    it('switches on replacing, explicitly when tentative', () => {
+      const replacing = choice({ replacing: 0.9, answering: 0.05, adding: 0.05 });
+      expect(run(inForm(), baseAnswers({ intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: replacing })).verdict).toEqual({ kind: 'route', intent: 'cancel', confirm: 'none' });
+      const r = run(inForm(), baseAnswers({ intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: replacing, intentTentative: noul(0.8) }));
+      expect(r.verdict).toEqual({ kind: 'route', intent: 'cancel', confirm: 'explicit' });
+      expect(r.rows.find((g) => g.gate === 'intent')?.outcome).toBe('switch_tentative:cancel');
+    });
+
+    it('falls back to answering below the change threshold', () => {
+      const r = run(inForm(), baseAnswers({ intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: choice({ replacing: 0.5, answering: 0.45, adding: 0.05 }) }));
+      expect(r.verdict).toEqual({ kind: 'proceed' });
+      expect(r.rows.find((g) => g.gate === 'intentChange')).toMatchObject({ passed: false, outcome: 'answering:below' });
+    });
+
+    it('proceeds on an unrecognized change label', () => {
+      const r = run(inForm(), baseAnswers({ intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: choice({ swapping: 0.9, answering: 0.05, replacing: 0.05 }) }));
+      expect(r.verdict).toEqual({ kind: 'proceed' });
+      expect(r.rows.find((g) => g.gate === 'intent')?.outcome).toBe('proceed:cancel');
+    });
+
+    it('hands off to an agent before the change mode is consulted', () => {
+      expect(run(inForm(), baseAnswers({ intent: choice({ agent: 0.9, none: 0.1 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }) })).verdict)
+        .toEqual({ kind: 'handoff', reason: 'live-agent' });
+    });
+
+    it('still reports an unanswered confirmation when the intent would be queued', () => {
+      const s = inForm();
+      s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
+      expect(run(s, baseAnswers({
+        confirmsYes: noul(0.1), confirmsNo: noul(0.1),
+        intent: choice({ billing: 0.95, none: 0.05 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }),
+      })).verdict).toEqual({ kind: 'confirm_unanswered', queue: 'billing' });
+    });
   });
 });

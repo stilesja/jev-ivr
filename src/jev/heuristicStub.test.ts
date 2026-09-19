@@ -56,6 +56,11 @@ describe('HeuristicStubClient', () => {
     expect((res.answers.memberIdSpan as { choice: string }).choice).toBe('four four seven one eight two nine three');
   });
 
+  it('picks the full chunked span, not a truncated prefix that also masks to eight digits', async () => {
+    const res = await ask('my member id is forty four one eighty seven three hundred fifty five');
+    expect((res.answers.memberIdSpan as { choice: string }).choice).toBe('forty four one eighty seven three hundred fifty five');
+  });
+
   it('flags a request for a human', async () => {
     const res = await ask('just let me talk to a person');
     expect((res.answers.wantsHuman as { noul: number }).noul).toBeGreaterThan(0.8);

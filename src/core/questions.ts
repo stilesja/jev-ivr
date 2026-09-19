@@ -4,7 +4,7 @@ import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import type { Session } from './session';
 
 export const ALWAYS_ON_IDS = [
-  'intent', 'intentSecondary',
+  'intent', 'intentTentative',
   'addressedToSystem', 'utteranceComplete', 'wantsHuman', 'rephrasingLastTurn', 'confusedByPrompt', 'spokeAMenuNumber',
   'frustration', 'urgency', 'triedSelfService', 'languageSwitch',
   'intelligible',
@@ -19,10 +19,13 @@ function alwaysOn(): QuestionMap {
       instructions: 'Read asr.text. What is the caller asking the clinic phone line to do? If they are only answering a slot or confirmation question and not asking for anything new, choose none.',
       criteria: INTENT_CRITERIA_MAP,
     },
-    intentSecondary: {
-      type: 'choice',
-      instructions: 'Read asr.text. Besides the main request, which second, different request does the caller make, if any? Choose none if there is only one request.',
-      criteria: INTENT_CRITERIA_MAP,
+    intentTentative: {
+      type: 'noul',
+      instructions: 'Read asr.text. Does the caller express their request tentatively, with words such as maybe, I guess, I think, possibly, or might, rather than stating it plainly?',
+      criteria: {
+        true: 'The hedge is about what the caller wants done, as in maybe cancel it or I guess I need to cancel',
+        false: 'The request is stated plainly, even if the caller hedges about a detail such as a date, a provider name, or a number',
+      },
     },
     addressedToSystem: {
       type: 'noul',
@@ -77,7 +80,11 @@ function alwaysOn(): QuestionMap {
     },
     intelligible: {
       type: 'noul',
-      instructions: 'Read asr.text. Is the text a coherent English utterance rather than garbled fragments or noise?',
+      instructions: 'Read asr.text. Is the text words the caller actually said, rather than garbled fragments or background noise?',
+      criteria: {
+        true: 'Any real utterance, including a single word, a yes or no, a name, a number, or a string of digits',
+        false: 'Garbled fragments, transcribed noise, or nothing but a filler sound such as um or uh',
+      },
     },
   };
 }
@@ -91,6 +98,25 @@ function confirmation(): QuestionMap {
     confirmsNo: {
       type: 'noul',
       instructions: 'Read asr.text and node.promptJustPlayed. Does the caller answer no to the confirmation question?',
+    },
+  };
+}
+
+/**
+ * Spec 2026-09-19 §2.2: what an in-form utterance does to the current task. Asked only inside a form.
+ * answering is first because quietAnswer() defaults a none-less Choice to labels[0], matching spec §3.2's
+ * below-threshold default.
+ */
+function inForm(): QuestionMap {
+  return {
+    intentChange: {
+      type: 'choice',
+      instructions: 'Read asr.text. The caller is in the middle of the task described by activeFormLabel and was just asked node.promptJustPlayed. Which best describes this utterance?',
+      criteria: {
+        answering: 'Answers or reacts to the question that was just asked, restates the current task, or says something incidental; anything that is not a request for a different task',
+        adding: 'Asks for an additional task to be handled as well, while keeping the current one, for example with also, as well, and another thing, or after this',
+        replacing: 'Abandons the current task in favour of a different one, for example with never mind, forget that, instead, or actually I just want',
+      },
     },
   };
 }
@@ -112,6 +138,7 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   const q: QuestionMap = { ...alwaysOn() };
   const specs = session.form ? slotsFor(session.form) : allSlots();
   for (const spec of specs) Object.assign(q, spec.questions(ctx));
+  if (session.form) Object.assign(q, inForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
   if (session.menuActive) Object.assign(q, menu());
   return q;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadCorpus, normalizeText } from './corpus';
+import { loadCorpus, normalizeText, parseCorpus, type CorpusEntry } from './corpus';
 import { candidateSpans } from '../core/spans';
 import { spokenToDigits } from '../core/extract/spokenNumber';
 import { DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS } from '../core/extract/date';
@@ -25,7 +25,7 @@ describe('fixtures/corpus.jsonl', () => {
 
   it('overrides name only questions the schema can ask', () => {
     const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null };
-    const askable = new Set<string>([...ALWAYS_ON_IDS, 'confirmsYes', 'confirmsNo', 'menuNumberSaid']);
+    const askable = new Set<string>([...ALWAYS_ON_IDS, 'confirmsYes', 'confirmsNo', 'menuNumberSaid', 'intentChange']);
     for (const spec of allSlots()) for (const id of Object.keys(spec.questions(ctx))) askable.add(id);
     for (const e of corpus) {
       for (const id of Object.keys(e.answers ?? {})) expect([...askable], `${e.id}: ${id}`).toContain(id);
@@ -69,5 +69,49 @@ describe('fixtures/corpus.jsonl', () => {
     expect(corpus.some((e) => e.slots?.date?.mode === 'absolute')).toBe(true);
     expect(corpus.some((e) => e.slots?.date?.mode === 'window')).toBe(true);
     expect(corpus.filter((e) => e.answers).length).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('parseCorpus', () => {
+  const entries: CorpusEntry[] = [
+    {
+      id: 'r1', text: 'Reschedule with Dr. Chen next week', intent: 'reschedule', context: 'no_form',
+      slots: { provider: 'chen', date: { mode: 'window', window: 'next_week' } },
+    },
+    {
+      id: 'm1', text: 'four four seven one eight two nine three', intent: 'none', context: 'billing',
+      slots: { memberId: { span: 'four four seven one eight two nine three', value: '44718293' } },
+    },
+  ];
+
+  it('parses JSONL, skips blank lines and rejects duplicate ids', () => {
+    const text = JSON.stringify(entries[0]) + '\n\n' + JSON.stringify(entries[1]) + '\n';
+    expect(parseCorpus(text).map((e) => e.id)).toEqual(['r1', 'm1']);
+    expect(() => parseCorpus(text + JSON.stringify(entries[0]))).toThrow(/duplicate/);
+  });
+
+  it('normalizes text for lookup', () => {
+    expect(normalizeText('Reschedule, with Dr. Chen!')).toBe('reschedule with dr chen');
+  });
+
+  it('rejects an unknown context and duplicate normalized text', () => {
+    const badContext = { ...entries[0], context: 'not_a_form' };
+    expect(() => parseCorpus(JSON.stringify(badContext))).toThrow(/unknown context/);
+
+    const dup = { ...entries[0], id: 'r1-dup', text: 'Reschedule, with Dr. Chen next week!' };
+    const text = JSON.stringify(entries[0]) + '\n' + JSON.stringify(dup);
+    expect(() => parseCorpus(text)).toThrow(/duplicates/);
+  });
+
+  it('accepts tentative, change and providerUnsure labels and rejects a bad change', () => {
+    const ok = parseCorpus('{"id":"a","text":"maybe","intent":"cancel","context":"no_form","tentative":true}\n{"id":"b","text":"also bill","intent":"billing","context":"reschedule","change":"adding","providerUnsure":true}\n');
+    expect(ok[0]?.tentative).toBe(true);
+    expect(ok[1]?.change).toBe('adding');
+    expect(() => parseCorpus('{"id":"c","text":"x","intent":"cancel","context":"reschedule","change":"swapping"}\n')).toThrow(/must be adding or replacing/);
+    expect(() => parseCorpus('{"id":"d","text":"x","intent":"cancel","context":"no_form","change":"adding"}\n')).toThrow(/needs a form context/);
+    expect(() => parseCorpus('{"id":"e","text":"x","intent":"cancel","context":"no_form","tentaive":true}\n')).toThrow(/unknown field tentaive/);
+    expect(() => parseCorpus('{"id":"f","text":"x","intent":"cancel","context":"no_form","tentative":"true"}\n')).toThrow(/must be a boolean/);
+    expect(() => parseCorpus('{"id":"g","text":"x","intent":"none","context":"reschedule","change":"adding"}\n')).toThrow(/needs an intent/);
+    expect(() => parseCorpus('{"id":"h","text":"x","intent":"cancel","context":"billing","providerUnsure":true}\n')).toThrow(/not on form billing/);
   });
 });

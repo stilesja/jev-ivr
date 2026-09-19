@@ -19,12 +19,14 @@ export interface TurnState {
   node: { id: string; promptJustPlayed: string; options: string[] };
   turn: { attempt: AttemptBucket; elapsed: ElapsedBucket };
   activeForm: string | null;
+  activeFormLabel: string | null;
   slots: Record<SlotId, { value: string | null; confirmed: boolean }>;
   history: Array<{ node: string; intent: string; outcome: string }>;
   caller: { verified: boolean; openAppointment: boolean; priorCalls: PriorCallsBucket };
   asr: { text: string; isFinal: boolean; bargeIn: boolean; dtmf: string | null };
   candidateSpans: string[];
-  pendingConfirmation: { target: string; value: string } | null;
+  /** the model sees the slot id where the session stores a discriminant */
+  pendingConfirmation: { target: 'intent' | SlotId; value: string } | null;
 }
 
 export function buildTurnState(session: Session, input: TurnInput, nowMs: number): TurnState {
@@ -43,6 +45,7 @@ export function buildTurnState(session: Session, input: TurnInput, nowMs: number
       elapsed: bucketElapsed(nowMs - session.startedAtMs),
     },
     activeForm: session.form,
+    activeFormLabel: session.form ? INTENT_LABELS[session.form] : null,
     slots,
     history: session.history.slice(-HISTORY_WINDOW).map((h) => ({ ...h })),
     caller: {
@@ -53,7 +56,9 @@ export function buildTurnState(session: Session, input: TurnInput, nowMs: number
     asr: { text: input.text, isFinal: input.isFinal, bargeIn: session.lastInterrupt !== null, dtmf: input.dtmf },
     candidateSpans: candidateSpans(input.text),
     pendingConfirmation: session.pendingConfirmation
-      ? { target: 'intent', value: INTENT_LABELS[session.pendingConfirmation.intent] }
+      ? session.pendingConfirmation.target === 'intent'
+        ? { target: 'intent', value: INTENT_LABELS[session.pendingConfirmation.intent] }
+        : { target: session.pendingConfirmation.slot, value: session.pendingConfirmation.display }
       : null,
   };
 }

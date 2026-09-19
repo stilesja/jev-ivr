@@ -11,64 +11,115 @@ const TENS: Record<string, number> = {
   sixty: 60, seventy: 70, eighty: 80, ninety: 90,
 };
 const REPEATS: Record<string, number> = { double: 2, triple: 3 };
+const MULTIPLIERS: Record<string, number> = { hundred: 100, thousand: 1000 };
 
 export const NUMBER_WORDS: ReadonlySet<string> = new Set([
-  ...Object.keys(UNITS), ...Object.keys(TEENS), ...Object.keys(TENS), ...Object.keys(REPEATS),
+  ...Object.keys(UNITS), ...Object.keys(TEENS), ...Object.keys(TENS), ...Object.keys(REPEATS), ...Object.keys(MULTIPLIERS),
 ]);
+
+export const MULTIPLIER_WORDS: ReadonlySet<string> = new Set(Object.keys(MULTIPLIERS));
 
 export function tokenize(text: string): string[] {
   return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
 }
 
 /**
- * Convert spoken number words to a digit string. Non-number tokens are
- * ignored so a loosely chosen span still yields digits; the slot mask
- * decides whether the result is acceptable.
+ * Convert spoken number words to a digit string. Groups compose the way
+ * English does ("forty four" 44, "three hundred five" 305, "two thousand"
+ * 2000, "one thousand two hundred thirty four" 1234) and consecutive
+ * groups concatenate ("forty four, one eighty seven" 44187). Non-number
+ * tokens close the current group and are otherwise ignored, so a loosely
+ * chosen span still yields digits; the slot mask decides whether the
+ * result is acceptable. A spoken zero always starts its own digit rather
+ * than composing into a group.
  */
 export function spokenToDigits(text: string): string {
-  let out = '';
+  const parts: string[] = [];
+  let cur: { total: number; small: number } | null = null; // the group being built
   let pendingTens: number | null = null;
   let repeat = 1;
+  let open = false; // a multiplier was just applied
 
-  const emit = (n: number): void => {
-    out += String(n).repeat(repeat);
-    repeat = 1;
+  const closeGroup = (): void => {
+    if (cur) parts.push(String(cur.total + cur.small));
+    cur = null;
+    open = false;
+  };
+  const add = (n: number): void => {
+    if (repeat !== 1) {
+      closeGroup();
+      parts.push(String(n).repeat(repeat));
+      repeat = 1;
+      return;
+    }
+    // "three hundred" then "five" adds into the group; a spoken zero never does (it is its own digit).
+    if (open && cur && n !== 0) {
+      cur.small += n;
+      open = false;
+      return;
+    }
+    closeGroup();
+    cur = { total: 0, small: n };
   };
   const flush = (): void => {
     if (pendingTens !== null) {
-      emit(pendingTens);
+      const n = pendingTens;
       pendingTens = null;
+      add(n);
     }
+  };
+  const close = (): void => {
+    flush();
+    closeGroup();
+    repeat = 1;
+  };
+  const multiply = (m: number): void => {
+    flush();
+    if (!cur) {
+      add(m);
+      return;
+    }
+    if (m >= 1000) {
+      cur.total = (cur.total + cur.small) * m;
+      cur.small = 0;
+    } else {
+      cur.small = (cur.small || 1) * m;
+    }
+    open = true;
   };
 
   for (const tok of tokenize(text)) {
     if (/^\d+$/.test(tok)) {
-      flush();
-      out += tok.repeat(repeat);
+      close();
+      parts.push(tok.repeat(repeat));
       repeat = 1;
     } else if (tok in REPEATS) {
       flush();
       repeat = REPEATS[tok]!;
+    } else if (tok in MULTIPLIERS) {
+      multiply(MULTIPLIERS[tok]!);
+    } else if (tok === 'and') {
+      if (!open) close();
     } else if (tok in UNITS) {
       const unit = UNITS[tok]!;
       if (pendingTens !== null && unit !== 0) {
-        emit(pendingTens + unit);
+        const n = pendingTens + unit;
         pendingTens = null;
+        add(n);
       } else {
         flush();
-        emit(unit);
+        add(unit);
       }
     } else if (tok in TEENS) {
       flush();
-      emit(TEENS[tok]!);
+      add(TEENS[tok]!);
     } else if (tok in TENS) {
       flush();
       pendingTens = TENS[tok]!;
     } else {
-      flush();
-      repeat = 1;
+      close();
     }
   }
-  flush();
-  return out;
+  close();
+  return parts.join('');
 }

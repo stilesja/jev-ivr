@@ -2,7 +2,7 @@ import type { AnswerMap } from '../jev/types';
 import type { SlotId } from '../domain/forms';
 import { SLOTS, type SlotCandidate, type SlotContext, type SlotOutcome, type SlotSpec } from '../domain/slots';
 import type { DateWindow } from './extract/date';
-import { missingSlots, requiredSlots, type Session } from './session';
+import { missingSlots, requiredSlots, type PendingConfirmation, type Session } from './session';
 import type { Thresholds } from './thresholds';
 
 export type RetryStep = 'open' | 'dtmf' | 'agent';
@@ -46,12 +46,17 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
     const slot = session.slots[spec.id];
     switch (outcome.kind) {
       case 'filled': {
+        // The slot's own policy, not the fill outcome, decides whether a spoken value is
+        // read back: an always-confirm slot lands unconfirmed and silent, and the caller
+        // hears it in a confirm_<slot> prompt. A value already confirmed and spoken again
+        // unchanged stays confirmed, so repeating it does not re-open the readback.
+        const readBack = SLOTS[spec.id].spokenConfirm === 'always';
         const keepConfirmed = slot.confirmed && slot.value === outcome.value;
         slot.value = outcome.value;
         slot.display = outcome.display;
-        slot.confirmed = outcome.confirm === 'none' || keepConfirmed;
+        slot.confirmed = keepConfirmed || (!readBack && outcome.confirm === 'none');
         slot.window = null;
-        if (outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
+        if (!readBack && outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
         progress = true;
         break;
       }
@@ -80,6 +85,17 @@ export function nextPrompt(session: Session): NextPrompt {
   const [slot] = missingSlots(session);
   if (!slot) return { kind: 'complete' };
   return { kind: 'ask', slot, window: session.slots[slot].window };
+}
+
+/** The readback owed for the first filled, unconfirmed always-confirm slot, or null. */
+export function pendingSlotConfirmation(session: Session): Extract<PendingConfirmation, { target: 'slot' }> | null {
+  for (const id of requiredSlots(session)) {
+    const s = session.slots[id];
+    if (s.value !== null && !s.confirmed && SLOTS[id].spokenConfirm === 'always') {
+      return { target: 'slot', slot: id, value: s.value, display: s.display ?? s.value };
+    }
+  }
+  return null;
 }
 
 export type DtmfResult =

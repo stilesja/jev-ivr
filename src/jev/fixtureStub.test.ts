@@ -7,7 +7,7 @@ import { newSession } from '../core/session';
 import { buildTurnState } from '../core/state';
 import { candidateSpans } from '../core/spans';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
-import { JevClientError } from './types';
+import { JevClientError, type QuestionMap } from './types';
 
 const entries: CorpusEntry[] = [
   {
@@ -30,26 +30,6 @@ function request(text: string) {
   const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
   return { state: state as never, questions };
 }
-
-describe('parseCorpus', () => {
-  it('parses JSONL, skips blank lines and rejects duplicate ids', () => {
-    const text = JSON.stringify(entries[0]) + '\n\n' + JSON.stringify(entries[1]) + '\n';
-    expect(parseCorpus(text).map((e) => e.id)).toEqual(['r1', 'm1']);
-    expect(() => parseCorpus(text + JSON.stringify(entries[0]))).toThrow(/duplicate/);
-  });
-  it('normalizes text for lookup', () => {
-    expect(normalizeText('Reschedule, with Dr. Chen!')).toBe('reschedule with dr chen');
-  });
-
-  it('parseCorpus rejects an unknown context and duplicate normalized text', () => {
-    const badContext = { ...entries[0], context: 'not_a_form' };
-    expect(() => parseCorpus(JSON.stringify(badContext))).toThrow(/unknown context/);
-
-    const dup = { ...entries[0], id: 'r1-dup', text: 'Reschedule, with Dr. Chen next week!' };
-    const text = JSON.stringify(entries[0]) + '\n' + JSON.stringify(dup);
-    expect(() => parseCorpus(text)).toThrow(/duplicates/);
-  });
-});
 
 describe('FixtureStubClient', () => {
   const client = new FixtureStubClient(entries, { sharpness: 0.9, fallback: new HeuristicStubClient() });
@@ -123,5 +103,21 @@ describe('FixtureStubClient', () => {
     const failing = new FixtureStubClient(entries, { sharpness: 0.9, fallback: new HeuristicStubClient(), injectFailure: (n) => n === 1 });
     await expect(failing.ask(request('maybe cancel it'))).rejects.toBeInstanceOf(JevClientError);
     await expect(failing.ask(request('maybe cancel it'))).resolves.toBeDefined();
+  });
+
+  it('answers the redesign questions from labels', async () => {
+    const corpus = parseCorpus('{"id":"t","text":"maybe cancel it","intent":"cancel","context":"no_form","tentative":true}\n{"id":"a","text":"also my bill","intent":"billing","context":"reschedule","change":"adding"}\n{"id":"p","text":"might be kim","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"kim"},"providerUnsure":true}\n');
+    const client = new FixtureStubClient(corpus, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    const questions: QuestionMap = {
+      intentTentative: { type: 'noul', instructions: '' },
+      intentChange: { type: 'choice', instructions: '', criteria: { answering: null, adding: null, replacing: null } },
+      providerUnsure: { type: 'noul', instructions: '' },
+    };
+    const ask = (text: string) => client.ask({ state: { asr: { text, isFinal: true } }, questions });
+    expect((await ask('maybe cancel it')).answers.intentTentative).toMatchObject({ noul: 0.9 });
+    expect((await ask('also my bill')).answers.intentChange).toMatchObject({ choice: 'adding' });
+    expect((await ask('also my bill')).answers.intentTentative).toMatchObject({ noul: 0.05 });
+    expect((await ask('maybe cancel it')).answers.intentChange).toMatchObject({ choice: 'answering' });
+    expect((await ask('might be kim')).answers.providerUnsure).toMatchObject({ noul: 0.9 });
   });
 });

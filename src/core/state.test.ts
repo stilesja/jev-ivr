@@ -24,4 +24,16 @@ describe('buildTurnState', () => {
     expect(ts.activeForm).toBe('cancel');
     expect(ts.pendingConfirmation).toBeNull();
   });
+
+  it('exposes the spoken label of the active form', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBe('cancel an appointment');
+    expect(buildTurnState(newSession('s', 0), { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBeNull();
+  });
+
+  it('reports a pending slot confirmation by slot and spoken value', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    s.pendingConfirmation = { target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' };
+    expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).pendingConfirmation).toEqual({ target: 'memberId', value: '4471 8293' });
+  });
 });

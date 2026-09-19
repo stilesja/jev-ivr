@@ -79,7 +79,7 @@ describe('runCorpusEntry', () => {
 
   it('runs an in-form entry with the form active and the first slot prompted', async () => {
     const { outcome } = await runCorpusEntry(entries[1]!, opts);
-    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'ask_provider', form: 'cancel' });
+    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'confirm_memberId', form: 'cancel' });
     expect(outcome.slots.memberId).toBe('44718293');
   });
 
@@ -110,6 +110,7 @@ describe('runScenario', () => {
     steps: [
       { say: 'cancel my appointment with dr patel' },
       { say: 'four four seven one eight two nine three' },
+      { say: 'yes' },
     ],
     expect: { decision: 'complete', promptId: 'cancel_confirmed', form: 'cancel', slots: { memberId: '44718293', provider: 'patel' } },
   };
@@ -118,7 +119,7 @@ describe('runScenario', () => {
     const r = await runScenario(scenario, opts);
     expect(r.pass).toBe(true);
     expect(r.mismatches).toEqual([]);
-    expect(r.runs).toHaveLength(3);
+    expect(r.runs).toHaveLength(4);
   });
 
   it('injects a failure on a step marked fail', async () => {
@@ -174,20 +175,21 @@ describe('runScenario', () => {
       steps: [
         { say: 'cancel my appointment with dr patel' },
         { say: 'four four seven one eight two nine three' },
+        { say: 'yes' },
         { say: 'cancel my appointment with dr patel' },
       ],
       expect: { decision: 'complete' },
     }, opts);
     expect(r.pass).toBe(true);
     expect(r.outcome.decision).toBe('complete');
-    expect(r.runs).toHaveLength(3);
+    expect(r.runs).toHaveLength(4);
   });
 });
 
 const outcome: Outcome = {
   id: 'x', decision: 'prompt', promptId: 'ask_memberId', acks: [], reason: null,
   decidedGate: 'intent', verdict: 'route', form: 'cancel',
-  slots: { memberId: null, provider: 'patel', date: null },
+  slots: { memberId: null, provider: 'patel', date: null }, queued: [],
 };
 
 describe('checkExpectation', () => {
@@ -221,7 +223,7 @@ describe('outcomeOf', () => {
   it('reads a completed turn', async () => {
     const r = await runScenario({
       id: 'done',
-      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }],
+      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }, { say: 'yes' }],
       expect: { decision: 'complete' },
     }, opts);
     const o = outcomeOf('done', r.runs.at(-1)!.result);
@@ -236,7 +238,7 @@ describe('outcomeOf', () => {
     } satisfies TurnResult;
     expect(outcomeOf('i', ignored)).toEqual({
       id: 'i', decision: 'ignore', promptId: null, acks: [], reason: null, decidedGate: null, verdict: null,
-      form: null, slots: { memberId: null, provider: null, date: null },
+      form: null, slots: { memberId: null, provider: null, date: null }, queued: [],
     });
   });
 });
@@ -266,16 +268,18 @@ describe('summarize', () => {
   it('computes completion turns against the baseline and slots per utterance', async () => {
     const r = await runScenario({
       id: 'cancel-happy',
-      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }],
+      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }, { say: 'yes' }],
       expect: { decision: 'complete' },
     }, opts);
     const records = r.runs.map((x) => x.record);
     const m = summarize(records);
-    expect(m.completions).toEqual([{ sessionId: 'cancel-happy', form: 'cancel', turns: 2, baseline: 5 }]);
-    expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
+    expect(m.completions).toEqual([{ sessionId: 'cancel-happy', form: 'cancel', turns: 3, baseline: 5 }]);
+    // two slots over three utterances: the confirming "yes" fills nothing
+    expect(m.slotsFilledPerUtterance).toBeCloseTo(2 / 3, 5);
     expect(m.bySource['stub:fixture']).toBe(2);
-    // turn 1 routed at the intent gate; turn 2 proceeded to slot filling with no gate deciding
-    expect(m.byDecidingGate).toEqual({ intent: 1, none: 1 });
+    // turn 1 routed at the intent gate; turn 2 proceeded to slot filling with no gate
+    // deciding; turn 3 answered the member ID readback at the confirmation gate
+    expect(m.byDecidingGate).toEqual({ intent: 1, none: 1, confirmation: 1 });
 
     const promptRecord = records.find((rec) => rec.event.type === 'prompt')!;
     const ignored = { ...promptRecord, decision: { kind: 'ignore' } as const, frames: [] };

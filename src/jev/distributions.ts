@@ -2,6 +2,7 @@ import type { ChoiceAnswer, ChoiceQuestion, NoulAnswer, ScoreAnswer, ScoreQuesti
 
 /** winner gets `sharpness`; the remainder is split evenly across the other labels. */
 export function sharp(labels: readonly string[], winner: string, sharpness: number): Record<string, number> {
+  if (!labels.includes(winner)) throw new Error(`sharp: ${winner} is not one of ${labels.join(', ')}`);
   const others = labels.filter((l) => l !== winner);
   const rest = others.length ? (1 - sharpness) / others.length : 0;
   const out: Record<string, number> = {};

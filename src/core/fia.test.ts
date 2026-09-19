@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fillSlots, nextPrompt, retryStep, applyDtmf } from './fia';
+import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf } from './fia';
 import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
 import { slotsFor, type SlotContext } from '../domain/slots';
@@ -120,5 +120,42 @@ describe('applyDtmf', () => {
     s.promptedFor = 'date';
     expect(applyDtmf(s, '0922', ctx())).toEqual({ kind: 'no_target' });
     expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
+  });
+});
+
+describe('pendingSlotConfirmation', () => {
+  it('names the first filled, unconfirmed always-confirm slot on the form', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    expect(pendingSlotConfirmation(s)).toBeNull();
+    s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: false, attempts: 0, window: null };
+    expect(pendingSlotConfirmation(s)).toEqual({ target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' });
+    expect(pendingSlotConfirmation(s)?.slot).toBe('memberId');
+    s.slots.memberId.confirmed = true;
+    expect(pendingSlotConfirmation(s)).toBeNull();
+    s.slots.provider = { value: 'chen', display: 'Dr. Chen', confirmed: false, attempts: 0, window: null };
+    expect(pendingSlotConfirmation(s)).toBeNull();
+  });
+});
+
+describe('fillSlots member id policy', () => {
+  const answers = {
+    containsMemberId: noul(0.95), memberIdComplete: noul(0.95),
+    memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
+  };
+  const spoken = ctx('four four seven one eight two nine three');
+
+  it('leaves a spoken member id unconfirmed and silent, for the readback to voice', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
+    expect(r.session.slots.memberId).toMatchObject({ value: '44718293', display: '4471 8293', confirmed: false });
+    expect(r.acks).toEqual([]);
+  });
+
+  it('keeps a confirmed member id confirmed when the caller repeats it unchanged', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: true, attempts: 0, window: null };
+    const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
+    expect(r.session.slots.memberId.confirmed).toBe(true);
+    expect(r.acks).toEqual([]);
   });
 });
