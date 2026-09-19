@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import manifest from './manifest.json';
-import { joinSpoken, seamViolations, segmentTemplate, segmentsOf, SPOKEN_VARS, type Segment } from './segments';
+import { joinSpoken, seamViolations, segmentTemplate, segmentsOf, SPOKEN_VARS, VOCAB_VARS } from './segments';
 import { renderTemplate } from './render';
 
 describe('segmentTemplate', () => {
@@ -76,16 +76,15 @@ describe('seamViolations', () => {
     // Every variable name in the manifest is either a spoken (TTS-only) var subject to the
     // seam rule, or a vocabulary var with a recorded clip. A typo like {memeberId} would
     // silently land in neither set and escape the seam rule, so pin the vocabulary too.
-    const vocabVars = new Set(['provider', 'intentLabel', 'window', 'a', 'b']);
     const varNames = new Set<string>();
     for (const segs of Object.values(all)) {
-      for (const s of segs as Segment[]) {
+      for (const s of segs) {
         if (s.kind === 'var') varNames.add(s.name);
       }
     }
     expect(varNames.size).toBeGreaterThan(0);
     for (const name of varNames) {
-      expect(SPOKEN_VARS.has(name) || vocabVars.has(name)).toBe(true);
+      expect(SPOKEN_VARS.has(name) || VOCAB_VARS.has(name)).toBe(true);
     }
   });
 });

@@ -55,5 +55,9 @@ describe('recordableClips', () => {
     expect(rows.filter((r) => r.id.startsWith('provider.'))).toHaveLength(8);
     expect(rows.filter((r) => r.id.startsWith('intent.'))).toHaveLength(6);
     expect(rows.some((r) => r.id === 'memberId' || r.id.startsWith('date.'))).toBe(false);
+    // A trailing "." after a variable (e.g. "With {provider}.") has nothing left to record
+    // once its leading punctuation is stripped, so it is not a recordable row.
+    expect(rows.some((r) => r.text === '')).toBe(false);
+    expect(rows.some((r) => r.id === 'ack_provider.1')).toBe(false);
   });
 });

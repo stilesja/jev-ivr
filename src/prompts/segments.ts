@@ -7,6 +7,9 @@ export type Segment =
 /** Variables that are always spoken by TTS (composed values with no clip). */
 export const SPOKEN_VARS: ReadonlySet<string> = new Set(['memberId', 'date']);
 
+/** Variables with a fixed vocabulary of display values, each recordable as a clip. */
+export const VOCAB_VARS: ReadonlySet<string> = new Set(['provider', 'intentLabel', 'window', 'a', 'b']);
+
 /** The one template grammar: a `{name}` placeholder. Global; use only via matchAll/replace, never .test()/.exec(). */
 export const VAR = /\{(\w+)\}/g;
 const PAUSE = /^[,.?!;:]/;
