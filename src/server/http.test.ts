@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequestHandler, decideActionTwiml, type HttpDeps } from './http';
@@ -18,7 +18,7 @@ const TOKEN = 'authtok';
 let server: Server | null = null;
 afterEach(() => new Promise<void>((r) => (server ? server.close(() => r()) : r())));
 
-function deps(overrides: Record<string, string> = {}): HttpDeps {
+function deps(overrides: Record<string, string> = {}, audioDir?: string): HttpDeps {
   const dir = mkdtempSync(join(tmpdir(), 'http-'));
   const config = loadConfig({ PUBLIC_HOST: 'demo.ngrok.app', TWILIO_AUTH_TOKEN: TOKEN, HANDOFF_NUMBER: '+15551234567', RECONNECT_LIMIT: '1', ...overrides });
   const store = new SessionStore((callSid) => ({
@@ -27,7 +27,7 @@ function deps(overrides: Record<string, string> = {}): HttpDeps {
     trace: new TraceWriter(join(dir, `${callSid}.jsonl`)),
     frames: new FrameLog(join(dir, `${callSid}.frames.jsonl`)),
   }), 60_000);
-  return { config, store, tokens: new CallTokens(60_000), hints: 'Dr. Chen', log: () => {} };
+  return { config, store, tokens: new CallTokens(60_000), hints: 'Dr. Chen', log: () => {}, audioDir: audioDir ?? dir };
 }
 
 async function listen(d: HttpDeps): Promise<string> {
@@ -43,6 +43,16 @@ async function post(base: string, path: string, params: Record<string, string>, 
   if (sign) headers['x-twilio-signature'] = computeTwilioSignature(`https://${host}${path}`, params, TOKEN);
   const res = await fetch(base + path, { method: 'POST', headers, body });
   return { status: res.status, text: await res.text() };
+}
+
+async function get(base: string, path: string) {
+  const res = await fetch(base + path);
+  return { status: res.status, headers: Object.fromEntries(res.headers.entries()), body: Buffer.from(await res.arrayBuffer()) };
+}
+
+async function head(base: string, path: string) {
+  const res = await fetch(base + path, { method: 'HEAD' });
+  return { status: res.status, headers: Object.fromEntries(res.headers.entries()) };
 }
 
 describe('http routes', () => {
@@ -105,6 +115,29 @@ describe('http routes', () => {
     const res = await fetch(base + '/health', { method: 'HEAD' });
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
+  });
+
+  it('serves audio clips with the right type and cache headers, and nothing else under /audio', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    const base = await listen(deps({}, audioDir));
+    const get_ = (path: string) => get(base, path);
+    const head_ = (path: string) => head(base, path);
+    writeFileSync(join(audioDir, 'greeting.0.wav'), Buffer.from('RIFFdata'));
+    writeFileSync(join(audioDir, 'Loud.0.WAV'), Buffer.from('RIFFloud'));
+    const ok = await get_('/audio/greeting.0.wav');
+    expect(ok.status).toBe(200);
+    expect(ok.headers['content-type']).toBe('audio/wav');
+    expect(ok.headers['cache-control']).toBe('public, max-age=86400');
+    expect(ok.body.toString()).toBe('RIFFdata');
+    // No Twilio signature header is sent, and /audio still answers 200: this route is not gated
+    // by the signature check that /voice and /cr-action apply.
+    expect((await head_('/audio/greeting.0.wav')).status).toBe(200);
+    expect((await get_('/audio/Loud.0.WAV')).headers['content-type']).toBe('audio/wav');
+    expect((await get_('/audio/missing.wav')).status).toBe(404);
+    expect((await get_('/audio/notes.txt')).status).toBe(404);
+    expect((await get_('/audio/../package.json')).status).toBe(404);
+    expect((await get_('/audio/%2e%2e/package.json')).status).toBe(404);
+    expect((await get_('/audio/%E0%A4%A')).status).toBe(404);
   });
 });
 

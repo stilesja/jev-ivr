@@ -15,6 +15,7 @@ import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
+import { discoverClips, recordableClips } from '../prompts/clips';
 
 export interface RunningServer {
   server: Server;
@@ -55,13 +56,22 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   // Wall-clock date in the configured zone: a caller at 8pm Pacific means today, not tomorrow.
   const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
 
+  const clips = discoverClips(config.audioDir);
+  const rows = recordableClips();
+  const missing = rows.filter((r) => !clips.has(r.id)).map((r) => r.id);
+  log(
+    `audio: ${rows.length - missing.length} of ${rows.length} clips present (${missing.length} segments fall back to TTS)` +
+      (missing.length > 0 && missing.length < 10 ? `: missing ${missing.join(', ')}` : ''),
+  );
+  const render = { clips, audioBase: `https://${config.publicHost}/audio/` };
+
   const store = new SessionStore(
     (callSid) => {
       const file = safeFileStem(callSid);
       const trace = new TraceWriter(join(config.traceDir, `${file}.jsonl`));
       return {
         session: newSession(callSid, now()),
-        opts: { client, thresholds, todayIso: todayIso(), trace, now },
+        opts: { client, thresholds, todayIso: todayIso(), trace, now, render },
         trace,
         frames: new FrameLog(join(config.traceDir, `${file}.frames.jsonl`), now),
       };
@@ -71,7 +81,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     config.sessionMaxAgeMs,
   );
   const tokens = new CallTokens(TOKEN_TTL_MS, now);
-  const deps = { config, store, tokens, hints: buildHints(), log };
+  const deps = { config, store, tokens, hints: buildHints(), audioDir: config.audioDir, log };
 
   const server = createServer(createRequestHandler(deps));
   const wss = attachWebSocketServer(server, { store, tokens, log }, overrides.setupTimeoutMs);

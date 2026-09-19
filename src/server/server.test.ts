@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer, type RunningServer, type ServerOverrides } from './index';
@@ -59,6 +59,27 @@ async function fixtureStub(): Promise<JevClient> {
 }
 
 describe('server end to end', () => {
+  it('plays the greeting as a recorded clip when one is present, and logs audio coverage at startup', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    writeFileSync(join(audioDir, 'greeting.0.wav'), Buffer.from('RIFFdata'));
+    const { config } = makeConfig({ AUDIO_DIR: audioDir });
+    const logs: string[] = [];
+    running = await startServer(config, { log: (line) => logs.push(line) });
+    const ws = `ws://127.0.0.1:${running.port}/conversation`;
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`${ws}?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForMessages(1);
+    expect(relay.received[0]).toEqual({
+      type: 'play',
+      source: 'https://localhost/audio/greeting.0.wav',
+      loop: 1,
+      preemptible: false,
+      interruptible: true,
+    });
+    expect(logs.some((l) => l.includes('audio: 1 of') && l.includes('clips present'))).toBe(true);
+  });
+
   it('greets on setup and refuses a well-shaped token that was never minted', async () => {
     const { relay, ws } = await connected();
     expect(relay.texts()).toEqual(['Thanks for calling the clinic. How can I help you today?']);

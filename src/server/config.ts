@@ -16,6 +16,9 @@ export interface ServerConfig {
   sessionTtlMs: number;
   sessionMaxAgeMs: number;
   timezone: string;
+  audioDir: string;
+  ttsProvider: string | null;
+  ttsVoice: string | null;
 }
 
 type Env = Record<string, string | undefined>;
@@ -63,6 +66,9 @@ export function loadConfig(env: Env): ServerConfig {
   if (todayOverride && !/^\d{4}-\d{2}-\d{2}$/.test(todayOverride)) throw new Error(`TODAY_OVERRIDE must be YYYY-MM-DD, got "${todayOverride}"`);
   const sig = (env.SIGNATURE_CHECK ?? 'on').toLowerCase();
   if (sig !== 'on' && sig !== 'off') throw new Error(`SIGNATURE_CHECK must be on or off, got "${env.SIGNATURE_CHECK}"`);
+  const ttsProvider = env.TTS_PROVIDER?.trim() || null;
+  const ttsVoice = env.TTS_VOICE?.trim() || null;
+  if ((ttsProvider === null) !== (ttsVoice === null)) throw new Error('TTS_PROVIDER and TTS_VOICE must be set together');
   return {
     port,
     publicHost,
@@ -77,6 +83,9 @@ export function loadConfig(env: Env): ServerConfig {
     sessionTtlMs: integer(env, 'SESSION_TTL_MS', 1_800_000),
     sessionMaxAgeMs: integer(env, 'SESSION_MAX_AGE_MS', 7_200_000),
     timezone: timeZone(env),
+    audioDir: env.AUDIO_DIR?.trim() || 'assets/audio',
+    ttsProvider,
+    ttsVoice,
   };
 }
 
@@ -96,5 +105,7 @@ export function describeConfig(c: ServerConfig): string {
     `timezone ${c.timezone}`,
     `traces ${c.traceDir}`,
     `reconnect limit ${c.reconnectLimit}`,
+    `audio dir ${c.audioDir}`,
+    c.ttsProvider && c.ttsVoice ? `tts ${c.ttsProvider} ${c.ttsVoice}` : 'tts default',
   ].join('  ');
 }

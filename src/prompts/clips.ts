@@ -7,7 +7,8 @@ import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
 
 /** wav/mp3 file extension → content type. Task 5 lowercases a discovered filename's extension before looking this up, so keys stay lowercase here even though discovery itself is case-insensitive. */
 export const AUDIO_TYPES: Readonly<Record<string, string>> = { wav: 'audio/wav', mp3: 'audio/mpeg' };
-const CLIP_FILE = new RegExp(`^([A-Za-z0-9_.-]+)\\.(${Object.keys(AUDIO_TYPES).join('|')})$`, 'i');
+/** Filename shape a recorded clip must match: id, dot, extension (wav/mp3, case-insensitive). Shared with src/server/http.ts, which serves clips under this same shape. */
+export const CLIP_FILE = new RegExp(`^([A-Za-z0-9_.-]+)\\.(${Object.keys(AUDIO_TYPES).join('|')})$`, 'i');
 
 /** clip id → filename, from the directory listing; a missing directory is an empty index. */
 export function discoverClips(dir: string): Map<string, string> {

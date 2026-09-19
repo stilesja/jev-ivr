@@ -1,15 +1,19 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ServerConfig } from './config';
 import { validateTwilioSignature } from './signature';
 import { apologizeAndDialTwiml, connectRelayTwiml, dialTwiml, hangupTwiml } from './twiml';
 import type { SessionStore } from './sessions';
 import type { CallTokens } from './tokens';
+import { AUDIO_TYPES, CLIP_FILE } from '../prompts/clips';
 
 export interface HttpDeps {
   config: ServerConfig;
   store: SessionStore;
   tokens: CallTokens;
   hints: string;
+  audioDir: string;
   log: (line: string) => void;
 }
 
@@ -55,6 +59,40 @@ function reply(res: ServerResponse, status: number, type: string, body: string):
   res.end(body);
 }
 
+/**
+ * Serves a recorded clip from `audioDir` by filename. Any read failure — missing file, a
+ * directory, a dangling symlink — is a 404, never a 500; the filename must also match the same
+ * shape `discoverClips` accepts, and `..` is rejected outright even though the URL and
+ * `decodeURIComponent` normalization above should already keep it out of the joined path.
+ */
+function serveClip(req: IncomingMessage, res: ServerResponse, audioDir: string, raw: string): void {
+  let name: string;
+  try {
+    name = decodeURIComponent(raw);
+  } catch {
+    reply(res, 404, 'text/plain', 'not found');
+    return;
+  }
+  const m = CLIP_FILE.exec(name);
+  if (!m || name.includes('..')) {
+    reply(res, 404, 'text/plain', 'not found');
+    return;
+  }
+  let body: Buffer;
+  try {
+    body = readFileSync(join(audioDir, name));
+  } catch {
+    reply(res, 404, 'text/plain', 'not found');
+    return;
+  }
+  res.writeHead(200, {
+    'content-type': AUDIO_TYPES[m[2]!.toLowerCase()]!,
+    'content-length': body.length,
+    'cache-control': 'public, max-age=86400',
+  });
+  res.end(req.method === 'HEAD' ? undefined : body);
+}
+
 function isBlank(raw: string | undefined): boolean {
   return raw === undefined || raw.trim() === '';
 }
@@ -66,6 +104,17 @@ function parseHandoff(raw: string): { reasonCode: string } {
   } catch {
     return { reasonCode: 'unknown' };
   }
+}
+
+/** The ConversationRelay connect attributes shared by the initial /voice answer and a reconnect. */
+function connectOptions(deps: HttpDeps, token: string): Parameters<typeof connectRelayTwiml>[0] {
+  const { publicHost, ttsProvider, ttsVoice } = deps.config;
+  return {
+    publicHost,
+    token,
+    hints: deps.hints,
+    ...(ttsProvider && ttsVoice ? { ttsProvider, voice: ttsVoice } : {}),
+  };
 }
 
 /** The <Connect action> callback decision, per spec §5 step 6. Pure apart from store and token side effects. */
@@ -99,7 +148,7 @@ export function decideActionTwiml(deps: HttpDeps, params: Record<string, string>
       deps.store.detach(callSid);
       entry.reconnects += 1;
       const token = deps.tokens.mint(callSid);
-      return { twiml: connectRelayTwiml({ publicHost: deps.config.publicHost, token, hints: deps.hints }), note: `reconnect:${entry.reconnects}` };
+      return { twiml: connectRelayTwiml(connectOptions(deps, token)), note: `reconnect:${entry.reconnects}` };
     }
     deps.store.end(callSid);
     deps.tokens.revoke(callSid);
@@ -111,7 +160,11 @@ export function decideActionTwiml(deps: HttpDeps, params: Record<string, string>
 export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     void (async () => {
-      const path = (req.url ?? '/').split('?')[0];
+      const path = (req.url ?? '/').split('?')[0]!;
+      if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/audio/')) {
+        serveClip(req, res, deps.audioDir, path.slice('/audio/'.length));
+        return;
+      }
       if ((req.method === 'GET' || req.method === 'HEAD') && path === '/health') {
         // `sessions` is what is live; `retained` is ended calls still inside their grace period,
         // which are memory but not callers.
@@ -150,7 +203,7 @@ export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res
         }
         const token = deps.tokens.mint(callSid);
         deps.log(`/voice ${callSid} from ${params.From ?? '?'}`);
-        reply(res, 200, 'text/xml', connectRelayTwiml({ publicHost: deps.config.publicHost, token, hints: deps.hints }));
+        reply(res, 200, 'text/xml', connectRelayTwiml(connectOptions(deps, token)));
         return;
       }
       deps.store.get(params.CallSid ?? '')?.frames.write('http', { route: '/cr-action', ...params });
