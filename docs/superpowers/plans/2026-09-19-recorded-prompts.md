@@ -876,3 +876,81 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Spec §2 segments and clip ids: Tasks 1–2. §3 rewrite and seam rule: Task 1 (with the deviation). §4 discovery: Task 2. §5 rendering: Tasks 3–4. §6 serving and coverage: Task 5. §7 sheet and check: Task 6; clip generation (added at Jason's request, not in the spec): Task 7. §8 tests: each task. §9 README: Task 8.
 - Names used across tasks: `Segment`, `segmentTemplate`, `segmentsOf`, `seamViolations`, `SPOKEN_VARS`, `discoverClips`, `vocabularyClipId`, `recordableClips`, `RecordableClip`, `AUDIO_TYPES`, `RenderContext`, `promptFrames`, `decisionToFrames(decision, ctx?)`, `RunOptions.render`, `TurnContext.render`, `ServerConfig.audioDir/ttsProvider/ttsVoice`, `HttpDeps.audioDir`, `ConnectOptions.ttsProvider/voice`, `renderSheet`, `coverage`. All defined before use.
 - The text harness never passes a render context, so its output and the regression baseline are unchanged by construction.
+
+## Deviations recorded during execution
+
+- **Task 1 (f737fac, 16d82fc).** The seam rule only enforces the trailing pause: spec §3 also
+  wanted a spoken variable preceded by a fixed segment ending at a natural pause, but that half
+  was dropped, since the seam before a TTS span exists in every readback regardless. `segments.ts`
+  gained `joinSpoken(pieces)`, checked against `renderTemplate` with a manifest-wide round-trip
+  test. `VAR` (the `{word}` regex) is exported and shared with `renderTemplate` rather than
+  duplicated, and `VOCAB_VARS` is exported for reuse by `clips.ts`.
+- **Task 2 (340c757, 1358e9c, 2c341de).** A fixed segment that is bare punctuation after a
+  variable (`.` or `?`, nine of them across the manifest) is not a recordable row. `intent.agent`
+  is dropped from the vocabulary — the agent intent always hands off rather than being spoken
+  back — leaving five intent clips. The plan's `WINDOW_LABELS` was missing `next month`; the
+  actual list is derived from `WINDOWS` plus `MONTHS` through `describeWindow` itself, so it
+  can't drift again, giving sixteen labels (four relative windows, twelve months). Clip extension
+  matching (`wav`/`mp3`) is case-insensitive; clip ids stay case-sensitive. `discoverClips`
+  ignores subdirectories, keeps symlinks, and returns an empty map on `ENOENT`/`ENOTDIR` rather
+  than throwing. `recordableClips()`'s output is pinned with a committed snapshot. Spec §4 names
+  the discovery function `clipIds(manifest)`; the implementation is `recordableClips()`, per the
+  plan rather than the spec.
+- **Task 3 (e0e1a84, 1b8fab9).** Text merging goes through `joinSpoken` rather than a plain
+  space-join (spec §5); a punctuation-only segment is never clip-backed, so it can't become its
+  own play frame; a text run that immediately follows a play frame has its leading pause stripped
+  and is dropped entirely if that empties it. The plan's expected token `'4471 8293,'` for a
+  merged run was wrong — the whole run merges into one text frame, not that fragment alone. A
+  property test checks full frame coverage over every manifest prompt. Open question for the live
+  call: the now-interruptible multi-frame prompts (`disambiguate_intent`/`disambiguate_provider`:
+  4 frames each; `date_narrow_window`: 2 frames) all set `preemptible: false` on every frame, and
+  whether Twilio drops queued play frames after a barge-in is unverified without a live call.
+  Follow-up: `disambiguate_*` prompts end with a bare `?` that is dropped once it follows a clip,
+  so the fully recorded form of that prompt loses its question intonation.
+- **Task 4 (de664a3).** Plumbing only — a stale comment in `src/core/turn.ts` was reworded to
+  match. Follow-up, not built: the `replay` decision ("repeat that") always re-speaks
+  `lastPromptText` via TTS, even when the original prompt played from clips; fixing that needs
+  `lastPromptId` and its vars kept on the session.
+- **Task 5 (1df422f, 613b0f7).** Any read failure on `/audio/<file>` — missing file, a directory,
+  a dangling symlink — is a plain 404, never a 500; the response carries `accept-ranges: none`.
+  There is no separate `..` check: the filename regex (`[A-Za-z0-9_.-]+\.(wav|mp3)`, case
+  insensitive) has no room for a path separator, so it rules out traversal on its own.
+  `clipName()` is pure and is tested against `%2f`-style encoded forms, since a plain `../` is
+  normalized away by `fetch` on the client side before it would ever reach the server. Startup
+  validates `TTS_PROVIDER` against `Google`/`Amazon`/`ElevenLabs` and requires it to be set
+  together with `TTS_VOICE` or not at all — Twilio itself allows a provider with no voice, but
+  requiring both here was our choice. `HttpDeps.audioDir` was dropped as a separate field; `deps.config`
+  is the one source of the audio directory. Startup coverage logging reuses `coverage()`/
+  `readRecorded()` from `sheet.ts` rather than duplicating that logic; the missing-clip list is
+  truncated at 10 entries, the stale line only prints when non-empty, and an unreadable
+  `recorded.json` is logged and ignored rather than failing startup. `.env.example`'s Fish Audio
+  comment was reworded, since Fish Audio is not a ConversationRelay TTS provider and the original
+  "same voice" advice didn't apply.
+- **Task 6 (0d9bbcb, c0274d2).** `coverage(rows, clips, recorded)` reads the `recorded.json`
+  sidecar and reports a `stale` list; `check` exits 1 on any missing or stale clip. `checkReport`
+  was extracted from the CLI so its lines and exit code are unit-tested without capturing stdout,
+  and the CLI entry point wraps `main()` in a try/catch like the other CLIs. Add-on tests: a stray
+  clip file for a punctuation-only segment is ignored rather than reported as coverage; `runTurn`
+  forwards the render context through to frame rendering; `RunOptions.render` is documented as
+  server-only (the text harness never sets it).
+- **Task 7 (4f6267a, 750bfb2).** `resolveVoice` matches a Fish Audio model title exactly, with no
+  first-item fallback when the title isn't found. A dry run makes zero network calls even with an
+  API key exported, and prints `would generate N` instead of the real summary line. The
+  `recorded.json` sidecar is merged and written after each successful clip rather than batched at
+  the end, so a partial run doesn't lose already-generated clips; a corrupt sidecar logs a warning
+  and starts fresh rather than failing the run. All file writes (clips and the sidecar) go through
+  a temp-file-plus-rename so a reader never sees a partial file. A 200 response is validated
+  before being written: non-empty, and carrying the RIFF magic bytes for `wav`. `--only` with an
+  unknown clip id throws rather than silently generating nothing; `--candidates` must be an
+  integer from 1 to 20. `tags.json` carries a tag for every recordable clip id, checked by a test.
+  Open segments (whose fixed clip precedes a variable) get `, continuing` appended to their tag
+  instead of the plan's `, no falling intonation` — a negation is the kind of direction a TTS
+  model may ignore or read aloud, so the tag says what to do instead of what not to do. One open
+  clip is meant to be auditioned by hand before the full run, to catch the tag being spoken. `.gitignore`
+  gained `.env.*` (with `!.env.example` to keep the example file), `*.swp`, `*.swo`, and
+  `assets/audio/candidates/`. Deferred, not built: retrying on 429/5xx; `--tag` is only a fallback
+  for clip ids missing from `tags.json`; the voice lookup's `page_size=20` is unparameterized; the
+  `assets/audio` default directory is repeated across the three CLI entry points rather than
+  shared.
+
+Process: Task 4's commit trailer was amended by the controller.

@@ -85,6 +85,11 @@ whose `model` differs from the pin fails the load at startup, and a live
 answer from another model aborts the run without recording. A model bump
 means a new file, not an edit.
 
+Changing a prompt's text re-keys the turns that follow it in the cassette
+(the `date_narrow_window` rewrite to "{window}. Which day works for you?"
+did), so scenario turns after it need a `pnpm regress --client record` run
+to fill the gap.
+
 Recording, from the repo root:
 
     set -a; source .env; set +a
@@ -208,6 +213,39 @@ appointment. A task that ends in a handoff (billing) always runs last, and
 the `end` frame's handoff data lists the forms completed and any still
 queued.
 
+### Recorded prompts
+
+    pnpm prompts:sheet > clips.tsv    # every clip id with the exact text to record
+    pnpm prompts:check                # which clips are present under AUDIO_DIR, and which are stale
+    pnpm prompts:generate             # generate every missing clip with Fish Audio (FISH_AUDIO_API_KEY, FISH_VOICE)
+    pnpm prompts:generate --only greeting.0 --candidates 3 --force   # audition variants under assets/audio/candidates/
+    pnpm prompts:generate --dry-run --voice Hanna --only greeting.0  # print the request; no key, no network
+
+Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
+and are discovered by filename; adding one needs no manifest edit. A clip
+id is a fixed segment of a prompt (`ack_provider.0`, the text before the
+provider name) or a vocabulary value (`provider.chen`, `intent.cancel`,
+`window.next_week`). Member IDs and dates are always spoken by TTS, at a
+clause boundary so the voice change is not inside a sentence. The sheet's
+`open` note means the segment precedes a variable: record it without a
+falling intonation. Bare punctuation after a variable is never recorded.
+
+Fixed clip ids are positional, so editing a template can make an existing
+clip say the wrong thing. The generator writes `assets/audio/recorded.json`
+(clip id → the text it recorded) and `pnpm prompts:check` reports a clip as
+`stale` when that text no longer matches the sheet; regenerate it with
+`--only <id> --force`.
+
+The server serves clips at `https://PUBLIC_HOST/audio/<file>` and logs
+coverage at startup; any segment without a clip falls back to TTS for that
+segment only, and adjacent TTS segments are merged so prosody survives.
+Clips are generated with Fish Audio's `s2.1-pro` model and the voice named
+in `FISH_VOICE`; a `[warm]`-style tag prefixes every clip (per clip in
+`src/prompts/tags.json`). Fish Audio is not a ConversationRelay TTS
+provider, so set `TTS_PROVIDER` and `TTS_VOICE` (Google, Amazon, or
+ElevenLabs) to the closest voice to keep the seams on member IDs and dates
+as quiet as possible.
+
 ### Live-call checklist
 
 1. `ngrok http --domain=PUBLIC_HOST 3000` in one terminal; `pnpm server` in another.
@@ -222,7 +260,7 @@ queued.
    week." Expect: "What's your member ID?"
 6. Spoken ID: say the eight digits. Expect the readback and then the window
    question, as one turn: "Member ID four four seven one, eight two nine three.
-   Which day next week works for you?" (the digits are spaced out before they
+   next week. Which day works for you?" (the digits are spaced out before they
    reach TTS, which would otherwise read "4471 8293" as two large numbers).
 7. Keypad ID: on a second call, press the eight digits instead. Expect the
    window question on its own, with no readback — keypad entry is unambiguous,
@@ -286,12 +324,14 @@ takes to finalize a turn, whether an interrupted prompt also arrives as a
     src/core          state, question set, gate ladder, form loop, extraction, turn
     src/jev           client interface, stubs, SDK client
     src/channel       ConversationRelay frame types
-    src/prompts       prompt manifest and rendering
+    src/prompts       manifest, segments.ts, clips.ts (clip discovery), rendering, sheet.ts
+                      (recording sheet), generate.ts, tags.json (Fish Audio clip generation)
     src/trace         JSONL trace record
     src/run           runTurn, client builder, local-date clock (shared by the CLI and the server)
     src/server        Twilio ConversationRelay server: config, http, ws, adapter, sessions
     src/harness-text  CLI, runner, metrics, regression
     fixtures          corpus, scenarios, recorded outcomes
+    assets/audio      recorded prompt clips (<clipId>.wav/.mp3), discovered by filename
 
 ## DTMF baseline
 
