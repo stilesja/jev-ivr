@@ -57,6 +57,13 @@ describe('formatRegressSummary', () => {
     expect(summary({ records: [other] })).not.toContain('cassette misses');
   });
 
+  it('reports client errors distinct from cassette misses, and omits the line when there are none', () => {
+    const miss = row('error', 0, 0, { name: 'JevClientError', message: `${CASSETTE_MISS} abc hello` });
+    const other = row('error', 0, 0, { name: 'JevClientError', message: 'injected timeout' });
+    expect(summary({ records: [other, other, miss] })).toContain('client errors 2 (first: injected timeout)');
+    expect(summary({ records: [miss] })).not.toContain('client errors');
+  });
+
   it('omits the cost and latency lines when nothing was answered', () => {
     const text = summary({ records: [row('none', 0, 0)] });
     expect(text).not.toContain('cost usd');

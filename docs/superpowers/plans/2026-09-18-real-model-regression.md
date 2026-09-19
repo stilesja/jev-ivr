@@ -906,8 +906,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 The key never enters an agent's context. With the branch checked out:
 
 ```bash
-set -a; source .env; set +a; pnpm regress --client record
+set -a; source .env; set +a; pnpm regress --client record --threshold JEV_TIMEOUT_MS=15000
 ```
+
+Prove the key before the batch: one utterance in `pnpm cli --client jev` is enough. An invalid
+key fails every turn as a client error; the summary then shows `client errors N` and a live run
+aborts after three in a row.
 
 Expected: about 260 live requests over roughly three minutes, a diff against the label baseline, and a summary with a cost line and no tag. Then:
 

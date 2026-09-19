@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { loadCorpus } from '../jev/corpus';
 import { parseOverride, withOverrides } from '../core/thresholds';
 import { buildClient, cassettePath, CLIENT_KINDS, DEFAULT_CORPUS_FILE, isClientKind } from '../run/client';
+import { CASSETTE_MISS } from '../jev/cassette';
 import { diff } from './regressDiff';
 import { formatRegressSummary } from './regressSummary';
 import type { TraceRecord } from '../trace/types';
@@ -56,7 +57,31 @@ async function main(): Promise<void> {
   };
   // A run that reaches a model is slow and can abort part way; it reports progress on stderr
   // (stdout is the diff artifact) and still gets a summary of what it paid for, from the finally.
-  const live = kind !== 'stub' && kind !== 'heuristic';
+  const live = kind === 'record' || kind === 'jev';
+
+  // Aborts a live run after 3 consecutive client-level failures (timeouts, auth) rather than
+  // burning through the whole corpus one turn at a time; a cassette miss doesn't count; a
+  // non-live kind never talks to a model, so it never trips this.
+  let consecutiveClientErrors = 0;
+  let firstClientErrorMessage = '';
+  function checkClientError(record: TraceRecord): void {
+    if (!live) return;
+    const isClientError = record.source === 'error' && record.error !== null && !record.error.message.startsWith(CASSETTE_MISS);
+    if (!isClientError) {
+      consecutiveClientErrors = 0;
+      return;
+    }
+    if (consecutiveClientErrors === 0) firstClientErrorMessage = record.error!.message;
+    consecutiveClientErrors += 1;
+    if (consecutiveClientErrors >= 3) {
+      throw new Error(`aborting after 3 consecutive client errors; first: ${firstClientErrorMessage}`);
+    }
+  }
+
+  // Hoisted above the try so a corrupt expected-outcomes file fails before any run state
+  // exists, rather than inside the finally where it would mask a real run failure.
+  const expectedCorpus = readExpected<Outcome>('corpus.json');
+  const expectedScenarios = readExpected<ScenarioOutcome>('scenarios.json');
 
   const actual: Recorded = { corpus: {}, scenarios: {} };
   const records: TraceRecord[] = [];
@@ -66,6 +91,7 @@ async function main(): Promise<void> {
       const r = await runCorpusEntry(entry, opts);
       actual.corpus[entry.id] = r.outcome;
       records.push(r.run.record);
+      checkClientError(r.run.record);
       done += 1;
       if (live && done % PROGRESS_EVERY === 0) console.error(`  corpus ${done}/${corpus.length}`);
     }
@@ -74,6 +100,7 @@ async function main(): Promise<void> {
       const r = await runScenario(scenario, opts);
       actual.scenarios[scenario.id] = { ...r.outcome, pass: r.pass, mismatches: r.mismatches };
       records.push(...r.runs.map((run) => run.record));
+      for (const run of r.runs) checkClientError(run.record);
       done += 1;
       if (live) console.error(`  scenario ${done}/${scenarioDefs.length} ${scenario.id}`);
     }
@@ -87,8 +114,8 @@ async function main(): Promise<void> {
     }
 
     const lines = [
-      ...diff('corpus', readExpected<Outcome>('corpus.json'), actual.corpus).lines,
-      ...diff('scenario', readExpected<ScenarioOutcome>('scenarios.json'), actual.scenarios).lines,
+      ...diff('corpus', expectedCorpus, actual.corpus).lines,
+      ...diff('scenario', expectedScenarios, actual.scenarios).lines,
     ];
     const failing = Object.values(actual.scenarios).filter((s) => !s.pass);
     for (const s of failing) console.log(`FAIL scenario ${s.id}: ${s.mismatches.join('; ')}`);
@@ -97,18 +124,23 @@ async function main(): Promise<void> {
     else process.exitCode = 1;
   } finally {
     // Diffed here rather than reused from above so an aborted run still reports what it ran:
-    // ids it never reached simply read as removed.
-    if (!args.update && records.length > 0) {
-      const ran = Object.values(actual.scenarios);
-      console.log('');
-      console.log(formatRegressSummary({
-        corpusTotal: corpus.length,
-        corpusMatching: diff('corpus', readExpected<Outcome>('corpus.json'), actual.corpus).matching,
-        scenarioTotal: scenarioDefs.length,
-        scenarioPassing: ran.filter((s) => s.pass).length,
-        scenarioMatching: diff('scenario', readExpected<ScenarioOutcome>('scenarios.json'), actual.scenarios).matching,
-        records,
-      }));
+    // ids it never reached simply read as removed. Wrapped so a failure in here (e.g. a
+    // formatting bug) surfaces on stderr instead of replacing the real exception from the run.
+    try {
+      if (!args.update && records.length > 0) {
+        const ran = Object.values(actual.scenarios);
+        console.log('');
+        console.log(formatRegressSummary({
+          corpusTotal: corpus.length,
+          corpusMatching: diff('corpus', expectedCorpus, actual.corpus).matching,
+          scenarioTotal: scenarioDefs.length,
+          scenarioPassing: ran.filter((s) => s.pass).length,
+          scenarioMatching: diff('scenario', expectedScenarios, actual.scenarios).matching,
+          records,
+        }));
+      }
+    } catch (e) {
+      console.error(`summary unavailable: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 }

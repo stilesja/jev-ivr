@@ -1,1 +1,1 @@
-fixtures/recorded/*.jsonl linguist-generated=true
+fixtures/recorded/*.jsonl linguist-generated=true merge=union

@@ -80,12 +80,19 @@ means a new file, not an edit.
 Recording, from the repo root:
 
     set -a; source .env; set +a
-    pnpm regress --client record
+    pnpm regress --client record --threshold JEV_TIMEOUT_MS=15000
 
-- Run at default thresholds. Thresholds do not change what is asked, but a
-  `--threshold` override changes what an earlier turn decided, and that
-  state is part of the next turn's key; recording under overrides fills the
-  file with a second, parallel set of lines.
+- Run at default thresholds, except `JEV_TIMEOUT_MS`. The default is a
+  phone-turn budget; a recording run should not drop answers to a slow
+  tail, and this threshold never reaches a gate or the request key, so
+  raising it cannot change what is recorded. Every other `--threshold`
+  override changes what an earlier turn decided, and that state is part of
+  the next turn's key; recording under overrides fills the file with a
+  second, parallel set of lines.
+- Prove the key before the batch: one utterance in `pnpm cli --client jev`
+  is enough. An invalid key fails every turn as a client error; the
+  summary then shows `client errors N` and a live run aborts after three
+  in a row.
 - Ctrl-C is safe. Every answer is appended as it arrives, and the run order
   is fixed (corpus in file order, then scenarios), so re-running `record`
   replays what is already there and pays only for the rest.

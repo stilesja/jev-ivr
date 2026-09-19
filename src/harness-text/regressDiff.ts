@@ -1,5 +1,5 @@
 /** One diff line per differing key, so a changed outcome names exactly what moved. */
-export function diffOne<T extends object>(name: string, id: string, e: T | undefined, a: T | undefined): string[] {
+function diffOne<T extends object>(name: string, id: string, e: T | undefined, a: T | undefined): string[] {
   if (!e) return [`+ ${name} ${id}: new`];
   if (!a) return [`- ${name} ${id}: removed`];
   const out: string[] = [];

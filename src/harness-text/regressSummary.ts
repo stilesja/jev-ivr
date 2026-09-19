@@ -1,5 +1,6 @@
 import type { TraceRecord, TraceSource } from '../trace/types';
 import { CASSETTE_MISS } from '../jev/cassette';
+import { percentile } from './metrics';
 
 export interface RegressSummaryInput {
   corpusTotal: number;
@@ -14,14 +15,6 @@ export interface RegressSummaryInput {
 // Turns that never produced an answer. Inverted (rather than an allow-list of answered
 // sources) so a new AnswerSource is counted in by default instead of silently dropped.
 const UNANSWERED = new Set<TraceSource>(['none', 'error', 'dtmf']);
-
-// keep in sync with metrics.ts
-function percentile(values: number[], p: number): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const idx = Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1);
-  return sorted[Math.max(0, idx)]!;
-}
 
 /** The block printed after a regression diff: label agreement, then cost and latency of the requests the run made. */
 export function formatRegressSummary(i: RegressSummaryInput): string {
@@ -46,5 +39,7 @@ export function formatRegressSummary(i: RegressSummaryInput): string {
   }
   const misses = i.records.filter((r) => r.error?.message.startsWith(CASSETTE_MISS)).length;
   if (misses > 0) lines.push(`cassette misses ${misses}`);
+  const clientErrors = i.records.filter((r) => r.source === 'error' && r.error && !r.error.message.startsWith(CASSETTE_MISS));
+  if (clientErrors.length > 0) lines.push(`client errors ${clientErrors.length} (first: ${clientErrors[0]!.error!.message})`);
   return lines.join('\n');
 }
