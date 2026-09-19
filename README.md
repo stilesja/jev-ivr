@@ -57,6 +57,14 @@ corpus label or a threshold mapping a real distribution wrongly. `--update`
 is refused for any client but the stub, including `heuristic`; the baseline
 means "the labels", and only the stub re-records it.
 
+Corpus entries carry four kinds of label the stub answers from: the intent
+and slots, `tentative` (the caller hedges the request, so it is confirmed
+explicitly), `change` (`adding` or `replacing`, for an in-form utterance
+that asks for another task), and `providerUnsure` (a hedged or dual provider
+name is read back). An entry with none of the last three is a plain,
+committed answer to the current question. The parser rejects unknown
+fields, mistyped labels, and a labeled slot that is not on the entry's form.
+
 Every run ends with a summary: corpus outcomes matching the baseline,
 scenarios passing their own expectation and matching the baseline, a cost
 line when real answers were involved (request count, input tokens, dollars;
@@ -140,6 +148,25 @@ Dates are resolved in `TIMEZONE` (default: the host's zone), so a caller at
 not where UTC has already got to. `SESSION_TTL_MS` is how long an idle call
 session is kept, `SESSION_MAX_AGE_MS` the hard cap on any one session.
 `TODAY_OVERRIDE` pins the date for a demo.
+
+### Confirmation and multi-intent
+
+A hedged request ("maybe cancel it") is confirmed before anything happens:
+"Just to check, do you want to cancel an appointment?" The slots spoken in
+that utterance are kept and filled once the caller says yes. A spoken
+member ID is always read back, "Your member ID is 4471 8293. Is that
+right?"; a "no" goes straight to the keypad, a second "no" or repeated
+silence hands off, and digits typed on the keypad need no readback. A
+request added mid-task ("can I also ask about my bill") is acknowledged
+once and queued: the current task finishes, its summary is spoken without
+a goodbye, and the call moves on with "Now, ask about billing." The member
+ID carries over; provider and date are asked again, because an added task
+is a different appointment. "Never mind, I have a question about my bill"
+replaces the current task instead, and "actually, just cancel it instead"
+keeps the appointment's provider and date because it is the same
+appointment. A task that ends in a handoff (billing) always runs last, and
+the `end` frame's handoff data lists the forms completed and any still
+queued.
 
 ### Live-call checklist
 

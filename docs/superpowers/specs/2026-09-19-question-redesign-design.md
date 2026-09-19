@@ -34,8 +34,14 @@ is normative.
 ### 2.1 `intentTentative` (Noul, always on; new)
 
 Instructions: "Read asr.text. Does the caller express their request
-tentatively or hypothetically, with words such as maybe, I guess, I think,
-possibly, or maybe instead, rather than stating it plainly?"
+tentatively, with words such as maybe, I guess, I think, possibly, or might,
+rather than stating it plainly?"
+
+Criteria:
+- `true`: "The hedge is about what the caller wants done, as in maybe cancel
+  it or I guess I need to cancel"
+- `false`: "The request is stated plainly, even if the caller hedges about a
+  detail such as a date, a provider name, or a number"
 
 Consumed by the intent gate (§3). Threshold `INTENT_TENTATIVE`, placeholder
 0.5.
@@ -45,44 +51,59 @@ Consumed by the intent gate (§3). Threshold `INTENT_TENTATIVE`, placeholder
 Asked only when `session.form` is set. `intentSecondary` is removed from the
 schema, the stub, and the trace.
 
-Instructions: "Read asr.text. The caller is in the middle of
-`activeForm.label` and was just asked `node.promptJustPlayed`. Which best
-describes this utterance?"
+Instructions: "Read asr.text. The caller is in the middle of the task
+described by `activeFormLabel` and was just asked `node.promptJustPlayed`.
+Which best describes this utterance?"
 
 Criteria:
-- `answering`: "Answers or reacts to the question that was just asked, or
-  says something incidental, without asking for a different task"
+- `answering`: "Answers or reacts to the question that was just asked,
+  restates the current task, or says something incidental; anything that is
+  not a request for a different task"
 - `adding`: "Asks for an additional task to be handled as well, while
   keeping the current one, for example with also, as well, and another
   thing, or after this"
 - `replacing`: "Abandons the current task in favour of a different one, for
   example with never mind, forget that, instead, or actually I just want"
 
-`activeForm.label` is the spoken intent label already in state
-(`INTENT_LABELS`). Threshold `INTENT_CHANGE`, placeholder 0.6: below it, the
-turn is treated as `answering`.
+`activeFormLabel` is a new `TurnState` field, the spoken intent label
+already in state (`INTENT_LABELS`), used in place of `activeForm.label`
+because `activeForm` is the form id string. Threshold `INTENT_CHANGE`,
+placeholder 0.6: below it, the turn is treated as `answering`.
 
 ### 2.3 `intelligible` (rewording)
 
-Instructions: "Read asr.text. Is the text something a caller could
-meaningfully have said, including a single word, a yes or no, a name, a
-number, or a string of digits, as opposed to garbled fragments or
-background noise?"
+Instructions: "Read asr.text. Is the text words the caller actually said,
+rather than garbled fragments or background noise?"
+
+Criteria:
+- `true`: "Any real utterance, including a single word, a yes or no, a
+  name, a number, or a string of digits"
+- `false`: "Garbled fragments, transcribed noise, or nothing but a filler
+  sound such as um or uh"
 
 ### 2.4 `memberIdSpan` (rewording)
 
 Instructions: "Read asr.text. Which of these spans is the member ID the
 caller states? Choose the span that covers the whole number as spoken,
 including number words like forty-four or three hundred fifty-five and
-modifiers like double or triple. Choose none if no span is a member ID."
+modifiers like double or triple. Do not include words that are not part of
+the number. Choose none if no span is a member ID."
 
 The `none` criterion text stays "No span of asr.text is a member ID".
 
 ### 2.5 `providerUnsure` (Noul, with the provider slot; new)
 
 Instructions: "Read asr.text. Is the caller unsure which provider they
-mean, for example by hedging with might be, I think, or not sure, or by
-naming more than one provider?"
+mean, or unsure of that provider's name?"
+
+Criteria:
+- `true`: "The caller hedges about the provider, as in it might be Dr. Kim
+  or Dr. Rossi I think, or offers two names for one provider, as in Dr.
+  Chen or Cheng, I am not sure"
+- `false`: "The caller names a provider plainly, or names none. A caller
+  correcting themselves, as in Dr. Chen, not Dr. Cheng, is sure, and so is
+  a caller who hedges only about what they want done, as in maybe cancel it
+  with Dr. Chen"
 
 Threshold `PROVIDER_UNSURE`, placeholder 0.5.
 
@@ -130,9 +151,17 @@ rare and the next prompt catches it).
 
 `Session.queued: FormIntent[]`, initially empty. A `queue` verdict appends
 the intent unless it equals the active form or is already queued. The turn
-speaks `ack_queued` ("Sure, we'll get to {intentLabel} after this.") as an
-ack before the current prompt, and the slot fill for the turn proceeds as
-`proceed` would (the same utterance may also answer the current question).
+speaks `ack_queued` ("Sure, we'll {intentLabel} after this.") as an ack
+before the current prompt, but only when the intent was newly added to the
+queue; an utterance that repeats an already-queued intent gets no second
+ack. The slot fill for the turn proceeds as `proceed` would (the same
+utterance may also answer the current question).
+
+An intent added while an intent or slot confirmation is pending is queued
+and acked the same way, and the confirmation itself is re-asked rather than
+dropped, without counting an attempt: the caller talked past the yes/no
+question to add a request, not to dodge it, so the retry ladder does not
+move.
 
 ### 4.2 Completion
 
@@ -148,9 +177,20 @@ ask. The session enters the next form with `memberId` carried over
 (value, display, confirmed) and `provider` and `date` cleared. If the next
 form's completion is a handoff (billing), the form is entered and its
 remaining slots asked as usual; the handoff happens at its completion.
+Entering the next form removes it from the queue, the same as any other
+switch into a form, so a queued intent cannot also be started a second time
+from the queue. Because a form whose completion is a handoff ends the call,
+a handoff-completion intent in the queue is always picked last, after every
+intent whose completion is a prompt; only when nothing else is left does
+the queue hand the caller over. When the intent being bridged into was
+queued on this very turn, the completion line drops its own `ack_queued`
+for that intent, so the caller does not hear "we'll get to billing after
+this" immediately followed by "now, billing."
 
 Handoff `end` frames' `handoffData` gains `completed: FormId[]`, the forms
-finished on this call, so the agent screen can show what was already done.
+finished on this call, and `queued: FormId[]`, intents the caller added
+that the call never started, each omitted when empty, so the agent screen
+can show what was already done and what is still owed.
 
 ### 4.3 Outcome and trace
 
@@ -165,24 +205,37 @@ extended by §5.3).
 
 ### 5.1 Always-confirm flow
 
-A spoken fill of an `always` slot sets the slot's value and display with
-`confirmed: false` and speaks no ack. `continueForm`, before asking the next
-missing slot, looks for a filled, unconfirmed `always` slot; if one exists it
-sets `pendingConfirmation = { target: 'slot', slot, value, display }` and
-returns `confirm_<slot>` ("Your member ID is {memberId}. Is that right?")
-with spoken options yes and no. Implicit acks for other slots filled in the
-same turn are spoken before it.
+`SlotOutcome`'s `filled` variant keeps only `confirm: 'none' | 'implicit'`;
+there is no `explicit` outcome. Whether a spoken fill is read back is the
+slot's own policy, not the fill outcome: `fillSlots` consults
+`SLOTS[id].spokenConfirm`, and for an `always` slot it sets the slot's value
+and display with `confirmed: false` and speaks no ack even when the outcome
+says `confirm: 'none'`. `continueForm`, before asking the next missing slot,
+looks for a filled, unconfirmed `always` slot (`pendingSlotConfirmation`);
+if one exists it sets `pendingConfirmation = { target: 'slot', slot, value,
+display }` and returns `confirm_<slot>` ("Your member ID is {memberId}. Is
+that right?") with spoken options yes and no. Implicit acks for other slots
+filled in the same turn are spoken before it.
 
 Verdicts on the next turn reuse the confirmation gate:
 - `confirmed`: the slot becomes confirmed; `continueForm` proceeds.
-- `rejected`: the slot's value is cleared and the caller is sent straight to
-  the keypad prompt `ask_<slot>_dtmf` (a declined readback means the spoken
-  path failed; the ladder does not spend another spoken attempt). Attempts
-  are set so the next failure hands off.
-- `confirm_unanswered`: re-ask under the existing retry policy.
+- `rejected`: the slot's value is cleared, `ack_declined` ("Sorry about
+  that.") is spoken, and the caller is sent straight to the keypad prompt
+  `ask_<slot>_dtmf` (a declined readback means the spoken path failed; the
+  ladder does not spend another spoken attempt). Rejection escalates on
+  repetition: attempts are bumped so that a second decline following a
+  fresh spoken ID hands off rather than reading a third value back.
+- `confirm_unanswered`: an unanswered readback follows the same ladder as a
+  decline — re-ask first, then the keypad, then handoff — rather than a
+  separate policy.
 
 Keypad entry marks the slot confirmed with no question, as `applyDtmf`
-already does.
+already does, and clears any pending confirmation.
+
+A switch away from an active form is always acknowledged with `ack_intent`,
+whatever the route's own confidence, because silently swapping the task
+underneath the caller is the confusing case; entering a form from outside
+one, or an implicit-confidence route, keeps the existing implicit ack.
 
 A pending intent confirmation and a pending slot confirmation never coexist:
 slot confirmation is only raised from `continueForm`, which runs after an
@@ -205,15 +258,34 @@ not the only chance to object.
 
 Below the threshold, today's rules apply.
 
+In practice the second disambiguation clause (unsure and the runner-up at or
+above `SLOT_CHOICE_CONFIRM`) is unreachable while normalized probabilities
+and `2*SLOT_CHOICE_CONFIRM + SLOT_CHOICE_MARGIN > 1` both hold, since two
+choices cannot each clear `SLOT_CHOICE_CONFIRM` without their margin also
+clearing `SLOT_CHOICE_MARGIN`, which already disambiguates through the first
+clause. It is kept, annotated in the code, and becomes live if a later
+threshold sweep lowers either value. Consequently a caller who offers two
+names for one provider ("Dr. Chen or Cheng, I'm not sure") but whose model
+answer does not split the probability mass between them gets an implicit
+readback of the model's top pick, not a disambiguation.
+
 ## 6. Chunked spoken numbers
 
-`spokenToDigits` gains `hundred` and `thousand` as multipliers and ignores
-`and`. A unit or teen before `hundred` scales; tens and units after it add;
-a bare "two hundred" is 200. Chunks concatenate: "forty four, one eighty
-seven, three hundred fifty five" is `44187355`; "three hundred five" is
-`305`; "four hundred and twelve" is `412`; "double four seven one eight two
-nine three" is unchanged at `44718293`; digit tokens like "44 187 355" still
-concatenate. The mask decides acceptability, as today.
+`spokenToDigits` gains `hundred` and `thousand` as multipliers (exported as
+`MULTIPLIER_WORDS`) and ignores `and`. A unit or teen before `hundred` or
+`thousand` scales; tens and units after it add; a bare "two hundred" is
+200. Thousands compose with a trailing hundreds group: "two thousand five
+hundred" is 2500, "one thousand two hundred thirty four" is 1234. A spoken
+zero after a multiplier is its own digit rather than composing into the
+group: "three hundred oh five" is 30005, not 305. Chunks concatenate:
+"forty four, one eighty seven, three hundred fifty five" is `44187355`;
+"three hundred five" is `305`; "four hundred and twelve" is `412`; "double
+four seven one eight two nine three" is unchanged at `44718293`; digit
+tokens like "44 187 355" still concatenate. `hundred` or `thousand` alone,
+with no other number word, does not qualify a candidate span, so ordinary
+phrases like "a hundred percent sure" do not spawn junk spans; the word
+still counts within a span that has another number word. The mask decides
+acceptability, as today.
 
 ## 7. Corpus, labels, and scenarios
 
@@ -225,7 +297,8 @@ new questions from them (default false / `answering`), so the stub baseline
 keeps meaning "the labels". The `answers` override mechanism is unchanged.
 
 Corrections from the recording: `lc-01` ("I need to do something about my
-appointment") is `other`; `lc-05` ("Change it", no form) is `other`; `lc-06`
+appointment") is `other`; `lc-05` ("Change it", no form) is `other`, on a
+weak real-model plurality (0.44) and may be revisited; `lc-06`
 ("I'm seeing Dr. Chen, or Cheng, I'm not sure") is intent `none` with
 `providerUnsure: true`; `lc-12` ("It might be Dr. Kim") gets
 `providerUnsure: true` and its expected outcome becomes an implicit ack, not
@@ -269,7 +342,9 @@ New placeholders in `thresholds.ts`: `INTENT_TENTATIVE` 0.5,
 ## 9. Prompts
 
 New manifest entries: `ack_queued`, `bridge_next`, `goodbye`,
-`confirm_memberId`. Completion prompts drop " Goodbye.". The render test
+`confirm_memberId`, `ack_declined` ("Sorry about that."), spoken before the
+keypad prompt that follows a declined slot readback. Completion prompts
+drop " Goodbye.". The render test
 that every completion prompt names every slot of its form stays; a new test
 pins that no completion prompt ends the call by itself.
 
