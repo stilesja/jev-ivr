@@ -13,12 +13,13 @@ import { evaluateGates, type GateRow, type Verdict } from './gates';
 import { applyDtmf, fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, type Ack, type FillEvent } from './fia';
 import type { Decision, HandoffDecision, PromptDecision } from './decision';
 import type { Thresholds } from './thresholds';
-import { decisionToFrames, handoffPromptId, spokenText } from '../prompts/render';
+import { decisionToFrames, handoffPromptId, spokenText, type RenderContext } from '../prompts/render';
 
 export interface TurnContext {
   nowMs: number;
   todayIso: string;
   thresholds: Thresholds;
+  render?: RenderContext | null;
 }
 
 export interface Plan {
@@ -128,7 +129,7 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
     return prompt('nomatch_open', 'intent');
   }
   // A slot narrowed to a window re-asks the window question, not the generic retry:
-  // "which day next week?" is what the caller failed to answer.
+  // "next week. Which day works for you?" is what the caller failed to answer.
   const window = s.slots[target].window;
   if (step === 'open' && window) return askSlot(target, window, []);
   return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target);
@@ -345,12 +346,12 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
     case 'setup': {
       const decision = prompt('greeting', 'intent');
       bookkeep(s, decision, 'setup');
-      return { ...base, decision, frames: decisionToFrames(decision) };
+      return { ...base, decision, frames: decisionToFrames(decision, tc.render) };
     }
     case 'dtmf': {
       const { decision, rows } = handleDtmf(s, event.digit, tc);
       bookkeep(s, decision, `dtmf:${event.digit}`);
-      return { ...base, rows, decision, frames: decisionToFrames(decision) };
+      return { ...base, rows, decision, frames: decisionToFrames(decision, tc.render) };
     }
     case 'interrupt':
       // Barge-in is state, not a turn: the next prompt frame reports it to the model.
@@ -368,7 +369,7 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
         bookkeep(s, decision, 'error');
         // The turn state above already reported the barge-in, failed ask or not.
         s.lastInterrupt = null;
-        return { ...base, turnState, decision, frames: decisionToFrames(decision) };
+        return { ...base, turnState, decision, frames: decisionToFrames(decision, tc.render) };
       }
       s.consecutiveFailures = 0;
       const ctx = slotContext(s, event.voicePrompt, tc);
@@ -378,7 +379,7 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       bookkeep(s, decision, verdict.kind);
       // The barge-in has now been reported to the model; it does not carry into the next turn.
       s.lastInterrupt = null;
-      return { session: s, turnState, rows, verdict, fillEvents: events, decision, frames: decisionToFrames(decision) };
+      return { session: s, turnState, rows, verdict, fillEvents: events, decision, frames: decisionToFrames(decision, tc.render) };
     }
   }
 }

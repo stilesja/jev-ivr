@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer, type RunningServer, type ServerOverrides } from './index';
@@ -8,9 +8,12 @@ import { FakeRelay } from '../testing/fakeRelay';
 import type { JevClient } from '../jev/types';
 
 let running: RunningServer | null = null;
+/** Temp dirs minted by makeConfig() for this test, swept up alongside the server it started. */
+let tempDirs: string[] = [];
 afterEach(async () => {
   await running?.close();
   running = null;
+  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 /** Shaped like a minted token (32 hex), but never minted: the upgrade itself must refuse it. */
@@ -18,6 +21,11 @@ const UNMINTED_TOKEN = 'f'.repeat(32);
 
 function makeConfig(extra: Record<string, string> = {}) {
   const traceDir = mkdtempSync(join(tmpdir(), 'server-'));
+  tempDirs.push(traceDir);
+  // AUDIO_DIR defaults to a fresh, empty temp dir (not the repo's assets/audio) so these tests
+  // never depend on, or are broken by, whatever real recorded clips live in the working tree.
+  const audioDir = extra.AUDIO_DIR ?? mkdtempSync(join(tmpdir(), 'audio-'));
+  if (!extra.AUDIO_DIR) tempDirs.push(audioDir);
   const config = loadConfig({
     PUBLIC_HOST: 'localhost',
     TWILIO_AUTH_TOKEN: 't',
@@ -26,6 +34,7 @@ function makeConfig(extra: Record<string, string> = {}) {
     SIGNATURE_CHECK: 'off',
     TODAY_OVERRIDE: '2026-09-18',
     TRACE_DIR: traceDir,
+    AUDIO_DIR: audioDir,
     ...extra,
   });
   return { traceDir, config };
@@ -59,6 +68,46 @@ async function fixtureStub(): Promise<JevClient> {
 }
 
 describe('server end to end', () => {
+  it('plays the greeting as a recorded clip when one is present, and logs audio coverage at startup', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    writeFileSync(join(audioDir, 'greeting.0.wav'), Buffer.from('RIFFdata'));
+    const { config } = makeConfig({ AUDIO_DIR: audioDir });
+    const logs: string[] = [];
+    running = await startServer(config, { log: (line) => logs.push(line) });
+    const base = `http://127.0.0.1:${running.port}`;
+    const ws = `ws://127.0.0.1:${running.port}/conversation`;
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`${ws}?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForMessages(1);
+    // No trailing text frame: the whole greeting is one recorded clip, so the turn produces
+    // exactly this one play frame.
+    expect(relay.received).toEqual([
+      { type: 'play', source: 'https://localhost/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true },
+    ]);
+    relay.assertKnownTypes();
+    expect(logs.some((l) => l.includes('audio: 1 of') && l.includes('clips present'))).toBe(true);
+    // The renderer's audioBase points here, so the clip it just referenced must actually be
+    // reachable at that URL's path.
+    const clip = await fetch(`${base}/audio/greeting.0.wav`);
+    expect(clip.status).toBe(200);
+    expect(clip.headers.get('content-type')).toBe('audio/wav');
+  });
+
+  it('still boots and greets when recorded.json is malformed, logging that it is ignored', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    writeFileSync(join(audioDir, 'recorded.json'), 'not json');
+    const { config } = makeConfig({ AUDIO_DIR: audioDir });
+    const logs: string[] = [];
+    running = await startServer(config, { log: (line) => logs.push(line) });
+    expect(logs.some((l) => l.startsWith('audio: ignoring unreadable recorded.json:'))).toBe(true);
+    const ws = `ws://127.0.0.1:${running.port}/conversation`;
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`${ws}?token=${token}`);
+    relay.setup('CA1');
+    expect(await relay.waitForTexts(1)).toEqual(['Thanks for calling the clinic. How can I help you today?']);
+  });
+
   it('greets on setup and refuses a well-shaped token that was never minted', async () => {
     const { relay, ws } = await connected();
     expect(relay.texts()).toEqual(['Thanks for calling the clinic. How can I help you today?']);
@@ -163,17 +212,46 @@ describe('server end to end', () => {
     // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
     expect((await relay.waitForTexts(3)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
     relay.prompt('yes');
-    expect((await relay.waitForTexts(4)).at(-1)).toBe('Which day next week works for you?');
+    expect((await relay.waitForTexts(4)).at(-1)).toBe('next week. Which day works for you?');
     relay.prompt('Tuesday');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
     expect(relay.texts().at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
     expect(relay.texts().at(-1)).toBe('Goodbye.');
-    expect((await relay.closed).code).toBe(1000);
+    // The server leaves the socket open after `end` so Twilio can finish playing the queued
+    // clips; it is Twilio, not the server, that closes the connection once it is done.
+    const stillOpen = Symbol('open');
+    const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(stillOpen), 200))]);
+    expect(settled).toBe(stillOpen);
+    relay.close();
+    await relay.closed;
+    expect(running!.store.get(callSid)?.ended).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
     expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(5);
     relay.assertKnownTypes();
+  });
+
+  it('closes the socket itself if Twilio never does within the grace period after end', async () => {
+    const s = await start(undefined, { endCloseGraceMs: 50 });
+    const token = running!.tokens.mint('CA11');
+    const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
+    relay.setup('CA11');
+    await relay.waitForTexts(1);
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    await relay.waitForTexts(2);
+    relay.prompt('four four seven one eight two nine three');
+    await relay.waitForTexts(3);
+    relay.prompt('yes');
+    await relay.waitForTexts(4);
+    relay.prompt('Tuesday');
+    await relay.waitFor((m) => m.type === 'end');
+    const timedOut = Symbol('timed out');
+    const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(timedOut), 500))]);
+    expect(settled).not.toBe(timedOut);
+    const closed = settled as { code: number; reason: string };
+    expect(closed.code).toBe(1000);
+    expect(closed.reason).toBe('end grace elapsed');
   });
 
   it('handles dtmf and agent handoff', async () => {
@@ -266,7 +344,7 @@ describe('server end to end', () => {
     again.prompt('four four seven one eight two nine three');
     expect((await again.waitForTexts(2)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
     again.prompt('yes');
-    expect((await again.waitForTexts(3)).at(-1)).toBe('Which day next week works for you?');
+    expect((await again.waitForTexts(3)).at(-1)).toBe('next week. Which day works for you?');
     const done = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),

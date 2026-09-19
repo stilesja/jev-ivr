@@ -12,6 +12,9 @@ export interface ConnectOptions {
   publicHost: string;
   token: string;
   hints: string;
+  /** TTS provider/voice for the segments that are not recorded clips; set both or neither. */
+  ttsProvider?: string;
+  voice?: string;
 }
 
 /** The ConversationRelay connect document. Attributes follow the spec's §5 and handoff §10, finals only. */
@@ -27,8 +30,11 @@ export function connectRelayTwiml(o: ConnectOptions): string {
     'reportInputDuringAgentSpeech="any"',
     'deepgramSmartFormat="false"',
     `hints="${escapeXml(o.hints)}"`,
-  ].join(' ');
-  return response(`<Connect action="https://${escapeXml(o.publicHost)}/cr-action"><ConversationRelay ${attrs}/></Connect>`);
+  ];
+  if (o.ttsProvider && o.voice) {
+    attrs.push(`ttsProvider="${escapeXml(o.ttsProvider)}"`, `voice="${escapeXml(o.voice)}"`);
+  }
+  return response(`<Connect action="https://${escapeXml(o.publicHost)}/cr-action"><ConversationRelay ${attrs.join(' ')}/></Connect>`);
 }
 
 export function dialTwiml(number: string): string {

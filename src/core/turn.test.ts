@@ -235,6 +235,16 @@ describe('turn', () => {
     expect(yes.session.slots.provider.value).toBe('chen');
   });
 
+  it('renders play frames when the turn context carries clips, and text otherwise', () => {
+    const ctx = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
+    const r = resolve(newSession('s', 0), setupFrame('s'), null, { ...tc, render: ctx });
+    expect(r.frames).toEqual([{ type: 'play', source: 'https://h/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true }]);
+    expect(resolve(newSession('s', 0), setupFrame('s'), null, tc).frames[0]).toEqual({
+      type: 'text', token: 'Thanks for calling the clinic. How can I help you today?', last: true, lang: 'en-US', interruptible: true, preemptible: false,
+    });
+    expect(r.session.lastPromptText).toBe('Thanks for calling the clinic. How can I help you today?');
+  });
+
   describe('member id confirmation', () => {
     const inCancel = () => say(started(), 'cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }) }).session;
     const idAnswers = {

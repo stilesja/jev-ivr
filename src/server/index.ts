@@ -15,6 +15,8 @@ import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
+import { discoverClips, recordableClips } from '../prompts/clips';
+import { coverage, readRecorded } from '../prompts/sheet';
 
 export interface RunningServer {
   server: Server;
@@ -30,6 +32,8 @@ export interface ServerOverrides {
   log?: (line: string) => void;
   /** Tests use a short deadline so a connection that never sends setup does not hold the suite open. */
   setupTimeoutMs?: number;
+  /** Tests use a short grace period to prove the end-close backstop fires without waiting 30 seconds. */
+  endCloseGraceMs?: number;
 }
 
 const TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -55,13 +59,32 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   // Wall-clock date in the configured zone: a caller at 8pm Pacific means today, not tomorrow.
   const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
 
+  const clips = discoverClips(config.audioDir);
+  let recorded: Record<string, string> | null;
+  try {
+    recorded = readRecorded(config.audioDir);
+  } catch (e) {
+    log(`audio: ignoring unreadable recorded.json: ${e instanceof Error ? e.message : String(e)}`);
+    recorded = null;
+  }
+  const cov = coverage(recordableClips(), clips, recorded);
+  const missingSuffix =
+    cov.missing.length === 0
+      ? ''
+      : `: missing ${cov.missing.slice(0, 10).join(', ')}${cov.missing.length > 10 ? ` +${cov.missing.length - 10} more` : ''}`;
+  log(`audio: ${cov.present} of ${cov.total} clips present in ${config.audioDir} (${cov.missing.length} segments fall back to TTS)${missingSuffix}`);
+  if (cov.stale.length > 0) {
+    log(`audio: ${cov.stale.length} stale clips (recorded text differs from the sheet): ${cov.stale.join(', ')}`);
+  }
+  const render = { clips, audioBase: `https://${config.publicHost}/audio/` };
+
   const store = new SessionStore(
     (callSid) => {
       const file = safeFileStem(callSid);
       const trace = new TraceWriter(join(config.traceDir, `${file}.jsonl`));
       return {
         session: newSession(callSid, now()),
-        opts: { client, thresholds, todayIso: todayIso(), trace, now },
+        opts: { client, thresholds, todayIso: todayIso(), trace, now, render },
         trace,
         frames: new FrameLog(join(config.traceDir, `${file}.frames.jsonl`), now),
       };
@@ -74,7 +97,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const deps = { config, store, tokens, hints: buildHints(), log };
 
   const server = createServer(createRequestHandler(deps));
-  const wss = attachWebSocketServer(server, { store, tokens, log }, overrides.setupTimeoutMs);
+  const wss = attachWebSocketServer(server, { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs }, overrides.setupTimeoutMs);
   const evictor = setInterval(() => {
     for (const sid of store.evictIdle()) log(`${sid}: evicted idle session`);
     const swept = tokens.evictExpired();

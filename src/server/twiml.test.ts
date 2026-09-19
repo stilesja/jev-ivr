@@ -21,6 +21,15 @@ describe('twiml', () => {
     expect(escapeXml('"q" & <t>')).toBe('&quot;q&quot; &amp; &lt;t&gt;');
   });
 
+  it('adds ttsProvider and voice only when configured', () => {
+    expect(connectRelayTwiml({ publicHost: 'h', token: 't', hints: '' })).not.toMatch(/ttsProvider|voice=/);
+    const x = connectRelayTwiml({ publicHost: 'h', token: 't', hints: '', ttsProvider: 'Google', voice: 'en-US-Neural2-F' });
+    expect(x).toContain('ttsProvider="Google"');
+    expect(x).toContain('voice="en-US-Neural2-F"');
+    const escaped = connectRelayTwiml({ publicHost: 'h', token: 't', hints: '', ttsProvider: 'Google', voice: 'a "quoted" & name' });
+    expect(escaped).toContain('voice="a &quot;quoted&quot; &amp; name"');
+  });
+
   it('builds dial, hangup and apologize documents', () => {
     expect(dialTwiml('+15551234567')).toContain('<Dial>+15551234567</Dial>');
     expect(hangupTwiml()).toContain('<Hangup/>');

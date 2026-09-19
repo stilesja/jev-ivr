@@ -1,9 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ServerConfig } from './config';
 import { validateTwilioSignature } from './signature';
 import { apologizeAndDialTwiml, connectRelayTwiml, dialTwiml, hangupTwiml } from './twiml';
 import type { SessionStore } from './sessions';
 import type { CallTokens } from './tokens';
+import { AUDIO_TYPES, CLIP_FILE } from '../prompts/clips';
 
 export interface HttpDeps {
   config: ServerConfig;
@@ -55,6 +58,54 @@ function reply(res: ServerResponse, status: number, type: string, body: string):
   res.end(body);
 }
 
+/**
+ * Decodes a raw `/audio/<raw>` path segment and checks it against the same filename shape
+ * `discoverClips` accepts: an id made of `[A-Za-z0-9_.-]`, a dot, and a wav/mp3 extension.
+ * That shape has no room for a `/` (or, once decoded, a bare `..`), so it alone rules out path
+ * traversal — no separate `..` check is needed, and `discoverClips` itself has none either;
+ * the two are meant to accept exactly the same names. Returns the decoded name, or null if the
+ * segment fails to decode or doesn't match.
+ */
+export function clipName(raw: string): string | null {
+  let name: string;
+  try {
+    name = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  return CLIP_FILE.test(name) ? name : null;
+}
+
+/**
+ * Serves a recorded clip from `audioDir` by filename. Clips are read synchronously, one file
+ * per request: there are few of them, each is small, and the response is cached for a day, so
+ * this is not a hot path. If that stops being true, the next step is an in-memory Map of
+ * Buffers built once at startup rather than a per-request `readFileSync`.
+ * Any read failure — missing file, a directory, a dangling symlink — is a 404, never a 500.
+ */
+function serveClip(req: IncomingMessage, res: ServerResponse, audioDir: string, raw: string): void {
+  const name = clipName(raw);
+  if (!name) {
+    reply(res, 404, 'text/plain', 'not found');
+    return;
+  }
+  let body: Buffer;
+  try {
+    body = readFileSync(join(audioDir, name));
+  } catch {
+    reply(res, 404, 'text/plain', 'not found');
+    return;
+  }
+  const ext = CLIP_FILE.exec(name)![2]!.toLowerCase();
+  res.writeHead(200, {
+    'content-type': AUDIO_TYPES[ext]!,
+    'content-length': body.length,
+    'cache-control': 'public, max-age=86400',
+    'accept-ranges': 'none',
+  });
+  res.end(req.method === 'HEAD' ? undefined : body);
+}
+
 function isBlank(raw: string | undefined): boolean {
   return raw === undefined || raw.trim() === '';
 }
@@ -66,6 +117,17 @@ function parseHandoff(raw: string): { reasonCode: string } {
   } catch {
     return { reasonCode: 'unknown' };
   }
+}
+
+/** The ConversationRelay connect attributes shared by the initial /voice answer and a reconnect. */
+function connectOptions(deps: HttpDeps, token: string): Parameters<typeof connectRelayTwiml>[0] {
+  const { publicHost, ttsProvider, ttsVoice } = deps.config;
+  return {
+    publicHost,
+    token,
+    hints: deps.hints,
+    ...(ttsProvider && ttsVoice ? { ttsProvider, voice: ttsVoice } : {}),
+  };
 }
 
 /** The <Connect action> callback decision, per spec §5 step 6. Pure apart from store and token side effects. */
@@ -99,7 +161,7 @@ export function decideActionTwiml(deps: HttpDeps, params: Record<string, string>
       deps.store.detach(callSid);
       entry.reconnects += 1;
       const token = deps.tokens.mint(callSid);
-      return { twiml: connectRelayTwiml({ publicHost: deps.config.publicHost, token, hints: deps.hints }), note: `reconnect:${entry.reconnects}` };
+      return { twiml: connectRelayTwiml(connectOptions(deps, token)), note: `reconnect:${entry.reconnects}` };
     }
     deps.store.end(callSid);
     deps.tokens.revoke(callSid);
@@ -111,7 +173,11 @@ export function decideActionTwiml(deps: HttpDeps, params: Record<string, string>
 export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     void (async () => {
-      const path = (req.url ?? '/').split('?')[0];
+      const path = (req.url ?? '/').split('?')[0] ?? '/';
+      if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/audio/')) {
+        serveClip(req, res, deps.config.audioDir, path.slice('/audio/'.length));
+        return;
+      }
       if ((req.method === 'GET' || req.method === 'HEAD') && path === '/health') {
         // `sessions` is what is live; `retained` is ended calls still inside their grace period,
         // which are memory but not callers.
@@ -150,7 +216,7 @@ export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res
         }
         const token = deps.tokens.mint(callSid);
         deps.log(`/voice ${callSid} from ${params.From ?? '?'}`);
-        reply(res, 200, 'text/xml', connectRelayTwiml({ publicHost: deps.config.publicHost, token, hints: deps.hints }));
+        reply(res, 200, 'text/xml', connectRelayTwiml(connectOptions(deps, token)));
         return;
       }
       deps.store.get(params.CallSid ?? '')?.frames.write('http', { route: '/cr-action', ...params });

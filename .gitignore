@@ -1,5 +1,11 @@
 node_modules/
 traces/
 .env
+.env.*
+!.env.example
 *.log
+*.swp
+*.swo
 .DS_Store
+assets/audio/candidates/
+*.tmp

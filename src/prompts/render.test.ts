@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FORMS } from '../domain/forms';
-import { renderTemplate, promptText, promptEntry, decisionToFrames, handoffPromptId, spokenText } from './render';
+import { renderTemplate, promptText, promptEntry, decisionToFrames, promptFrames, handoffPromptId, spokenText } from './render';
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
-import { INTENT_MENU } from '../domain/intents';
+import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
+import { textFrame } from '../channel/frames';
+import { recordableClips } from './clips';
+import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VOCAB_VARS, type Segment } from './segments';
 
 describe('renderTemplate', () => {
   it('substitutes variables', () => {
@@ -118,5 +121,167 @@ describe('completion and chaining', () => {
   it('reports intents the call never started in the handoff data', () => {
     const frames = decisionToFrames({ kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent', acks: [], completed: ['cancel'], queued: ['schedule_new'] });
     expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"live-agent","completed":["cancel"],"queued":["schedule_new"]}' });
+  });
+});
+
+describe('decisionToFrames with clips', () => {
+  const base = 'https://demo.ngrok.app/audio/';
+  const clips = new Map([
+    ['greeting.0', 'greeting.0.wav'],
+    ['ack_provider.0', 'ack_provider.0.wav'], ['provider.chen', 'provider.chen.wav'],
+    ['confirm_memberId.0', 'confirm_memberId.0.wav'], ['confirm_memberId.1', 'confirm_memberId.1.mp3'],
+    ['window.next_week', 'window.next_week.wav'],
+    ['goodbye.0', 'goodbye.0.wav'],
+  ]);
+  const ctx = { clips, audioBase: base };
+  const p = (source: string, interruptible: boolean) => ({ type: 'play', source, loop: 1, preemptible: false, interruptible });
+  const t = (token: string, interruptible: boolean) => ({ type: 'text', token, last: true, lang: 'en-US', interruptible, preemptible: false });
+
+  it('renders a fully recorded prompt as play frames', () => {
+    const frames = decisionToFrames({ kind: 'prompt', promptId: 'greeting', vars: {}, acks: [], target: 'intent', options: [] }, ctx);
+    expect(frames).toEqual([p(`${base}greeting.0.wav`, true)]);
+  });
+
+  it('plays vocabulary clips, speaks composed values, and drops bare punctuation after a clip', () => {
+    const frames = decisionToFrames({
+      kind: 'prompt', promptId: 'confirm_memberId', vars: { memberId: '4471 8293' }, target: 'memberId', options: ['yes', 'no'],
+      acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
+    }, ctx);
+    expect(frames).toEqual([
+      p(`${base}ack_provider.0.wav`, false), p(`${base}provider.chen.wav`, false),
+      p(`${base}confirm_memberId.0.wav`, false), t('4471 8293', false), p(`${base}confirm_memberId.1.mp3`, false),
+    ]);
+  });
+
+  it('falls back to text per segment and joins text without a space before punctuation', () => {
+    const partial = { clips: new Map([['ack_provider.0', 'ack_provider.0.wav']]), audioBase: base };
+    const frames = decisionToFrames({ kind: 'prompt', promptId: 'ask_memberId', vars: {}, target: 'memberId', options: [], acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Kim' } }] }, partial);
+    expect(frames).toEqual([p(`${base}ack_provider.0.wav`, false), t('Dr. Kim.', false), t(promptText('ask_memberId', {}), true)]);
+  });
+
+  it('strips the leading pause from text that follows a clip', () => {
+    const frames = decisionToFrames({ kind: 'prompt', promptId: 'date_narrow_window', vars: { window: 'next week' }, target: 'date', options: [], acks: [] }, ctx);
+    expect(frames).toEqual([p(`${base}window.next_week.wav`, true), t('Which day works for you?', true)]);
+  });
+
+  it('renders exactly as today without a context', () => {
+    const d = { kind: 'prompt' as const, promptId: 'ask_memberId', vars: {}, target: 'memberId' as const, options: [], acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }] };
+    expect(decisionToFrames(d, null)).toEqual(decisionToFrames(d));
+    expect(decisionToFrames(d)).toEqual([t('With Dr. Chen.', false), t(promptText('ask_memberId', {}), true)]);
+    const w = { kind: 'prompt' as const, promptId: 'date_narrow_window', vars: { window: 'next week' }, target: 'date' as const, options: [], acks: [] };
+    expect(decisionToFrames(w)).toEqual([t('next week. Which day works for you?', true)]);
+  });
+
+  it('merges a whole text run around a vocabulary clip and plays the goodbye clip before the end frame', () => {
+    const frames = decisionToFrames({ kind: 'complete', form: 'cancel', promptId: 'cancel_confirmed', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, acks: [], completed: ['cancel'] }, ctx);
+    expect(frames).toEqual([
+      t('For member ID 4471 8293, your appointment with', false), p(`${base}provider.chen.wav`, false), t('is cancelled.', false),
+      p(`${base}goodbye.0.wav`, false),
+      expect.objectContaining({ type: 'end' }),
+    ]);
+  });
+
+  it('is byte-identical to a manifest text frame for every prompt, with or without an empty context', () => {
+    const vars: Record<string, string> = {
+      provider: 'Dr. Chen',
+      intentLabel: INTENT_LABELS.billing,
+      window: 'next week',
+      memberId: '4471 8293',
+      date: 'Tuesday, September 22',
+      a: 'Dr. Chen',
+      b: 'Dr. Cheng',
+    };
+    const empty = { clips: new Map<string, string>(), audioBase: base };
+    for (const id of Object.keys(manifest)) {
+      const expected = [textFrame(promptText(id, vars), true)];
+      expect(promptFrames(id, vars, true, null)).toEqual(expected);
+      expect(promptFrames(id, vars, true, empty)).toEqual(expected);
+    }
+  });
+
+  describe('with every recordable clip present', () => {
+    const vars: Record<string, string> = {
+      provider: 'Dr. Chen',
+      intentLabel: INTENT_LABELS.billing,
+      window: 'next week',
+      memberId: '4471 8293',
+      date: 'Tuesday, September 22',
+      a: 'Dr. Chen',
+      b: 'Dr. Cheng',
+    };
+    const full = new Map(recordableClips().map((r) => [r.id, `${r.id}.wav`]));
+    const byId = new Map(recordableClips().map((r) => [r.id, r.text]));
+    const fullCtx = { clips: full, audioBase: base };
+
+    /**
+     * A spec-derived reference, independent of promptFrames: a segment is clip-backed
+     * (recordable at full coverage) when it is a non-punctuation-only fixed run or a
+     * vocabulary variable; everything else (a punctuation-only fixed run, or a spoken
+     * variable) is TTS. TTS runs accumulate via joinSpoken; a run immediately following a
+     * clip has its leading pause stripped, mirroring promptFrames' flush rule.
+     */
+    function referenceSpokenText(id: string, template: string, vars: Record<string, string>): string {
+      const isClipBacked = (s: Segment): boolean => (s.kind === 'fixed' ? !isPauseOnly(s.text) : VOCAB_VARS.has(s.name));
+      const recordingOf = (s: Segment): string => (s.kind === 'fixed' ? stripLeadingPause(s.text) : vars[s.name]!);
+      const runs: string[] = [];
+      let run: string[] = [];
+      let afterClip = false;
+      const flushRun = (): void => {
+        if (run.length === 0) return;
+        let text = joinSpoken(run);
+        if (afterClip) text = stripLeadingPause(text);
+        if (text) runs.push(text);
+        run = [];
+      };
+      for (const s of segmentTemplate(id, template)) {
+        if (isClipBacked(s)) {
+          flushRun();
+          runs.push(recordingOf(s));
+          afterClip = true;
+        } else {
+          run.push(s.kind === 'fixed' ? s.text : vars[s.name]!);
+        }
+      }
+      flushRun();
+      return joinSpoken(runs);
+    }
+
+    it('plays a clip for every segment that has one, falling back to text only for the two spoken vars', () => {
+      for (const [id, entry] of Object.entries(manifest)) {
+        const frames = promptFrames(id, vars, true, fullCtx);
+
+        for (const f of frames) {
+          if (f.type === 'play') continue;
+          expect(f.type, id).toBe('text');
+          const token = (f as { token: string }).token;
+          // A text frame can only ever be a spoken var's value, optionally with a trailing
+          // punctuation-only fixed segment glued on (it has nowhere else to attach when
+          // nothing plays after it — see the reference model above).
+          const bare = token.replace(/[,.?!;:]+$/, '');
+          const isSpokenVarValue = bare === vars.memberId || bare === vars.date;
+          expect(isSpokenVarValue, `${id}: unexpected text frame ${JSON.stringify(token)}`).toBe(true);
+        }
+
+        const actual = joinSpoken(
+          frames.map((f) => {
+            if (f.type === 'text') return (f as { token: string }).token;
+            const source = (f as { source: string }).source;
+            const clipId = source.slice(base.length, -'.wav'.length);
+            const text = byId.get(clipId);
+            expect(text, `${id}: no recordable text for clip ${clipId}`).toBeDefined();
+            return text!;
+          }),
+        );
+
+        const expected = referenceSpokenText(id, entry.text, vars);
+        expect(actual, id).toBe(expected);
+      }
+    });
+
+    it('ignores a clip recorded for a punctuation-only segment', () => {
+      const stray = { clips: new Map([...full, ['ack_provider.1', 'ack_provider.1.wav']]), audioBase: base };
+      const frames = promptFrames('ack_provider', vars, false, stray);
+      expect(frames.some((f) => f.type === 'play' && f.source.endsWith('ack_provider.1.wav'))).toBe(false);
+    });
   });
 });

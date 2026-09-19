@@ -1,20 +1,27 @@
 import manifest from './manifest.json';
 import type { Decision } from '../core/decision';
-import { endFrame, textFrame, type OutboundFrame } from '../channel/frames';
+import { endFrame, textFrame, type OutboundFrame, type PlayFrame } from '../channel/frames';
+import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR } from './segments';
+import { vocabularyClipId } from './clips';
 
 export type PromptId = keyof typeof manifest;
 
 export interface PromptEntry {
   text: string;
   interruptible: boolean;
-  /** audio asset url; null until the Twilio sub-project records assets */
-  audio?: string | null;
+}
+
+export interface RenderContext {
+  /** clip id → filename, from discoverClips */
+  clips: Map<string, string>;
+  /** absolute URL prefix the filename is appended to */
+  audioBase: string;
 }
 
 export const PROMPTS: Record<string, PromptEntry> = manifest;
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (_, name: string) => {
+  return template.replace(VAR, (_, name: string) => {
     const v = vars[name];
     if (v === undefined) throw new Error(`prompt variable missing: ${name}`);
     return v;
@@ -35,7 +42,45 @@ export function handoffPromptId(reason: string): string {
   return `handoff_${reason.replace(/-/g, '_')}`;
 }
 
-export function decisionToFrames(decision: Decision): OutboundFrame[] {
+function playFrame(source: string, interruptible: boolean): PlayFrame {
+  return { type: 'play', source, loop: 1, preemptible: false, interruptible };
+}
+
+/** One prompt as frames: clips where they exist, TTS text otherwise, adjacent text merged. */
+export function promptFrames(promptId: string, vars: Record<string, string>, interruptible: boolean, ctx?: RenderContext | null): OutboundFrame[] {
+  if (!ctx) return [textFrame(promptText(promptId, vars), interruptible)];
+  const frames: OutboundFrame[] = [];
+  let pieces: string[] = [];
+  const flush = (): void => {
+    if (pieces.length === 0) return;
+    let text = joinSpoken(pieces);
+    if (frames.at(-1)?.type === 'play') text = stripLeadingPause(text);
+    if (text) frames.push(textFrame(text, interruptible));
+    pieces = [];
+  };
+  const play = (file: string): void => {
+    flush();
+    frames.push(playFrame(ctx.audioBase + file, interruptible));
+  };
+  for (const s of segmentTemplate(promptId, promptEntry(promptId).text)) {
+    if (s.kind === 'fixed') {
+      const file = isPauseOnly(s.text) ? undefined : ctx.clips.get(s.id);
+      if (file) play(file);
+      else pieces.push(s.text);
+      continue;
+    }
+    const value = vars[s.name];
+    if (value === undefined) throw new Error(`prompt variable missing: ${s.name}`);
+    const id = vocabularyClipId(s.name, value);
+    const file = id ? ctx.clips.get(id) : undefined;
+    if (file) play(file);
+    else pieces.push(value);
+  }
+  flush();
+  return frames;
+}
+
+export function decisionToFrames(decision: Decision, ctx?: RenderContext | null): OutboundFrame[] {
   switch (decision.kind) {
     case 'ignore':
     case 'hold':
@@ -43,21 +88,21 @@ export function decisionToFrames(decision: Decision): OutboundFrame[] {
     case 'replay':
       return [textFrame(decision.text, true)];
     case 'prompt': {
-      const frames: OutboundFrame[] = decision.acks.map((a) => textFrame(promptText(a.promptId, a.vars), false));
-      frames.push(textFrame(promptText(decision.promptId, decision.vars), promptEntry(decision.promptId).interruptible));
+      const frames: OutboundFrame[] = decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx));
+      frames.push(...promptFrames(decision.promptId, decision.vars, promptEntry(decision.promptId).interruptible, ctx));
       return frames;
     }
     case 'complete':
       return [
-        ...decision.acks.map((a) => textFrame(promptText(a.promptId, a.vars), false)),
-        textFrame(promptText(decision.promptId, decision.vars), false),
-        textFrame(promptText('goodbye', {}), false),
+        ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
+        ...promptFrames(decision.promptId, decision.vars, false, ctx),
+        ...promptFrames('goodbye', {}, false, ctx),
         endFrame('completed', decision.completed),
       ];
     case 'handoff':
       return [
-        ...decision.acks.map((a) => textFrame(promptText(a.promptId, a.vars), false)),
-        textFrame(promptText(decision.promptId, {}), false),
+        ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
+        ...promptFrames(decision.promptId, {}, false, ctx),
         endFrame(decision.reason, decision.completed, decision.queued),
       ];
   }
