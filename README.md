@@ -219,6 +219,7 @@ queued.
     pnpm prompts:check                # which clips are present under AUDIO_DIR, and which are stale
     pnpm prompts:generate             # generate every missing clip with Fish Audio (FISH_AUDIO_API_KEY, FISH_VOICE)
     pnpm prompts:generate --only greeting.0 --candidates 3 --force   # audition variants under assets/audio/candidates/
+    pnpm prompts:generate --pick greeting.0-2      # promote a candidate to the clip and record it
     pnpm prompts:generate --dry-run --voice Hannah --only greeting.0 # print the request; no key, no network
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
@@ -237,7 +238,9 @@ Fixed clip ids are positional, so editing a template can make an existing
 clip say the wrong thing. The generator writes `assets/audio/recorded.json`
 (clip id → the text it recorded) and `pnpm prompts:check` reports a clip as
 `stale` when that text no longer matches the sheet; regenerate it with
-`--only <id> --force`.
+`--only <id> --force`. `--pick <id>-<n>` promotes an auditioned candidate to
+the final clip and records it in the sidecar, deleting the other candidates
+generated for that id.
 
 The server discovers clips once at startup (restart it after adding one),
 serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync as fsWriteFileSync } from 'node:fs';
+import { mkdirSync as fsMkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync as fsWriteFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FISH_TAGS, generateClips, resolveVoice, tagBodies, ttsRequest, validateTags, type GenerateOptions } from './generate';
+import { FISH_TAGS, generateClips, pickCandidates, resolveVoice, tagBodies, ttsRequest, validateTags, type GenerateOptions } from './generate';
 import { recordableClips } from './clips';
 import tags from './tags.json';
 import fishTags from './fishTags.json';
@@ -202,6 +202,36 @@ describe('generateClips', () => {
     }
     expect(logs.some((c) => String(c[0]).startsWith('recorded.json unreadable, starting a fresh sidecar:'))).toBe(true);
     expect(JSON.parse(readFileSync(join(dir, 'recorded.json'), 'utf8'))).toEqual({ 'ack_provider.0': 'With' });
+  });
+});
+
+describe('pickCandidates', () => {
+  let dir: string;
+  const rows = [{ id: 'a.0', text: 'Hi.', note: 'closed' as const }];
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'audio-'));
+    fsWriteFileSync(join(dir, 'a.0.mp3'), 'old-final');
+    fsMkdirSync(join(dir, 'candidates'), { recursive: true });
+    fsWriteFileSync(join(dir, 'candidates', 'a.0-1.wav'), 'candidate-1');
+    fsWriteFileSync(join(dir, 'candidates', 'a.0-2.wav'), 'candidate-2');
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('promotes the picked candidate, drops the stale final clip and the other candidates, and records the sidecar', () => {
+    const r = pickCandidates(['a.0-2'], dir, rows);
+    expect(r).toEqual({ picked: ['a.0-2'], errors: [] });
+    expect(readFileSync(join(dir, 'a.0.wav'), 'utf8')).toBe('candidate-2');
+    expect(readdirSync(dir).sort()).toEqual(['a.0.wav', 'candidates', 'recorded.json']);
+    expect(readdirSync(join(dir, 'candidates'))).toEqual([]);
+    expect(JSON.parse(readFileSync(join(dir, 'recorded.json'), 'utf8'))).toEqual({ 'a.0': 'Hi.' });
+  });
+
+  it('reports an unknown clip id and a missing candidate as errors, and leaves the tree unchanged', () => {
+    const r = pickCandidates(['nope-1', 'a.0-9'], dir, rows);
+    expect(r).toEqual({ picked: [], errors: [`unknown clip id: nope`, `no candidate a.0-9 under ${dir}/candidates`] });
+    expect(readFileSync(join(dir, 'a.0.mp3'), 'utf8')).toBe('old-final');
+    expect(readdirSync(join(dir, 'candidates')).sort()).toEqual(['a.0-1.wav', 'a.0-2.wav']);
+    expect(readdirSync(dir).includes('recorded.json')).toBe(false);
   });
 });
 

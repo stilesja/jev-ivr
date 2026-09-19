@@ -1,4 +1,4 @@
-import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { discoverClips, recordableClips, type RecordableClip } from './clips';
 import { readRecorded, RECORDED_FILE } from './sheet';
@@ -176,13 +176,95 @@ export async function generateClips(rows: RecordableClip[], o: GenerateOptions, 
   return result;
 }
 
+const PICK_FORMAT = /^(.+)-(\d+)$/;
+
+/** Splits an `<id>-<n>` pick token; `n` is `''` when the token has no trailing `-<digits>`. */
+function splitPick(pick: string): { id: string; n: string } {
+  const m = PICK_FORMAT.exec(pick);
+  return m ? { id: m[1]!, n: m[2]! } : { id: pick, n: '' };
+}
+
+/**
+ * Promotes an auditioned candidate (`candidates/<id>-<n>.wav|mp3`, written by a `--candidates`
+ * run) to the final clip `<audioDir>/<id>.<ext>`, then deletes the other candidates for that id
+ * and records the id in the sidecar. No network, no key: this only moves files that a previous
+ * generate run already wrote. Each pick is independent; one bad pick does not stop the rest, and
+ * a pick that errors leaves the tree untouched for that id.
+ */
+export function pickCandidates(picks: string[], audioDir: string, rows: RecordableClip[]): { picked: string[]; errors: string[] } {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const candidatesDir = join(audioDir, 'candidates');
+  const picked: string[] = [];
+  const errors: string[] = [];
+
+  let sidecar: Record<string, string>;
+  try {
+    sidecar = readRecorded(audioDir) ?? {};
+  } catch (e) {
+    console.error(`recorded.json unreadable, starting a fresh sidecar: ${e instanceof Error ? e.message : String(e)}`);
+    sidecar = {};
+  }
+  let sidecarChanged = false;
+
+  for (const pick of picks) {
+    const { id, n } = splitPick(pick);
+    const row = byId.get(id);
+    if (!row) { errors.push(`unknown clip id: ${id}`); continue; }
+
+    const ext = (['wav', 'mp3'] as const).find((e) => existsSync(join(candidatesDir, `${id}-${n}.${e}`)));
+    if (!ext) { errors.push(`no candidate ${id}-${n} under ${audioDir}/candidates`); continue; }
+
+    // Remove any existing final clip in either format first, so the id is never recorded twice.
+    for (const e of ['wav', 'mp3'] as const) {
+      const existing = join(audioDir, `${id}.${e}`);
+      if (existsSync(existing)) rmSync(existing);
+    }
+    renameSync(join(candidatesDir, `${id}-${n}.${ext}`), join(audioDir, `${id}.${ext}`));
+
+    // Delete the other candidates left over for this id (the picked one already moved away).
+    let leftovers: string[] = [];
+    try { leftovers = readdirSync(candidatesDir); } catch { leftovers = []; }
+    for (const name of leftovers) {
+      if (!name.startsWith(`${id}-`)) continue;
+      const rest = name.slice(id.length + 1);
+      if (/^\d+\.(wav|mp3)$/.test(rest)) rmSync(join(candidatesDir, name));
+    }
+
+    sidecar = { ...sidecar, [id]: row.text };
+    sidecarChanged = true;
+    picked.push(pick);
+  }
+
+  if (sidecarChanged) {
+    const sorted = Object.fromEntries(Object.keys(sidecar).sort().map((k) => [k, sidecar[k]!]));
+    writeAtomic(join(audioDir, RECORDED_FILE), `${JSON.stringify(sorted, null, 2)}\n`);
+  }
+
+  return { picked, errors };
+}
+
 async function main(): Promise<void> {
   const { parseArgs } = await import('node:util');
   const { values: a } = parseArgs({ options: {
     voice: { type: 'string' }, model: { type: 'string', default: 's2.1-pro' }, format: { type: 'string', default: 'wav' },
     tag: { type: 'string', default: '[calm]' }, candidates: { type: 'string', default: '1' }, only: { type: 'string' },
     force: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false }, 'plain-open': { type: 'boolean', default: false },
+    pick: { type: 'string' },
   } });
+  const audioDir = process.env.AUDIO_DIR?.trim() || 'assets/audio';
+  // --pick only moves files a previous generate run already wrote; it needs no key and no voice,
+  // so it runs (and exits) before either is checked.
+  if (a.pick) {
+    const picks = a.pick.split(',').map((s) => s.trim()).filter(Boolean);
+    const r = pickCandidates(picks, audioDir, recordableClips());
+    for (const p of r.picked) {
+      const { id, n } = splitPick(p);
+      console.log(`picked ${id} from candidate ${n}`);
+    }
+    for (const e of r.errors) console.log(`  ${e}`);
+    process.exitCode = r.errors.length ? 1 : 0;
+    return;
+  }
   const apiKey = process.env.FISH_AUDIO_API_KEY?.trim();
   const voice = a.voice ?? process.env.FISH_VOICE?.trim();
   if (!a['dry-run'] && !apiKey) throw new Error('FISH_AUDIO_API_KEY is not set');
@@ -202,7 +284,7 @@ async function main(): Promise<void> {
     console.log(resolved.title !== null ? `voice: ${resolved.title} by ${resolved.author} (${resolved.id})` : `voice: ${resolved.id}`);
   }
   const r = await generateClips(recordableClips(), {
-    audioDir: process.env.AUDIO_DIR?.trim() || 'assets/audio',
+    audioDir,
     apiKey: apiKey ?? '',
     voiceId,
     model: a.model!,
