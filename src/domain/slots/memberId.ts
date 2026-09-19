@@ -21,7 +21,7 @@ export const memberIdSlot: SlotSpec = {
       },
       memberIdSpan: {
         type: 'choice',
-        instructions: 'Read asr.text. Which of these spans is the member ID the caller states? Pick the tightest span that contains all of its digits.',
+        instructions: 'Read asr.text. Which of these spans is the member ID the caller states? Choose the span that covers the whole number as spoken, including number words like forty-four or three hundred fifty-five and modifiers like double or triple. Do not include words that are not part of the number. Choose none if no span is a member ID.',
         criteria,
       },
       memberIdComplete: {

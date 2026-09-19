@@ -162,7 +162,7 @@
 {"id":"sw-04","text":"I'd rather talk to a person","intent":"agent","context":"cancel","tags":["wants_human"]}
 {"id":"sw-05","text":"what did you say","intent":"repeat_prompt","context":"reschedule","tags":["repeat"]}
 {"id":"sw-06","text":"repeat that","intent":"repeat_prompt","context":"billing","tags":["repeat"]}
-{"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","answers":{"intentSecondary":{"probabilities":{"billing":0.8}}},"tags":["secondary_intent"]}
+{"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","tags":["secondary_intent"]}
 {"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}
 {"id":"dt-19","text":"sometime this week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"this_week"}}}
 {"id":"dt-20","text":"Monday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"monday"}}}

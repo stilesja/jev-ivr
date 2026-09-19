@@ -24,4 +24,10 @@ describe('buildTurnState', () => {
     expect(ts.activeForm).toBe('cancel');
     expect(ts.pendingConfirmation).toBeNull();
   });
+
+  it('exposes the spoken label of the active form', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBe('cancel an appointment');
+    expect(buildTurnState(newSession('s', 0), { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBeNull();
+  });
 });

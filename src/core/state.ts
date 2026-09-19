@@ -19,6 +19,7 @@ export interface TurnState {
   node: { id: string; promptJustPlayed: string; options: string[] };
   turn: { attempt: AttemptBucket; elapsed: ElapsedBucket };
   activeForm: string | null;
+  activeFormLabel: string | null;
   slots: Record<SlotId, { value: string | null; confirmed: boolean }>;
   history: Array<{ node: string; intent: string; outcome: string }>;
   caller: { verified: boolean; openAppointment: boolean; priorCalls: PriorCallsBucket };
@@ -43,6 +44,7 @@ export function buildTurnState(session: Session, input: TurnInput, nowMs: number
       elapsed: bucketElapsed(nowMs - session.startedAtMs),
     },
     activeForm: session.form,
+    activeFormLabel: session.form ? INTENT_LABELS[session.form] : null,
     slots,
     history: session.history.slice(-HISTORY_WINDOW).map((h) => ({ ...h })),
     caller: {

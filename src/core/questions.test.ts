@@ -48,3 +48,26 @@ describe('buildQuestions', () => {
     if (q.type === 'choice') expect(Object.keys(q.criteria)).toEqual(['0', '1', '2', '3', '4', '5', 'none']);
   });
 });
+
+describe('question redesign', () => {
+  it('asks intentTentative always and never intentSecondary', () => {
+    const q = buildQuestions(newSession('s', 0), ctx);
+    expect(q.intentTentative?.type).toBe('noul');
+    expect(q.intentSecondary).toBeUndefined();
+    expect(q.intentChange).toBeUndefined();
+  });
+
+  it('asks intentChange only inside a form, with answering first', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    const q = buildQuestions(s, ctx);
+    expect(q.intentChange?.type).toBe('choice');
+    if (q.intentChange?.type === 'choice') expect(Object.keys(q.intentChange.criteria)).toEqual(['answering', 'adding', 'replacing']);
+  });
+
+  it('pins every question the model sees outside a form (a diff here re-keys the cassette)', () => {
+    expect(buildQuestions(newSession('s', 0), ctx)).toMatchSnapshot();
+  });
+  it('pins every question the model sees inside a form (a diff here re-keys the cassette)', () => {
+    expect(buildQuestions(setForm(newSession('s', 0), 'reschedule'), ctx)).toMatchSnapshot();
+  });
+});
