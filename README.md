@@ -170,8 +170,9 @@ corpus entry means the recording is stale, and the sweep stops.
 
 ## Phone line (Twilio ConversationRelay)
 
-The server puts the same decision core on a Twilio number. Prompts are
-spoken by Twilio's TTS from the manifest text; recorded audio comes later.
+The server puts the same decision core on a Twilio number. Prompts play
+from recorded clips where one exists and fall back to Twilio's TTS for the
+rest (see "Recorded prompts" below).
 
     cp .env.example .env      # fill in PUBLIC_HOST, TWILIO_AUTH_TOKEN, HANDOFF_NUMBER
     set -a; source .env; set +a
