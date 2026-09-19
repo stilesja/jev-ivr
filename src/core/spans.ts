@@ -1,10 +1,14 @@
-import { NUMBER_WORDS, tokenize } from './extract/spokenNumber';
+import { MULTIPLIER_WORDS, NUMBER_WORDS, tokenize } from './extract/spokenNumber';
 
 export const MAX_SPANS = 120;
 export const MAX_NGRAM = 10;
 
+// A multiplier word alone ("hundred", "thousand") must not qualify a span on
+// its own, or ordinary phrases like "a hundred percent sure" spawn dozens of
+// junk number-ish spans. It still counts within a span that has another
+// number word.
 function isNumberish(tok: string): boolean {
-  return /\d/.test(tok) || NUMBER_WORDS.has(tok);
+  return /\d/.test(tok) || (NUMBER_WORDS.has(tok) && !MULTIPLIER_WORDS.has(tok));
 }
 
 /**
