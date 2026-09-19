@@ -1,6 +1,7 @@
 import manifest from './manifest.json';
 import type { Decision } from '../core/decision';
 import { endFrame, textFrame, type OutboundFrame } from '../channel/frames';
+import { VAR } from './segments';
 
 export type PromptId = keyof typeof manifest;
 
@@ -14,7 +15,7 @@ export interface PromptEntry {
 export const PROMPTS: Record<string, PromptEntry> = manifest;
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (_, name: string) => {
+  return template.replace(VAR, (_, name: string) => {
     const v = vars[name];
     if (v === undefined) throw new Error(`prompt variable missing: ${name}`);
     return v;
