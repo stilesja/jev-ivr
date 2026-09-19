@@ -219,7 +219,7 @@ queued.
     pnpm prompts:check                # which clips are present under AUDIO_DIR, and which are stale
     pnpm prompts:generate             # generate every missing clip with Fish Audio (FISH_AUDIO_API_KEY, FISH_VOICE)
     pnpm prompts:generate --only greeting.0 --candidates 3 --force   # audition variants under assets/audio/candidates/
-    pnpm prompts:generate --dry-run --voice Hanna --only greeting.0  # print the request; no key, no network
+    pnpm prompts:generate --dry-run --voice Hannah --only greeting.0 # print the request; no key, no network
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
 and are discovered by filename; adding one needs no manifest edit. A clip
