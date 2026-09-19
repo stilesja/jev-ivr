@@ -120,13 +120,18 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
 
 /** A confirmation the caller did not answer stands; re-ask it until the retry policy runs out. */
 function reaskConfirmation(s: Session, t: Thresholds): Decision {
-  const intent = s.pendingConfirmation!.intent;
+  const pc = s.pendingConfirmation!;
+  if (pc.target === 'slot') {
+    const attempts = ++s.slots[pc.slot].attempts;
+    if (retryStep(attempts, t) === 'agent') { s.pendingConfirmation = null; return handoff('max-attempts'); }
+    return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, [], ['yes', 'no']);
+  }
   s.intentAttempts += 1;
   if (retryStep(s.intentAttempts, t) === 'agent') {
     s.pendingConfirmation = null;
     return handoff('max-attempts');
   }
-  return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[intent] }, [], ['yes', 'no']);
+  return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[pc.intent] }, [], ['yes', 'no']);
 }
 
 /** After slots changed: disambiguate, ask the next slot, or complete. */
@@ -163,11 +168,13 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     case 'replay':
       return { decision: { kind: 'replay', text: s.lastPromptText }, events: [] };
     case 'confirmed': {
-      const intent = s.pendingConfirmation!.intent;
+      const pc = s.pendingConfirmation!;
       s.pendingConfirmation = null;
-      if (intent === 'agent') return { decision: handoff('live-agent'), events: [] };
-      if (!isFormIntent(intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
-      return enterForm(s, intent, 'none', answers, ctx);
+      if (pc.target === 'slot') return handleVerdict(s, { kind: 'proceed' }, answers, ctx, tc);
+      if (pc.intent === 'agent') return { decision: handoff('live-agent'), events: [] };
+      if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
+      // Fill from what the caller originally said, not from the "yes".
+      return enterForm(s, pc.intent, 'none', pc.answers, slotContext(s, pc.text, tc));
     }
     case 'rejected':
       s.pendingConfirmation = null;
@@ -179,7 +186,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       return { decision: reaskConfirmation(s, t), events: [] };
     case 'route':
       if (verdict.confirm === 'explicit') {
-        s.pendingConfirmation = { target: 'intent', intent: verdict.intent };
+        s.pendingConfirmation = { target: 'intent', intent: verdict.intent, answers, text: ctx.text };
         return { decision: prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[verdict.intent] }, [], ['yes', 'no']), events: [] };
       }
       return enterForm(s, verdict.intent, verdict.confirm, answers, ctx);

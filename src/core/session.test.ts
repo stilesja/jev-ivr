@@ -45,4 +45,16 @@ describe('session', () => {
     expect(s.slots.date.window.label).toBe('next_week');
     expect(clone.slots.date.window).not.toBe(s.slots.date.window);
   });
+
+  it('starts with nothing queued or completed and clones both', () => {
+    const s = newSession('s', 0);
+    expect(s.queued).toEqual([]);
+    expect(s.completed).toEqual([]);
+    s.queued.push('billing');
+    s.completed.push('reschedule');
+    const c = cloneSession(s);
+    c.queued.push('cancel');
+    expect(s.queued).toEqual(['billing']);
+    expect(c.completed).toEqual(['reschedule']);
+  });
 });

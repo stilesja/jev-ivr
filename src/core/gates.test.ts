@@ -87,7 +87,7 @@ describe('evaluateGates', () => {
 
   it('resolves a pending explicit confirmation', () => {
     const s = newSession('s', 0);
-    s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+    s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
     expect(run(s, baseAnswers({ confirmsYes: noul(0.9), confirmsNo: noul(0.1) })).verdict).toEqual({ kind: 'confirmed' });
     expect(run(s, baseAnswers({ confirmsYes: noul(0.1), confirmsNo: noul(0.9) })).verdict).toEqual({ kind: 'rejected' });
   });
@@ -107,7 +107,7 @@ describe('evaluateGates', () => {
 
   it('reports an unanswered confirmation when no new intent is expressed', () => {
     const s = newSession('s', 0);
-    s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+    s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
     const r = run(s, baseAnswers({
       confirmsYes: noul(0.5), confirmsNo: noul(0.5), intent: choice({ none: 0.9, other: 0.1 }),
     }));
@@ -183,7 +183,7 @@ describe('evaluateGates', () => {
 
     it('still reports an unanswered confirmation when the intent would be queued', () => {
       const s = inForm();
-      s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+      s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
       expect(run(s, baseAnswers({
         confirmsYes: noul(0.1), confirmsNo: noul(0.1),
         intent: choice({ billing: 0.95, none: 0.05 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }),

@@ -30,7 +30,7 @@ describe('buildQuestions', () => {
 
   it('adds confirmation questions when a confirmation is pending', () => {
     const s = newSession('s', 0);
-    s.pendingConfirmation = { target: 'intent', intent: 'cancel' };
+    s.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: '' };
     const q = buildQuestions(s, ctx);
     expect(q).toHaveProperty('confirmsYes');
     expect(q).toHaveProperty('confirmsNo');

@@ -107,7 +107,7 @@ describe('turn', () => {
   it('asks an explicit confirmation and acts on yes', () => {
     let r = say(started(), 'maybe cancel', { intent: choice({ cancel: 0.5, none: 0.5 }) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit', options: ['yes', 'no'] });
-    expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
     r = say(r.session, 'yes', { confirmsYes: noul(0.9), confirmsNo: noul(0.1) });
     expect(r.session.form).toBe('cancel');
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
@@ -118,7 +118,7 @@ describe('turn', () => {
     r = say(r.session, 'um not sure', { confirmsYes: noul(0.4), confirmsNo: noul(0.4) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
     expect(r.session.intentAttempts).toBe(1);
-    expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
   });
 
   it('does not let a stale mid-form confirmation hijack a later yes', () => {
@@ -136,7 +136,7 @@ describe('turn', () => {
 
     r = say(r.session, 'actually cancel', { intent: choice({ cancel: 0.7, none: 0.3 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
-    expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
 
     r = say(r.session, 'um', { confirmsYes: noul(0.3), confirmsNo: noul(0.3) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
@@ -214,5 +214,21 @@ describe('turn', () => {
     expect(r.decision).toEqual({ kind: 'ignore' });
     expect(r.session.intentAttempts).toBe(0);
     expect(r.frames).toEqual([]);
+  });
+
+  it('fills slots from the confirmed utterance, not from the yes', () => {
+    const asked = say(started(), 'maybe cancel it with dr chen', {
+      intent: choice({ cancel: 0.97, none: 0.03 }), intentTentative: noul(0.9),
+      provider: choice({ chen: 0.95, cheng: 0.03, none: 0.02 }),
+    });
+    expect(asked.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
+    expect(asked.session.form).toBeNull();
+    const yes = say(asked.session, 'yes', {
+      confirmsYes: noul(0.95), confirmsNo: noul(0.02), intent: choice({ none: 0.95, cancel: 0.05 }),
+      provider: choice({ patel: 0.95, chen: 0.03, none: 0.02 }),
+    });
+    expect(yes.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+    expect(yes.session.form).toBe('cancel');
+    expect(yes.session.slots.provider.value).toBe('chen');
   });
 });
