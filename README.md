@@ -151,7 +151,11 @@ corpus has no evidence on that side); a threshold whose whole grid scores
 the same (insensitive); and a threshold with only one legal value under the
 ordering constraints (pinned). Every applied move lists the entries it
 flipped, decisions and tiebreaks apart, and the report says whether the
-descent converged and how many candidates it evaluated.
+descent converged and how many candidates it evaluated. Thresholds the sweep
+will not move on its own live in `EXCLUDED` in `src/harness-text/sweepSpace.ts`
+with the judgment that took each one out; they are left out of the default
+`--only` set, named with their reason in every report, and still sweepable by
+asking for them explicitly.
 
 A move can push a multi-turn scenario off the recorded path; such scenarios
 are unscored for that candidate and listed as misses. Record them once with

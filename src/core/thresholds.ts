@@ -19,7 +19,7 @@ export const DEFAULT_THRESHOLDS = {
   PROVIDER_UNSURE: 0.45,
   // slots
   SLOT_DETECT: 0.6,
-  SLOT_CHOICE_FILL: 0.5,
+  SLOT_CHOICE_FILL: 0.55,
   SLOT_CHOICE_CONFIRM: 0.45,
   SLOT_CHOICE_MARGIN: 0.15,
   // confirmations and menus

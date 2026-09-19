@@ -1,31 +1,30 @@
 
 > jev-ivr@0.1.0 sweep /Users/jasonstiles/Development/JIVR
-> tsx src/harness-text/sweep.ts "--json" "docs/tuning/2026-09-19-sweep-confirm.json"
+> tsx src/harness-text/sweep.ts
 
-before 208/207   after 208/208   passes 2 (converged)   evaluations 331
+before 208/207   after 208/207   passes 1 (converged)   evaluations 259
 
-threshold              current  recomm.  best  grid
-GATE_ADDRESSED            0.70     0.70   208  !!!!!!!!!!---##+--!
-GATE_INTELLIGIBLE         0.50     0.50   208  ##########+++++++-!  unbounded
+threshold                start  recomm.  best  grid
+GATE_ADDRESSED            0.70     0.70   208  !!!!!!!!!!---##~--!
+GATE_INTELLIGIBLE         0.50     0.50   208  ##########~~~~~~~-!  unbounded
 GATE_COMPLETE             0.60     0.60   208  !!!!!##############  insensitive
-GATE_WANTS_HUMAN          0.70     0.30   208  -#########++++++++!
 INTENT_ROUTE              0.70     0.70   208  xxxxxxxxxxx#####+xx
-INTENT_IMPLICIT           0.60     0.60   208  xxxxxxx#######xxxxx  insensitive
+INTENT_IMPLICIT           0.60     0.60   208  xxxxxxx######~xxxxx
 INTENT_EXPLICIT           0.40     0.40   208  ############xxxxxxx  insensitive
 INTENT_SWITCH             0.85     0.85   208  xxxxxxxxxxxxx#####!  insensitive
 GATE_INTENT_MARGIN        0.15     0.15   208  ########  insensitive
 GATE_FRUSTRATION_HIGH     0.60     0.60   208  !###############!!!  insensitive
 INTENT_TENTATIVE          0.50     0.50   208  !#################!  insensitive
 INTENT_CHANGE             0.60     0.60   208  ##################!  insensitive
-PROVIDER_UNSURE           0.45     0.45   208  !++++++###++++++++!
-SLOT_DETECT               0.60     0.60   208  #################+!  unbounded
-SLOT_CHOICE_FILL          0.50     0.50   208  xxxxxxxx###+++++++!
+PROVIDER_UNSURE           0.45     0.45   208  !++++++###++++++~~!
+SLOT_DETECT               0.60     0.60   208  #################~!  unbounded
+SLOT_CHOICE_FILL          0.55     0.50   208  xxxxxxxx###++++++~!
 SLOT_CHOICE_CONFIRM       0.45     0.45   208  #########!xxxxxxxxx  insensitive
 SLOT_CHOICE_MARGIN        0.15     0.15   208  ########  insensitive
 CONFIRM_YES               0.70     0.70   208  !!################!  insensitive
 CONFIRM_NO                0.70     0.70   208  !!-###############!
 MENU_NUMBER               0.70     0.70   208  ##################!  insensitive
 
-pass 1: GATE_WANTS_HUMAN 0.70 -> 0.30 (secondary; plateau 0.10..0.50) 208/207 -> 208/208
+pass 1: SLOT_CHOICE_FILL 0.55 -> 0.50 (center; plateau 0.45..0.55) 208/207 -> 208/207
 
 no cassette misses for the recommended set

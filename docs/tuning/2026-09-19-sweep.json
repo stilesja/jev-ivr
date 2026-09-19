@@ -1,27 +1,103 @@
 {
   "before": {
     "primary": 208,
+    "secondary": 205,
+    "corpusMatch": 164,
+    "scenarioPass": 44,
+    "cosmeticMatch": 205,
+    "misses": []
+  },
+  "after": {
+    "primary": 208,
     "secondary": 207,
     "corpusMatch": 164,
     "scenarioPass": 44,
     "cosmeticMatch": 207,
     "misses": []
   },
-  "after": {
-    "primary": 208,
-    "secondary": 208,
-    "corpusMatch": 164,
-    "scenarioPass": 44,
-    "cosmeticMatch": 208,
-    "misses": []
-  },
   "moves": [
     {
-      "name": "GATE_WANTS_HUMAN",
-      "from": 0.7,
-      "to": 0.3,
+      "name": "INTENT_ROUTE",
+      "from": 0.85,
+      "to": 0.7,
       "reason": "secondary",
       "before": {
+        "primary": 208,
+        "secondary": 205,
+        "corpusMatch": 164,
+        "scenarioPass": 44,
+        "cosmeticMatch": 205,
+        "misses": []
+      },
+      "after": {
+        "primary": 208,
+        "secondary": 206,
+        "corpusMatch": 164,
+        "scenarioPass": 44,
+        "cosmeticMatch": 206,
+        "misses": []
+      },
+      "plateau": {
+        "from": 0.6,
+        "to": 0.8
+      },
+      "flips": {
+        "gained": [],
+        "lost": [],
+        "cosmeticGained": [
+          "lc-02"
+        ],
+        "cosmeticLost": []
+      },
+      "pass": 1
+    },
+    {
+      "name": "PROVIDER_UNSURE",
+      "from": 0.5,
+      "to": 0.45,
+      "reason": "center",
+      "before": {
+        "primary": 208,
+        "secondary": 206,
+        "corpusMatch": 164,
+        "scenarioPass": 44,
+        "cosmeticMatch": 206,
+        "misses": []
+      },
+      "after": {
+        "primary": 208,
+        "secondary": 206,
+        "corpusMatch": 164,
+        "scenarioPass": 44,
+        "cosmeticMatch": 206,
+        "misses": []
+      },
+      "plateau": {
+        "from": 0.4,
+        "to": 0.5
+      },
+      "flips": {
+        "gained": [],
+        "lost": [],
+        "cosmeticGained": [],
+        "cosmeticLost": []
+      },
+      "pass": 1
+    },
+    {
+      "name": "SLOT_CHOICE_FILL",
+      "from": 0.7,
+      "to": 0.5,
+      "reason": "secondary",
+      "before": {
+        "primary": 208,
+        "secondary": 206,
+        "corpusMatch": 164,
+        "scenarioPass": 44,
+        "cosmeticMatch": 206,
+        "misses": []
+      },
+      "after": {
         "primary": 208,
         "secondary": 207,
         "corpusMatch": 164,
@@ -29,21 +105,17 @@
         "cosmeticMatch": 207,
         "misses": []
       },
-      "after": {
-        "primary": 208,
-        "secondary": 208,
-        "corpusMatch": 164,
-        "scenarioPass": 44,
-        "cosmeticMatch": 208,
-        "misses": []
-      },
       "plateau": {
-        "from": 0.1,
-        "to": 0.5
+        "from": 0.45,
+        "to": 0.55
       },
       "flips": {
         "gained": [],
-        "lost": []
+        "lost": [],
+        "cosmeticGained": [
+          "dt-09"
+        ],
+        "cosmeticLost": []
       },
       "pass": 1
     }
@@ -108,10 +180,10 @@
           "status": "scored",
           "score": {
             "primary": 206,
-            "secondary": 206,
+            "secondary": 205,
             "corpusMatch": 163,
             "scenarioPass": 43,
-            "cosmeticMatch": 206,
+            "cosmeticMatch": 205,
             "misses": [
               {
                 "id": "slot-retry-to-dtmf",
@@ -125,10 +197,10 @@
           "status": "scored",
           "score": {
             "primary": 206,
-            "secondary": 206,
+            "secondary": 205,
             "corpusMatch": 163,
             "scenarioPass": 43,
-            "cosmeticMatch": 206,
+            "cosmeticMatch": 205,
             "misses": [
               {
                 "id": "slot-retry-to-dtmf",
@@ -142,10 +214,10 @@
           "status": "scored",
           "score": {
             "primary": 206,
-            "secondary": 206,
+            "secondary": 205,
             "corpusMatch": 163,
             "scenarioPass": 43,
-            "cosmeticMatch": 206,
+            "cosmeticMatch": 205,
             "misses": [
               {
                 "id": "slot-retry-to-dtmf",
@@ -159,10 +231,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -171,10 +243,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -183,10 +255,10 @@
           "status": "scored",
           "score": {
             "primary": 207,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 163,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
@@ -243,10 +315,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -255,10 +327,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -267,10 +339,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -279,10 +351,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -291,10 +363,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -303,10 +375,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -315,10 +387,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -327,10 +399,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -339,10 +411,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -351,10 +423,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -499,10 +571,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -511,10 +583,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -523,10 +595,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -535,10 +607,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -547,10 +619,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -559,10 +631,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -571,10 +643,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -583,10 +655,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -595,10 +667,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -607,10 +679,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -619,10 +691,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -631,10 +703,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -643,10 +715,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -655,10 +727,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         }
@@ -668,239 +740,8 @@
       "pinned": false,
       "unbounded": false
     },
-    "GATE_WANTS_HUMAN": {
-      "current": 0.7,
-      "recommended": 0.3,
-      "points": [
-        {
-          "value": 0.05,
-          "status": "scored",
-          "score": {
-            "primary": 202,
-            "secondary": 202,
-            "corpusMatch": 158,
-            "scenarioPass": 44,
-            "cosmeticMatch": 202,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.1,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.15,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.2,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.25,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.3,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.35,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.4,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.45,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.5,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.55,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.6,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.65,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.7,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.75,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.8,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.85,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.9,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.95,
-          "status": "breaks_stub",
-          "score": null
-        }
-      ],
-      "cliff": false,
-      "insensitive": false,
-      "pinned": false,
-      "unbounded": false
-    },
     "INTENT_ROUTE": {
-      "current": 0.7,
+      "current": 0.85,
       "recommended": 0.7,
       "points": [
         {
@@ -963,10 +804,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -975,10 +816,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -987,10 +828,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -999,10 +840,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1011,10 +852,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1023,10 +864,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
@@ -1090,10 +931,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1102,10 +943,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1114,10 +955,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1126,10 +967,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1138,10 +979,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1150,10 +991,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1161,11 +1002,11 @@
           "value": 0.7,
           "status": "scored",
           "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
+            "primary": 207,
+            "secondary": 207,
+            "corpusMatch": 163,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1196,7 +1037,7 @@
         }
       ],
       "cliff": false,
-      "insensitive": true,
+      "insensitive": false,
       "pinned": false,
       "unbounded": false
     },
@@ -1209,10 +1050,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1221,10 +1062,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1233,10 +1074,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1245,10 +1086,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1257,10 +1098,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1269,10 +1110,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1281,10 +1122,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1293,10 +1134,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1305,10 +1146,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1317,10 +1158,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1329,10 +1170,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1341,10 +1182,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1463,10 +1304,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1475,10 +1316,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1487,10 +1328,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1499,10 +1340,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1511,10 +1352,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1538,10 +1379,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1550,10 +1391,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1562,10 +1403,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1574,10 +1415,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1586,10 +1427,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1598,10 +1439,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1610,10 +1451,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1622,10 +1463,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         }
@@ -1649,10 +1490,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1661,10 +1502,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1673,10 +1514,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1685,10 +1526,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1697,10 +1538,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1709,10 +1550,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1721,10 +1562,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1733,10 +1574,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1745,10 +1586,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1757,10 +1598,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1769,10 +1610,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1781,10 +1622,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1793,10 +1634,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1805,10 +1646,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1817,10 +1658,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1859,10 +1700,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1871,10 +1712,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1883,10 +1724,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1895,10 +1736,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1907,10 +1748,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1919,10 +1760,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1931,10 +1772,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1943,10 +1784,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1955,10 +1796,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1967,10 +1808,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1979,10 +1820,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -1991,10 +1832,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2003,10 +1844,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2015,10 +1856,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2027,10 +1868,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2039,10 +1880,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2051,10 +1892,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2078,10 +1919,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2090,10 +1931,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2102,10 +1943,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2114,10 +1955,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2126,10 +1967,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2138,10 +1979,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2150,10 +1991,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2162,10 +2003,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2174,10 +2015,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2186,10 +2027,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2198,10 +2039,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2210,10 +2051,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2222,10 +2063,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2234,10 +2075,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2246,10 +2087,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2258,10 +2099,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2270,10 +2111,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2282,10 +2123,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2301,7 +2142,7 @@
       "unbounded": false
     },
     "PROVIDER_UNSURE": {
-      "current": 0.45,
+      "current": 0.5,
       "recommended": 0.45,
       "points": [
         {
@@ -2314,171 +2155,15 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
         {
           "value": 0.15,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.2,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.25,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.3,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.35,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.4,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.45,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.5,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 208,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 208,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.55,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.6,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.65,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.7,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.75,
-          "status": "scored",
-          "score": {
-            "primary": 208,
-            "secondary": 207,
-            "corpusMatch": 164,
-            "scenarioPass": 44,
-            "cosmeticMatch": 207,
-            "misses": []
-          }
-        },
-        {
-          "value": 0.8,
           "status": "scored",
           "score": {
             "primary": 208,
@@ -2490,14 +2175,170 @@
           }
         },
         {
+          "value": 0.2,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.25,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.3,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.35,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.4,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 207,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 207,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.45,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 207,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 207,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.5,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 207,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 207,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.55,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.6,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.65,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.7,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.75,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 206,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 206,
+            "misses": []
+          }
+        },
+        {
+          "value": 0.8,
+          "status": "scored",
+          "score": {
+            "primary": 208,
+            "secondary": 205,
+            "corpusMatch": 164,
+            "scenarioPass": 44,
+            "cosmeticMatch": 205,
+            "misses": []
+          }
+        },
+        {
           "value": 0.85,
           "status": "scored",
           "score": {
             "primary": 207,
-            "secondary": 204,
+            "secondary": 203,
             "corpusMatch": 164,
             "scenarioPass": 43,
-            "cosmeticMatch": 204,
+            "cosmeticMatch": 203,
             "misses": []
           }
         },
@@ -2506,10 +2347,10 @@
           "status": "scored",
           "score": {
             "primary": 207,
-            "secondary": 204,
+            "secondary": 203,
             "corpusMatch": 164,
             "scenarioPass": 43,
-            "cosmeticMatch": 204,
+            "cosmeticMatch": 203,
             "misses": []
           }
         },
@@ -2533,10 +2374,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2545,10 +2386,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2557,10 +2398,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2569,10 +2410,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2581,10 +2422,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2593,10 +2434,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2605,10 +2446,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2617,10 +2458,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2629,10 +2470,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2641,10 +2482,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2653,10 +2494,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2665,10 +2506,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2677,10 +2518,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2689,10 +2530,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2701,10 +2542,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2713,10 +2554,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2725,10 +2566,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2737,10 +2578,10 @@
           "status": "scored",
           "score": {
             "primary": 207,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 163,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
@@ -2756,7 +2597,7 @@
       "unbounded": true
     },
     "SLOT_CHOICE_FILL": {
-      "current": 0.5,
+      "current": 0.7,
       "recommended": 0.5,
       "points": [
         {
@@ -2804,10 +2645,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2816,10 +2657,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2828,10 +2669,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2840,10 +2681,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
@@ -2852,10 +2693,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
@@ -2864,10 +2705,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 207,
+            "secondary": 206,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 207,
+            "cosmeticMatch": 206,
             "misses": []
           }
         },
@@ -2876,10 +2717,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 205,
+            "secondary": 204,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 205,
+            "cosmeticMatch": 204,
             "misses": []
           }
         },
@@ -2888,10 +2729,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 205,
+            "secondary": 204,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 205,
+            "cosmeticMatch": 204,
             "misses": []
           }
         },
@@ -2900,10 +2741,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 203,
+            "secondary": 202,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 203,
+            "cosmeticMatch": 202,
             "misses": []
           }
         },
@@ -2912,10 +2753,10 @@
           "status": "scored",
           "score": {
             "primary": 207,
-            "secondary": 201,
+            "secondary": 200,
             "corpusMatch": 164,
             "scenarioPass": 43,
-            "cosmeticMatch": 201,
+            "cosmeticMatch": 200,
             "misses": [
               {
                 "id": "weekday-in-window-one-turn",
@@ -2944,10 +2785,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2956,10 +2797,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2968,10 +2809,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2980,10 +2821,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -2992,10 +2833,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3004,10 +2845,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3016,10 +2857,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3028,10 +2869,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3040,10 +2881,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3112,10 +2953,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3124,10 +2965,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3136,10 +2977,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3148,10 +2989,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3160,10 +3001,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3172,10 +3013,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3184,10 +3025,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3196,10 +3037,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         }
@@ -3228,10 +3069,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3240,10 +3081,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3252,10 +3093,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3264,10 +3105,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3276,10 +3117,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3288,10 +3129,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3300,10 +3141,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3312,10 +3153,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3324,10 +3165,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3336,10 +3177,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3348,10 +3189,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3360,10 +3201,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3372,10 +3213,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3384,10 +3225,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3396,10 +3237,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3408,10 +3249,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3445,10 +3286,10 @@
           "status": "scored",
           "score": {
             "primary": 206,
-            "secondary": 206,
+            "secondary": 205,
             "corpusMatch": 164,
             "scenarioPass": 42,
-            "cosmeticMatch": 206,
+            "cosmeticMatch": 205,
             "misses": [
               {
                 "id": "confirm-unanswered-to-agent",
@@ -3462,10 +3303,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3474,10 +3315,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3486,10 +3327,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3498,10 +3339,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3510,10 +3351,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3522,10 +3363,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3534,10 +3375,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3546,10 +3387,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3558,10 +3399,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3570,10 +3411,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3582,10 +3423,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3594,10 +3435,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3606,10 +3447,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3618,10 +3459,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3630,10 +3471,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3657,10 +3498,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3669,10 +3510,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3681,10 +3522,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3693,10 +3534,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3705,10 +3546,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3717,10 +3558,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3729,10 +3570,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3741,10 +3582,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3753,10 +3594,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3765,10 +3606,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3777,10 +3618,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3789,10 +3630,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3801,10 +3642,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3813,10 +3654,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3825,10 +3666,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3837,10 +3678,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3849,10 +3690,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3861,10 +3702,10 @@
           "status": "scored",
           "score": {
             "primary": 208,
-            "secondary": 208,
+            "secondary": 207,
             "corpusMatch": 164,
             "scenarioPass": 44,
-            "cosmeticMatch": 208,
+            "cosmeticMatch": 207,
             "misses": []
           }
         },
@@ -3884,7 +3725,7 @@
     "GATE_ADDRESSED": 0.7,
     "GATE_INTELLIGIBLE": 0.5,
     "GATE_COMPLETE": 0.6,
-    "GATE_WANTS_HUMAN": 0.3,
+    "GATE_WANTS_HUMAN": 0.7,
     "INTENT_ROUTE": 0.7,
     "INTENT_IMPLICIT": 0.6,
     "INTENT_EXPLICIT": 0.4,
@@ -3908,5 +3749,5 @@
   },
   "misses": [],
   "converged": true,
-  "evaluations": 331
+  "evaluations": 437
 }
