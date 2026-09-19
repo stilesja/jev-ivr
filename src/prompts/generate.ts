@@ -3,13 +3,36 @@ import { basename, dirname, join } from 'node:path';
 import { discoverClips, recordableClips, type RecordableClip } from './clips';
 import { readRecorded, RECORDED_FILE } from './sheet';
 import tags from './tags.json';
+import fishTags from './fishTags.json';
 
 const TTS_URL = 'https://api.fish.audio/v1/tts';
 const MODELS_URL = 'https://api.fish.audio/model';
 const MAX_CANDIDATES = 20;
 const MAX_ERROR_BODY = 200;
 
-export interface RequestOptions { voiceId: string; model: string; format: 'wav' | 'mp3'; tag: string; tags: Record<string, string> }
+/** Fish Audio's documented S2 bracket-tag inventory (src/prompts/fishTags.json); the only tags tested against the web tool's picker. */
+export const FISH_TAGS: ReadonlySet<string> = new Set(fishTags.tags);
+
+/** Splits `[a][b]` into `['a', 'b']`; returns `[]` unless the whole string is one or more bracket groups with nothing between them. */
+export function tagBodies(tag: string): string[] {
+  if (!/^(\[[^[\]]+\])+$/.test(tag)) return [];
+  return [...tag.matchAll(/\[([^[\]]+)\]/g)].map((m) => m[1]!);
+}
+
+/** Every tag in `tags` (plus the `--tag` fallback) must use only bodies from FISH_TAGS. Returns error messages, empty when clean. */
+export function validateTags(tagMap: Record<string, string>, fallbackTag?: string): string[] {
+  const errors: string[] = [];
+  const check = (id: string, tag: string): void => {
+    for (const body of tagBodies(tag)) {
+      if (!FISH_TAGS.has(body)) errors.push(`unsupported Fish tag "${body}" for ${id}`);
+    }
+  };
+  for (const [id, tag] of Object.entries(tagMap)) check(id, tag);
+  if (fallbackTag !== undefined) check('--tag', fallbackTag);
+  return errors;
+}
+
+export interface RequestOptions { voiceId: string; model: string; format: 'wav' | 'mp3'; tag: string; tags: Record<string, string>; openComma: boolean }
 export interface GenerateOptions extends RequestOptions {
   audioDir: string;
   apiKey: string;
@@ -31,13 +54,19 @@ type Fetch = (
   init?: { method?: string; headers?: Record<string, string>; body?: string },
 ) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown>; text: () => Promise<string>; arrayBuffer: () => Promise<ArrayBuffer> }>;
 
-/** The request for one clip, without the auth header, so it can be printed and tested. */
+/**
+ * The request for one clip, without the auth header, so it can be printed and tested. An `open`
+ * row (followed by a variable in the manifest) gets a trailing comma in the request text when
+ * `openComma` is set, so the TTS voice reads it with a non-final contour instead of falling at
+ * the end; the sidecar still records `row.text` without the comma.
+ */
 export function ttsRequest(row: RecordableClip, o: RequestOptions) {
   const tag = o.tags[row.id] ?? o.tag;
+  const text = row.note === 'open' && o.openComma ? `${row.text},` : row.text;
   return {
     url: TTS_URL,
     headers: { 'content-type': 'application/json', model: o.model },
-    body: { text: tag ? `${tag} ${row.text}` : row.text, reference_id: o.voiceId, format: o.format, temperature: 0.7, prosody: { speed: 1, volume: 0 } },
+    body: { text: tag ? `${tag} ${text}` : text, reference_id: o.voiceId, format: o.format, temperature: 0.7, prosody: { speed: 1, volume: 0 } },
   };
 }
 
@@ -132,14 +161,16 @@ async function main(): Promise<void> {
   const { parseArgs } = await import('node:util');
   const { values: a } = parseArgs({ options: {
     voice: { type: 'string' }, model: { type: 'string', default: 's2.1-pro' }, format: { type: 'string', default: 'wav' },
-    tag: { type: 'string', default: '[warm]' }, candidates: { type: 'string', default: '1' }, only: { type: 'string' },
-    force: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false },
+    tag: { type: 'string', default: '[calm]' }, candidates: { type: 'string', default: '1' }, only: { type: 'string' },
+    force: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false }, 'plain-open': { type: 'boolean', default: false },
   } });
   const apiKey = process.env.FISH_AUDIO_API_KEY?.trim();
   const voice = a.voice ?? process.env.FISH_VOICE?.trim();
   if (!a['dry-run'] && !apiKey) throw new Error('FISH_AUDIO_API_KEY is not set');
   if (!voice) throw new Error('pass --voice <title or id> or set FISH_VOICE');
   const format = a.format === 'mp3' ? 'mp3' : 'wav';
+  const tagErrors = validateTags(tags as Record<string, string>, a.tag);
+  if (tagErrors.length) throw new Error(tagErrors[0]);
   // Dry run never resolves the voice (a network call) even when a key happens to be set: it only
   // ever prints requests, so the id printed is whatever was passed on the command line.
   const voiceId = a['dry-run'] ? voice : await resolveVoice(voice, apiKey ?? '', fetch);
@@ -151,6 +182,7 @@ async function main(): Promise<void> {
     format,
     tag: a.tag!,
     tags: tags as Record<string, string>,
+    openComma: !a['plain-open'],
     candidates: Number(a.candidates),
     force: a.force ?? false,
     only: a.only ? a.only.split(',').map((s) => s.trim()) : null,

@@ -227,8 +227,10 @@ id is a fixed segment of a prompt (`ack_provider.0`, the text before the
 provider name) or a vocabulary value (`provider.chen`, `intent.cancel`,
 `window.next_week`). Member IDs and dates are always spoken by TTS, at a
 clause boundary so the voice change is not inside a sentence. The sheet's
-`open` note means the segment precedes a variable: record it without a
-falling intonation. Bare punctuation after a variable is never recorded.
+`open` note means the segment precedes a variable: the generator records it
+without a falling intonation by sending it with a trailing comma in the
+request text (`--plain-open` turns that off). Bare punctuation after a
+variable is never recorded.
 
 Fixed clip ids are positional, so editing a template can make an existing
 clip say the wrong thing. The generator writes `assets/audio/recorded.json`
@@ -240,8 +242,12 @@ The server discovers clips once at startup (restart it after adding one),
 serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that
 segment only, and adjacent TTS segments are merged so prosody survives.
 Clips are generated with Fish Audio's `s2.1-pro` model and the voice named
-in `FISH_VOICE`; a `[warm]`-style tag prefixes every clip (per clip in
-`src/prompts/tags.json`). Fish Audio is not a ConversationRelay TTS
+in `FISH_VOICE`; a tag prefixes every clip (per clip in
+`src/prompts/tags.json`). Tags come from Fish's documented S2 bracket-tag
+inventory, checked into `src/prompts/fishTags.json` and enforced by a test;
+free-form phrases are accepted by the API but untested against the web
+tool's picker, so set one per clip in `tags.json` only after hearing the
+inventory version. Fish Audio is not a ConversationRelay TTS
 provider, so set `TTS_PROVIDER` and `TTS_VOICE` (Google, Amazon, or
 ElevenLabs) to the closest voice to keep the seams on member IDs and dates
 as quiet as possible.

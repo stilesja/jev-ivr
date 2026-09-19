@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync as fsWriteFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { generateClips, resolveVoice, ttsRequest, type GenerateOptions } from './generate';
+import { FISH_TAGS, generateClips, resolveVoice, tagBodies, ttsRequest, validateTags, type GenerateOptions } from './generate';
 import { recordableClips } from './clips';
 import tags from './tags.json';
 
@@ -10,12 +10,43 @@ const row = { id: 'ack_provider.0', text: 'With', note: 'open' as const };
 
 describe('ttsRequest', () => {
   it('prefixes the tag, sets the model header, and never includes the key in the printable form', () => {
-    const r = ttsRequest(row, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[warm]', tags: { 'ack_provider.0': '[warm and brisk]' } });
+    const r = ttsRequest(row, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: { 'ack_provider.0': '[confident]' }, openComma: true });
     expect(r.url).toBe('https://api.fish.audio/v1/tts');
     expect(r.headers.model).toBe('s2.1-pro');
-    expect(r.body).toEqual({ text: '[warm and brisk] With', reference_id: 'v1', format: 'wav', temperature: 0.7, prosody: { speed: 1, volume: 0 } });
-    expect(ttsRequest({ ...row, id: 'greeting.0' }, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[warm]', tags: {} }).body.text).toBe('[warm] With');
+    expect(r.body).toEqual({ text: '[confident] With,', reference_id: 'v1', format: 'wav', temperature: 0.7, prosody: { speed: 1, volume: 0 } });
+    expect(ttsRequest({ ...row, id: 'greeting.0' }, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: {}, openComma: true }).body.text).toBe('[calm] With,');
     expect(JSON.stringify(r)).not.toMatch(/Bearer/);
+  });
+
+  it('omits the trailing comma on an open row when openComma is false, and never adds one to a closed row', () => {
+    expect(ttsRequest(row, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: { 'ack_provider.0': '[confident]' }, openComma: false }).body.text).toBe('[confident] With');
+    const closed = { id: 'greeting.0', text: 'Hi.', note: 'closed' as const };
+    expect(ttsRequest(closed, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: {}, openComma: true }).body.text).toBe('[calm] Hi.');
+    expect(ttsRequest(closed, { voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: {}, openComma: false }).body.text).toBe('[calm] Hi.');
+  });
+});
+
+describe('tagBodies', () => {
+  it('splits one or more bracket groups, or returns [] for anything else', () => {
+    expect(tagBodies('[calm]')).toEqual(['calm']);
+    expect(tagBodies('[calm][soft tone]')).toEqual(['calm', 'soft tone']);
+    expect(tagBodies('calm')).toEqual([]);
+    expect(tagBodies('[a] [b]')).toEqual([]);
+  });
+});
+
+describe('FISH_TAGS', () => {
+  it('has exactly 71 documented tags', () => {
+    expect(FISH_TAGS.size).toBe(71);
+  });
+});
+
+describe('validateTags', () => {
+  it('flags a tag whose body is not in the Fish inventory, for a clip id or the --tag fallback', () => {
+    expect(validateTags({ 'greeting.0': '[calm]' })).toEqual([]);
+    expect(validateTags({ 'greeting.0': '[warm and welcoming]' })).toEqual(['unsupported Fish tag "warm and welcoming" for greeting.0']);
+    expect(validateTags({}, '[warm]')).toEqual(['unsupported Fish tag "warm" for --tag']);
+    expect(validateTags({}, '[calm]')).toEqual([]);
   });
 });
 
@@ -33,7 +64,7 @@ describe('generateClips', () => {
   let dir: string;
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'audio-')); });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
-  const opts = (over: Partial<GenerateOptions> = {}): GenerateOptions => ({ audioDir: dir, apiKey: 'k', voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[warm]', tags: {}, candidates: 1, force: false, only: null, dryRun: false, ...over });
+  const opts = (over: Partial<GenerateOptions> = {}): GenerateOptions => ({ audioDir: dir, apiKey: 'k', voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: {}, openComma: true, candidates: 1, force: false, only: null, dryRun: false, ...over });
   const calls: string[] = [];
   const fetchStub = async (_url: string, init: { body: string }) => { calls.push(JSON.parse(init.body).text); return { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('RIFF' + calls.length).buffer }; };
 
@@ -144,15 +175,16 @@ describe('generateClips', () => {
 });
 
 describe('tags.json', () => {
-  it('names every recordable clip and nothing else, in bracket syntax, with open segments marked', () => {
+  it('names every recordable clip and nothing else, using only Fish inventory tags, with no leftover "continuing" suffix', () => {
     const ids = new Set(recordableClips().map((r) => r.id));
     const tagged = tags as Record<string, string>;
     expect(Object.keys(tagged).filter((id) => !ids.has(id))).toEqual([]);
     expect([...ids].filter((id) => !(id in tagged))).toEqual([]);
-    for (const [id, tag] of Object.entries(tagged)) expect(tag, id).toMatch(/^\[[a-z ,]+\]$/);
-    for (const r of recordableClips()) {
-      if (r.note === 'open') expect(tagged[r.id], r.id).toMatch(/continuing\]$/);
-      else expect(tagged[r.id], r.id).not.toMatch(/continuing/);
+    for (const [id, tag] of Object.entries(tagged)) {
+      const bodies = tagBodies(tag);
+      expect(bodies.length, id).toBeGreaterThan(0);
+      for (const body of bodies) expect(FISH_TAGS.has(body), `${id}: ${body}`).toBe(true);
+      expect(tag, id).not.toMatch(/continuing/);
     }
   });
 });
