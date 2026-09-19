@@ -1,7 +1,7 @@
 # Design: Recorded prompts (Phase 3b, part one)
 
 Date: 2026-09-19
-Status: approved for planning
+Status: approved for planning; scope addition during planning: clip generation through the Fish Audio API from the recording sheet (`pnpm prompts:generate`), since generating eighty clips by hand in the web app is the bottleneck
 Parent: `JEV-IVR-HANDOFF.md` §8 and Phase 3 item 12; builds on
 `2026-09-18-twilio-phone-line-design.md` (frames, adapter, server) and
 `2026-09-19-question-redesign-design.md` (the current prompt set).
