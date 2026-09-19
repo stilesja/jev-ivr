@@ -58,7 +58,14 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
 
   const clips = discoverClips(config.audioDir);
-  const cov = coverage(recordableClips(), clips, readRecorded(config.audioDir));
+  let recorded: Record<string, string> | null;
+  try {
+    recorded = readRecorded(config.audioDir);
+  } catch (e) {
+    log(`audio: ignoring unreadable recorded.json: ${e instanceof Error ? e.message : String(e)}`);
+    recorded = null;
+  }
+  const cov = coverage(recordableClips(), clips, recorded);
   const missingSuffix =
     cov.missing.length === 0
       ? ''
