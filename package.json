@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "cli": "tsx src/harness-text/cli.ts",
     "regress": "tsx src/harness-text/regress.ts",
+    "sweep": "tsx src/harness-text/sweep.ts",
     "server": "tsx src/server/index.ts"
   },
   "dependencies": {
