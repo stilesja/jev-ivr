@@ -165,7 +165,7 @@ describe('server end to end', () => {
     relay.prompt('Tuesday');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed"}');
-    expect(relay.texts().at(-1)).toBe('Your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
+    expect(relay.texts().at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
     expect((await relay.closed).code).toBe(1000);
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);

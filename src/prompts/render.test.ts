@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { renderTemplate, promptText, decisionToFrames, handoffPromptId, spokenText } from './render';
+import { FORMS } from '../domain/forms';
+import { renderTemplate, promptText, promptEntry, decisionToFrames, handoffPromptId, spokenText } from './render';
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
 import { INTENT_MENU } from '../domain/intents';
@@ -82,5 +83,15 @@ describe('decisionToFrames', () => {
   it('emits nothing for ignore and hold', () => {
     expect(decisionToFrames({ kind: 'ignore' })).toEqual([]);
     expect(decisionToFrames({ kind: 'hold' })).toEqual([]);
+  });
+});
+
+describe('completion prompts', () => {
+  it('read back every slot of the form they close', () => {
+    for (const [form, spec] of Object.entries(FORMS)) {
+      if (spec.completion.kind !== 'prompt') continue;
+      const text = promptEntry(spec.completion.promptId).text;
+      for (const slot of spec.slots) expect(text, `${form}: ${spec.completion.promptId}`).toContain(`{${slot}}`);
+    }
   });
 });
