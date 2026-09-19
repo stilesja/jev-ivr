@@ -1435,5 +1435,5 @@ Follow-ups, not in this branch: a hedged provider that fills a form's last slot 
 - The completion line still reads the member ID back immediately after it was just confirmed, on a one-turn call (Jason's own test call): mildly redundant but not wrong.
 - Replaying a chained call re-speaks the bridged-into completion's ack a second time.
 - `askSlot` ignores a keypad escalation once the confirmation that led to it has been cleared.
-- Span-based detection of two provider names named in the same utterance, instead of relying on the model splitting its probability mass.
+- Span-based detection of two provider names named in the same utterance, instead of relying on the model splitting its probability mass. Closed 2026-09-19: re-asking the same two surnames the caller offered adds nothing; first names in the roster and prompt would be the real fix, and it is not worth building for the prototype.
 - `tentative-two-intents` may resolve as a disambiguation rather than an explicit confirmation under the real model, because the margin gate still runs after the tentative bump is applied.
