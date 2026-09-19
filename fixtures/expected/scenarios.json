@@ -13,6 +13,7 @@
       "provider": "chen",
       "date": "2026-09-22"
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -30,6 +31,7 @@
       "provider": "patel",
       "date": "2026-09-22"
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -39,14 +41,15 @@
     "promptId": "cancel_confirmed",
     "acks": [],
     "reason": null,
-    "decidedGate": null,
-    "verdict": "proceed",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
     "form": "cancel",
     "slots": {
       "memberId": "44718293",
       "provider": "okafor",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -56,14 +59,15 @@
     "promptId": "appointment_details",
     "acks": [],
     "reason": null,
-    "decidedGate": null,
-    "verdict": "proceed",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
     "form": "confirm_appointment",
     "slots": {
       "memberId": "44718293",
       "provider": "okafor",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -73,14 +77,15 @@
     "promptId": "handoff_billing",
     "acks": [],
     "reason": "billing",
-    "decidedGate": null,
-    "verdict": "proceed",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
     "form": "billing",
     "slots": {
       "memberId": "81204457",
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -90,14 +95,15 @@
     "promptId": "schedule_confirmed",
     "acks": [],
     "reason": null,
-    "decidedGate": "intent",
-    "verdict": "route",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
     "form": "schedule_new",
     "slots": {
       "memberId": "44718293",
       "provider": "okafor",
       "date": "2026-09-25"
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -105,7 +111,9 @@
     "id": "intent-switch-mid-form",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -115,6 +123,7 @@
       "provider": "cheng",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -132,6 +141,7 @@
       "provider": "chen",
       "date": "2026-09-23"
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -139,18 +149,17 @@
     "id": "month-window-narrow",
     "decision": "prompt",
     "promptId": "ask_provider",
-    "acks": [
-      "ack_memberId"
-    ],
+    "acks": [],
     "reason": null,
-    "decidedGate": null,
-    "verdict": "proceed",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
       "memberId": "44718293",
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -168,6 +177,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -185,6 +195,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -202,6 +213,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -219,6 +231,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -236,6 +249,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -253,23 +267,25 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
-  "disambiguate-intent": {
-    "id": "disambiguate-intent",
+  "tentative-two-intents": {
+    "id": "tentative-two-intents",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "confirm_intent_explicit",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
-    "form": "reschedule",
+    "form": null,
     "slots": {
       "memberId": null,
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -287,6 +303,7 @@
       "provider": "cheng",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -304,6 +321,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -321,6 +339,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -338,6 +357,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -355,6 +375,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -372,6 +393,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -389,6 +411,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -406,6 +429,7 @@
       "provider": "chen",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -423,6 +447,7 @@
       "provider": "okafor",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -440,6 +465,7 @@
       "provider": "chen",
       "date": "2026-09-22"
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -457,6 +483,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -474,6 +501,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -481,7 +509,9 @@
     "id": "switch-confirm-yes-mid-form",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
@@ -491,6 +521,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -508,6 +539,7 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -525,6 +557,7 @@
       "provider": "chen",
       "date": "2026-12-02"
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -542,16 +575,15 @@
       "provider": null,
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
   "implicit-ack-spoken": {
     "id": "implicit-ack-spoken",
     "decision": "prompt",
-    "promptId": "date_narrow_window",
-    "acks": [
-      "ack_memberId"
-    ],
+    "promptId": "confirm_memberId",
+    "acks": [],
     "reason": null,
     "decidedGate": null,
     "verdict": "proceed",
@@ -561,6 +593,7 @@
       "provider": "chen",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -578,6 +611,7 @@
       "provider": "chen",
       "date": null
     },
+    "queued": [],
     "pass": true,
     "mismatches": []
   },
@@ -587,14 +621,204 @@
     "promptId": "reschedule_confirmed",
     "acks": [],
     "reason": null,
-    "decidedGate": "intent",
-    "verdict": "route",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
       "memberId": "44718293",
       "provider": "chen",
       "date": "2026-09-22"
     },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "add-intent-chained": {
+    "id": "add-intent-chained",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
+    "acks": [
+      "reschedule_confirmed",
+      "bridge_next"
+    ],
+    "reason": "billing",
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "billing",
+    "slots": {
+      "memberId": "44718293",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "replace-intent-mid-form": {
+    "id": "replace-intent-mid-form",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [
+      "ack_intent"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "billing",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "replace-intent-keeps-same-appointment": {
+    "id": "replace-intent-keeps-same-appointment",
+    "decision": "complete",
+    "promptId": "cancel_confirmed",
+    "acks": [
+      "ack_intent"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "cancel",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "memberId-confirm-yes": {
+    "id": "memberId-confirm-yes",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "44718293",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "memberId-confirm-no-to-keypad": {
+    "id": "memberId-confirm-no-to-keypad",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "cancel",
+    "slots": {
+      "memberId": "44718293",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "chunked-memberId": {
+    "id": "chunked-memberId",
+    "decision": "prompt",
+    "promptId": "confirm_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "44187355",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "digit-string-memberId": {
+    "id": "digit-string-memberId",
+    "decision": "prompt",
+    "promptId": "confirm_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "81793314",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "hedged-provider-implicit": {
+    "id": "hedged-provider-implicit",
+    "decision": "complete",
+    "promptId": "cancel_confirmed",
+    "acks": [
+      "ack_provider"
+    ],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "kim",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "hedged-two-providers-disambiguate": {
+    "id": "hedged-two-providers-disambiguate",
+    "decision": "prompt",
+    "promptId": "disambiguate_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "tentative-carries-slots": {
+    "id": "tentative-carries-slots",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "cancel",
+    "slots": {
+      "memberId": null,
+      "provider": "chen",
+      "date": null
+    },
+    "queued": [],
     "pass": true,
     "mismatches": []
   }

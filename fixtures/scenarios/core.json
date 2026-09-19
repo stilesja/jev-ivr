@@ -320,19 +320,16 @@
     }
   },
   {
-    "id": "disambiguate-intent",
+    "id": "tentative-two-intents",
     "steps": [
       {
         "say": "I think I need to reschedule or maybe cancel"
-      },
-      {
-        "say": "I need to reschedule my appointment"
       }
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
-      "form": "reschedule"
+      "promptId": "confirm_intent_explicit",
+      "form": null
     }
   },
   {
@@ -364,7 +361,7 @@
         "say": "four four seven one, that's it"
       },
       {
-        "say": "For the third time, Dr. Chen"
+        "say": "This is ridiculous, I already said Dr. Chen three times"
       }
     ],
     "expect": {
@@ -725,6 +722,219 @@
         "memberId": "44718293",
         "provider": "chen",
         "date": "2026-09-22"
+      }
+    }
+  },
+  {
+    "id": "add-intent-chained",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "yes"
+      },
+      {
+        "say": "and can I also ask about my bill"
+      },
+      {
+        "say": "Tuesday"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing",
+      "text": "Now, ask about billing."
+    }
+  },
+  {
+    "id": "replace-intent-mid-form",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "never mind, I have a question about my bill"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "billing"
+    }
+  },
+  {
+    "id": "replace-intent-keeps-same-appointment",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "dtmf": "44718293"
+      },
+      {
+        "say": "actually forget the reschedule, just cancel it"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "cancel_confirmed",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen"
+      }
+    }
+  },
+  {
+    "id": "memberId-confirm-yes",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293"
+      }
+    }
+  },
+  {
+    "id": "memberId-confirm-no-to-keypad",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "no"
+      },
+      {
+        "dtmf": "44718293"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293"
+      }
+    }
+  },
+  {
+    "id": "chunked-memberId",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "forty four one eighty seven three hundred fifty five"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_memberId",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44187355"
+      },
+      "text": "4418 7355"
+    }
+  },
+  {
+    "id": "digit-string-memberId",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "8 1 7 9 3 3 1 4"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_memberId",
+      "form": "cancel",
+      "slots": {
+        "memberId": "81793314"
+      }
+    }
+  },
+  {
+    "id": "hedged-provider-implicit",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "dtmf": "44718293"
+      },
+      {
+        "say": "It might be Dr. Kim"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "cancel_confirmed",
+      "form": "cancel",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "kim"
+      },
+      "text": "With Dr. Kim."
+    }
+  },
+  {
+    "id": "hedged-two-providers-disambiguate",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "dtmf": "44718293"
+      },
+      {
+        "say": "either Dr. Chen or Dr. Cheng, I'm not sure which"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "disambiguate_provider",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "tentative-carries-slots",
+    "steps": [
+      {
+        "say": "Maybe cancel it, it's with Dr. Chen"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_memberId",
+      "form": "cancel",
+      "slots": {
+        "provider": "chen"
       }
     }
   }
