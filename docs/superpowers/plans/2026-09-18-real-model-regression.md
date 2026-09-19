@@ -937,3 +937,19 @@ The diff output from either run is the input to the threshold-tuning sub-project
 - Spec §6 tests: Tasks 1–5; manual: Task 6 Step 3 and Task 8.
 - Spec §7 README: Task 7.
 - Names used across tasks: `requestKey`, `loadCassette`, `appendCassette`, `CassetteLine`, `CassetteClient`, `cassettePath`, `CLIENT_KINDS`, `formatRegressSummary`, `RegressSummaryInput` are defined before use.
+
+---
+
+## Deviations recorded during execution
+
+Each was raised by a spec or quality review, accepted by the controller, and applied by the task's implementer before the task was marked complete.
+
+- **Task 1.** `canonicalJson` maps array elements JSON.stringify cannot represent (undefined, functions, symbols, holes) to `null` instead of producing invalid JSON; a golden-digest test pins the canonical form so a future change fails here rather than as cassette misses. Doc comment states that `toJSON` is not honored.
+- **Task 2.** Load errors carry a 60-char excerpt and the recovery hint ("append-only, delete this line and re-record"); a line must also have `answers`, `model`, and numeric `usage` fields, so a hand-edited line cannot replay as a silent no-answer or zero-cost turn.
+- **Task 3.** `CassetteOptions.expectModel`: a loaded line or a live answer whose model differs from the pin aborts with a plain `Error` naming the fix (bump `JEV_MODEL`, record a fresh file). `preload()` lets the builder fail at startup on a corrupt file while the class stays lazy. The replay-miss message names the cassette path; its `cassette miss:` prefix is exported as `CASSETTE_MISS` and shared with the summary. Class doc notes it is not safe for concurrent identical asks.
+- **Task 4.** `isClientKind` type guard plus an exhaustive switch (no default) replace the cast-and-default; `record` also preloads; the builder tests moved from `cli.test.ts` to `src/run/client.test.ts`. The SDK client throws at construction without a key, so `jev` and `record` fail fast at build time; only `recorded` runs without a key.
+- **Task 5.** The cost line is gated on priced answers (`usage.estimated === false`) rather than on the client kind, so the keyword stub's estimated tokens are never printed as dollars; `clientKind` was dropped from the formatter's input. The latency line is labelled `ask latency ms` (the CLI prints a different `decision latency ms`) and is omitted when nothing was answered; the `[replayed]`/`[mixed]` tag appears on the cost line only. Sources are filtered by an inverted `UNANSWERED` set so a new `AnswerSource` is counted in. Token grouping is ICU-free.
+- **Task 6.** `diffOne`/`diff` live in `regressDiff.ts` with four tests. The loops and diff run inside `try`/`finally` so an aborted live run still prints the summary (and the money spent); the `--update` path is excluded from that. The top-level catch prints the message only and sets `process.exitCode`. Live kinds print progress to stderr (every 25 corpus entries, each scenario) so stdout stays a clean diff artifact. Before a cassette run the runner prints the cassette path and whether it exists.
+- **Task 7.** `.gitattributes` marks the cassette `linguist-generated` so GitHub collapses it in PR diffs. README records the operational notes from review: record at default thresholds, Ctrl-C is safe and resumable, the free lower-bound request count from an empty-cassette replay, corrupt-line recovery, the CLI appending to the same file, and the unit suite validating the committed cassette.
+
+Deferred, not in this branch: `src/server/config.ts` declares its own narrower `ClientKind` under the same name as `src/run/client.ts`; derive it from `CLIENT_KINDS` in a server-side change. The absent-cassette case is silent from the CLI (only the regression runner prints the notice).

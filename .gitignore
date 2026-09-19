@@ -2,3 +2,4 @@ node_modules/
 traces/
 .env
 *.log
+.DS_Store
