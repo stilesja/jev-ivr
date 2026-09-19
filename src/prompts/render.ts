@@ -1,7 +1,7 @@
 import manifest from './manifest.json';
 import type { Decision } from '../core/decision';
 import { endFrame, textFrame, type OutboundFrame, type PlayFrame } from '../channel/frames';
-import { joinSpoken, segmentTemplate, stripLeadingPause, VAR } from './segments';
+import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR } from './segments';
 import { vocabularyClipId } from './clips';
 
 export type PromptId = keyof typeof manifest;
@@ -54,7 +54,7 @@ export function promptFrames(promptId: string, vars: Record<string, string>, int
   const flush = (): void => {
     if (pieces.length === 0) return;
     let text = joinSpoken(pieces);
-    if (frames.length > 0) text = stripLeadingPause(text);
+    if (frames.at(-1)?.type === 'play') text = stripLeadingPause(text);
     if (text) frames.push(textFrame(text, interruptible));
     pieces = [];
   };
@@ -64,7 +64,7 @@ export function promptFrames(promptId: string, vars: Record<string, string>, int
   };
   for (const s of segmentTemplate(promptId, promptEntry(promptId).text)) {
     if (s.kind === 'fixed') {
-      const file = stripLeadingPause(s.text) === '' ? undefined : ctx.clips.get(s.id);
+      const file = isPauseOnly(s.text) ? undefined : ctx.clips.get(s.id);
       if (file) play(file);
       else pieces.push(s.text);
       continue;

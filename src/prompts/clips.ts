@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import manifest from './manifest.json';
-import { segmentsOf, stripLeadingPause, VOCAB_VARS } from './segments';
+import { isPauseOnly, segmentsOf, stripLeadingPause, VOCAB_VARS } from './segments';
 import { PROVIDERS } from '../domain/slots/provider';
 import { FORM_INTENTS, INTENT_LABELS } from '../domain/intents';
 import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
@@ -72,11 +72,9 @@ export function recordableClips(): RecordableClip[] {
   const rows: RecordableClip[] = [];
   for (const segments of Object.values(segmentsOf(manifest))) {
     segments.forEach((s, i) => {
-      if (s.kind !== 'fixed') return;
-      const text = stripLeadingPause(s.text);
-      if (!text) return;
+      if (s.kind !== 'fixed' || isPauseOnly(s.text)) return;
       const next = segments[i + 1];
-      rows.push({ id: s.id, text, note: next?.kind === 'var' ? 'open' : 'closed' });
+      rows.push({ id: s.id, text: stripLeadingPause(s.text), note: next?.kind === 'var' ? 'open' : 'closed' });
     });
   }
   for (const p of PROVIDERS) rows.push({ id: `provider.${p.key}`, text: `Dr. ${p.name}`, note: 'closed' });

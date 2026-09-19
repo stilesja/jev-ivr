@@ -13,6 +13,7 @@ export const VOCAB_VARS: ReadonlySet<string> = new Set(['provider', 'intentLabel
 /** The one template grammar: a `{name}` placeholder. Global; use only via matchAll/replace, never .test()/.exec(). */
 export const VAR = /\{(\w+)\}/g;
 const PAUSE = /^[,.?!;:]/;
+const LEADING_PAUSE = new RegExp(`${PAUSE.source}\\s*`);
 
 /** Split a template at its variables; fixed runs are trimmed, empty runs dropped, ids numbered from 0. */
 export function segmentTemplate(promptId: string, template: string): Segment[] {
@@ -54,7 +55,12 @@ export function joinSpoken(pieces: string[]): string {
 
 /** Strip a leading pause (comma, period, etc.) and the whitespace after it, e.g. before text that follows a played clip. */
 export function stripLeadingPause(text: string): string {
-  return text.replace(/^[,.?!;:]\s*/, '');
+  return text.replace(LEADING_PAUSE, '');
+}
+
+/** A fixed segment's text is nothing but a leading pause, e.g. the "." left over from "With {provider}." — never clip-backed. */
+export function isPauseOnly(text: string): boolean {
+  return stripLeadingPause(text) === '';
 }
 
 /**

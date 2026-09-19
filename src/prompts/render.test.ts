@@ -5,6 +5,8 @@ import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
 import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
 import { textFrame } from '../channel/frames';
+import { recordableClips } from './clips';
+import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VOCAB_VARS, type Segment } from './segments';
 
 describe('renderTemplate', () => {
   it('substitutes variables', () => {
@@ -195,5 +197,85 @@ describe('decisionToFrames with clips', () => {
       expect(promptFrames(id, vars, true, null)).toEqual(expected);
       expect(promptFrames(id, vars, true, empty)).toEqual(expected);
     }
+  });
+
+  describe('with every recordable clip present', () => {
+    const vars: Record<string, string> = {
+      provider: 'Dr. Chen',
+      intentLabel: INTENT_LABELS.billing,
+      window: 'next week',
+      memberId: '4471 8293',
+      date: 'Tuesday, September 22',
+      a: 'Dr. Chen',
+      b: 'Dr. Cheng',
+    };
+    const full = new Map(recordableClips().map((r) => [r.id, `${r.id}.wav`]));
+    const byId = new Map(recordableClips().map((r) => [r.id, r.text]));
+    const fullCtx = { clips: full, audioBase: base };
+
+    /**
+     * A spec-derived reference, independent of promptFrames: a segment is clip-backed
+     * (recordable at full coverage) when it is a non-punctuation-only fixed run or a
+     * vocabulary variable; everything else (a punctuation-only fixed run, or a spoken
+     * variable) is TTS. TTS runs accumulate via joinSpoken; a run immediately following a
+     * clip has its leading pause stripped, mirroring promptFrames' flush rule.
+     */
+    function referenceSpokenText(id: string, template: string, vars: Record<string, string>): string {
+      const isClipBacked = (s: Segment): boolean => (s.kind === 'fixed' ? !isPauseOnly(s.text) : VOCAB_VARS.has(s.name));
+      const recordingOf = (s: Segment): string => (s.kind === 'fixed' ? stripLeadingPause(s.text) : vars[s.name]!);
+      const runs: string[] = [];
+      let run: string[] = [];
+      let afterClip = false;
+      const flushRun = (): void => {
+        if (run.length === 0) return;
+        let text = joinSpoken(run);
+        if (afterClip) text = stripLeadingPause(text);
+        if (text) runs.push(text);
+        run = [];
+      };
+      for (const s of segmentTemplate(id, template)) {
+        if (isClipBacked(s)) {
+          flushRun();
+          runs.push(recordingOf(s));
+          afterClip = true;
+        } else {
+          run.push(s.kind === 'fixed' ? s.text : vars[s.name]!);
+        }
+      }
+      flushRun();
+      return joinSpoken(runs);
+    }
+
+    it('plays a clip for every segment that has one, falling back to text only for the two spoken vars', () => {
+      for (const [id, entry] of Object.entries(manifest)) {
+        const frames = promptFrames(id, vars, true, fullCtx);
+
+        for (const f of frames) {
+          if (f.type === 'play') continue;
+          expect(f.type, id).toBe('text');
+          const token = (f as { token: string }).token;
+          // A text frame can only ever be a spoken var's value, optionally with a trailing
+          // punctuation-only fixed segment glued on (it has nowhere else to attach when
+          // nothing plays after it — see the reference model above).
+          const bare = token.replace(/[,.?!;:]+$/, '');
+          const isSpokenVarValue = bare === vars.memberId || bare === vars.date;
+          expect(isSpokenVarValue, `${id}: unexpected text frame ${JSON.stringify(token)}`).toBe(true);
+        }
+
+        const actual = joinSpoken(
+          frames.map((f) => {
+            if (f.type === 'text') return (f as { token: string }).token;
+            const source = (f as { source: string }).source;
+            const clipId = source.slice(base.length, -'.wav'.length);
+            const text = byId.get(clipId);
+            expect(text, `${id}: no recordable text for clip ${clipId}`).toBeDefined();
+            return text!;
+          }),
+        );
+
+        const expected = referenceSpokenText(id, entry.text, vars);
+        expect(actual, id).toBe(expected);
+      }
+    });
   });
 });
