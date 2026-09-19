@@ -16,6 +16,7 @@ export function providerDisplay(key: string): string {
 
 export const providerSlot: SlotSpec = {
   id: 'provider',
+  spokenConfirm: 'by-confidence',
 
   questions() {
     const criteria: Record<string, string | null> = {};

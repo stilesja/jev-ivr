@@ -69,9 +69,10 @@ describe('turn', () => {
       memberIdComplete: noul(0.9),
     });
     expect(r.session.slots.memberId.value).toBe('44718293');
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId', target: 'memberId' });
+    r = say(r.session, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02) });
     expect(r.decision).toMatchObject({
-      kind: 'prompt', promptId: 'date_narrow_window', target: 'date', vars: { window: 'next week' },
-      acks: [{ promptId: 'ack_memberId', vars: { memberId: '4471 8293' } }],
+      kind: 'prompt', promptId: 'date_narrow_window', target: 'date', vars: { window: 'next week' }, acks: [],
     });
   });
 
@@ -132,6 +133,8 @@ describe('turn', () => {
       memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
       memberIdComplete: noul(0.9),
     });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId' });
+    r = say(r.session, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date' });
 
     r = say(r.session, 'actually cancel', { intent: choice({ cancel: 0.7, none: 0.3 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }) });
@@ -230,5 +233,91 @@ describe('turn', () => {
     expect(yes.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
     expect(yes.session.form).toBe('cancel');
     expect(yes.session.slots.provider.value).toBe('chen');
+  });
+
+  describe('member id confirmation', () => {
+    const inCancel = () => say(started(), 'cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }) }).session;
+    const idAnswers = {
+      intent: choice({ none: 0.95, cancel: 0.05 }), intentChange: choice({ answering: 0.95, adding: 0.03, replacing: 0.02 }),
+      containsMemberId: noul(0.95), memberIdComplete: noul(0.95),
+      memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
+    };
+
+    it('asks the caller to confirm a spoken id instead of acking it', () => {
+      const r = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId', target: 'memberId', options: ['yes', 'no'], acks: [] });
+      expect(r.session.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
+      expect(r.session.pendingConfirmation).toEqual({ target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' });
+    });
+
+    it('confirms on yes and moves to the next slot', () => {
+      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      const r = say(asked.session, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: choice({ answering: 0.95, adding: 0.03, replacing: 0.02 }) });
+      expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
+      expect(r.session.slots.memberId.confirmed).toBe(true);
+      expect(r.session.pendingConfirmation).toBeNull();
+    });
+
+    const declines = { confirmsYes: noul(0.02), confirmsNo: noul(0.95), intentChange: choice({ answering: 0.95, adding: 0.03, replacing: 0.02 }) };
+
+    it('sends a declined id straight to the keypad, then hands off if that fails too', () => {
+      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      const no = say(asked.session, 'no', declines);
+      expect(no.decision).toMatchObject({
+        kind: 'prompt', promptId: 'ask_memberId_dtmf', target: 'memberId',
+        acks: [{ promptId: 'ack_declined', vars: {} }],
+      });
+      expect(no.session.slots.memberId).toMatchObject({ value: null, display: null, confirmed: false, window: null });
+      const again = say(no.session, 'um', { intelligible: noul(0.2) });
+      expect(again.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+    });
+
+    it('hands off rather than read a third id back when a second one is declined too', () => {
+      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      const no = say(asked.session, 'no', declines);
+      const retry = say(no.session, 'eight one seven nine three three one four', {
+        ...idAnswers,
+        memberIdSpan: choice({ 'eight one seven nine three three one four': 0.9, none: 0.1 }),
+      });
+      expect(retry.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId' });
+      expect(retry.session.slots.memberId).toMatchObject({ value: '81793314', confirmed: false });
+      const no2 = say(retry.session, 'no', declines);
+      expect(no2.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+    });
+
+    it('walks an unanswered readback to the keypad and then to an agent', () => {
+      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      const first = say(asked.session, 'um', { intelligible: noul(0.2) });
+      expect(first.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId' });
+      const second = say(first.session, 'um', { intelligible: noul(0.2) });
+      expect(second.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId_dtmf', target: 'memberId' });
+      expect(second.session.slots.memberId).toMatchObject({ value: null, display: null, confirmed: false });
+      expect(second.session.pendingConfirmation).toBeNull();
+      const third = say(second.session, 'um', { intelligible: noul(0.2) });
+      expect(third.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+    });
+
+    it('says the new task out loud when a switch interrupts the readback', () => {
+      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      const r = say(asked.session, 'actually reschedule it instead', {
+        intent: choice({ reschedule: 0.95, cancel: 0.03, none: 0.02 }),
+        intentChange: choice({ replacing: 0.9, answering: 0.07, adding: 0.03 }),
+      });
+      expect(r.session.form).toBe('reschedule');
+      expect(r.decision).toMatchObject({
+        kind: 'prompt', promptId: 'confirm_memberId',
+        acks: [{ promptId: 'ack_intent', vars: { intentLabel: 'reschedule an appointment' } }],
+      });
+    });
+
+    it('needs no confirmation for keypad digits', () => {
+      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
+      let s = asked.session;
+      let r;
+      for (const f of dtmfFrames('81793314')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
+      expect(s.slots.memberId).toMatchObject({ value: '81793314', confirmed: true });
+      expect(s.pendingConfirmation).toBeNull();
+    });
   });
 });

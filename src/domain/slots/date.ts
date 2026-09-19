@@ -46,6 +46,7 @@ export function dateComponentsFrom(answers: AnswerMap): DateComponents {
 
 export const dateSlot: SlotSpec = {
   id: 'date',
+  spokenConfirm: 'by-confidence',
 
   questions(): QuestionMap {
     return {

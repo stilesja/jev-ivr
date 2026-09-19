@@ -9,6 +9,9 @@
         "say": "four four seven one eight two nine three"
       },
       {
+        "say": "yes"
+      },
+      {
         "say": "Tuesday"
       }
     ],
@@ -55,6 +58,9 @@
       },
       {
         "say": "it's 4471 8293"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -75,6 +81,9 @@
       },
       {
         "say": "it's 4471 8293"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -95,6 +104,9 @@
       },
       {
         "say": "my member ID is eight one two zero four four five seven"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -111,6 +123,9 @@
     "steps": [
       {
         "say": "Make an appointment with Dr. Okafor, member ID 4471 8293, Friday"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -153,6 +168,9 @@
         "say": "four four seven one eight two nine three"
       },
       {
+        "say": "yes"
+      },
+      {
         "say": "how about Wednesday"
       }
     ],
@@ -176,6 +194,9 @@
       },
       {
         "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -443,6 +464,9 @@
         "say": "four four seven one eight two nine three"
       },
       {
+        "say": "yes"
+      },
+      {
         "say": "Dr. Chen"
       },
       {
@@ -603,6 +627,9 @@
         "say": "four four seven one eight two nine three"
       },
       {
+        "say": "yes"
+      },
+      {
         "say": "Dr. Chen"
       },
       {
@@ -646,9 +673,9 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "date_narrow_window",
+      "promptId": "confirm_memberId",
       "form": "reschedule",
-      "text": "Member ID 4471 8293"
+      "text": "Your member ID is 4471 8293"
     }
   },
   {
@@ -659,6 +686,9 @@
       },
       {
         "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "yes"
       },
       {
         "say": "Dr. Chen"
@@ -682,6 +712,9 @@
     "steps": [
       {
         "say": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {

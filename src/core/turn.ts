@@ -6,11 +6,11 @@ import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import { describeWindow, type DateWindow } from './extract/date';
 import { candidateSpans } from './spans';
-import { cloneSession, missingSlots, setForm, type Session } from './session';
+import { cloneSession, emptySlot, missingSlots, setForm, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
 import { evaluateGates, type GateRow, type Verdict } from './gates';
-import { applyDtmf, fillSlots, nextPrompt, retryStep, type Ack, type FillEvent } from './fia';
+import { applyDtmf, fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, type Ack, type FillEvent } from './fia';
 import type { Decision, PromptDecision } from './decision';
 import type { Thresholds } from './thresholds';
 import { decisionToFrames, handoffPromptId, spokenText } from '../prompts/render';
@@ -122,8 +122,17 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
 function reaskConfirmation(s: Session, t: Thresholds): Decision {
   const pc = s.pendingConfirmation!;
   if (pc.target === 'slot') {
-    const attempts = ++s.slots[pc.slot].attempts;
-    if (retryStep(attempts, t) === 'agent') { s.pendingConfirmation = null; return handoff('max-attempts'); }
+    const st = s.slots[pc.slot];
+    const attempts = ++st.attempts;
+    const step = retryStep(attempts, t);
+    if (step === 'agent') { s.pendingConfirmation = null; return handoff('max-attempts'); }
+    // A readback the caller never answers burns the same attempts as a wrong value, so it
+    // lands on the keypad rather than looping on a value we still cannot vouch for.
+    if (step === 'dtmf') {
+      s.pendingConfirmation = null;
+      Object.assign(st, emptySlot(), { attempts });
+      return prompt(`ask_${pc.slot}_dtmf`, pc.slot);
+    }
     return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, [], ['yes', 'no']);
   }
   s.intentAttempts += 1;
@@ -139,14 +148,22 @@ function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: 
   if (disambiguate) {
     return prompt(`disambiguate_${disambiguate.slot}`, disambiguate.slot, { a: disambiguate.a.display, b: disambiguate.b.display }, acks, [disambiguate.a.display, disambiguate.b.display]);
   }
+  const readback = pendingSlotConfirmation(s);
+  if (readback) {
+    s.pendingConfirmation = readback;
+    return prompt(`confirm_${readback.slot}`, readback.slot, { [readback.slot]: readback.display }, acks, ['yes', 'no']);
+  }
   const next = nextPrompt(s);
   if (next.kind === 'complete') return completeForm(s, s.form!);
   return askSlot(next.slot, next.window, acks);
 }
 
 function enterForm(s: Session, form: FormId, confirm: 'none' | 'implicit', answers: AnswerMap, ctx: SlotContext): { decision: Decision; events: FillEvent[] } {
+  // Leaving a form the caller was already in is always said out loud, however sure the
+  // intent was: silently swapping the task underneath them is the confusing case.
+  const switching = s.form !== null && s.form !== form;
   setForm(s, form);
-  const acks: Ack[] = confirm === 'implicit' ? [{ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } }] : [];
+  const acks: Ack[] = confirm === 'implicit' || switching ? [{ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } }] : [];
   const fill = fillSlots(s, answers, ctx, slotsFor(form));
   return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
 }
@@ -170,18 +187,34 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     case 'confirmed': {
       const pc = s.pendingConfirmation!;
       s.pendingConfirmation = null;
-      if (pc.target === 'slot') return handleVerdict(s, { kind: 'proceed' }, answers, ctx, tc);
+      if (pc.target === 'slot') {
+        // The stashed value and display go unread: the gate decided on this turn's yes
+        // before any fill could run, so the slot still holds exactly what we read back.
+        s.slots[pc.slot].confirmed = true;
+        return { decision: continueForm(s, [], null), events: [] };
+      }
       if (pc.intent === 'agent') return { decision: handoff('live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
       // Fill from what the caller originally said, not from the "yes".
       return enterForm(s, pc.intent, 'none', pc.answers, slotContext(s, pc.text, tc));
     }
-    case 'rejected':
+    case 'rejected': {
+      const pc = s.pendingConfirmation!;
       s.pendingConfirmation = null;
+      if (pc.target === 'slot') {
+        // A declined readback means the spoken path failed; go straight to the keypad,
+        // and let a second decline hand off rather than read a third value back.
+        const st = s.slots[pc.slot];
+        st.attempts = Math.max(st.attempts + 1, t.MAX_ATTEMPTS - 1);
+        if (retryStep(st.attempts, t) === 'agent') return { decision: handoff('max-attempts'), events: [] };
+        Object.assign(st, emptySlot(), { attempts: st.attempts });
+        return { decision: prompt(`ask_${pc.slot}_dtmf`, pc.slot, {}, [{ promptId: 'ack_declined', vars: {} }]), events: [] };
+      }
       // Declining a mid-form switch means "stay where we were", so resume the form
       // rather than counting an intent failure against the caller.
       if (s.form) return { decision: continueForm(s, [], null), events: [] };
       return { decision: failAttempt(s, 'intent', t), events: [] };
+    }
     case 'confirm_unanswered':
       return { decision: reaskConfirmation(s, t), events: [] };
     case 'route':
@@ -233,6 +266,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
       return { decision: failAttempt(s, result.slot, tc.thresholds), rows: [] };
     case 'filled':
       s.dtmfBuffer = '';
+      s.pendingConfirmation = null;
       return { decision: continueForm(s, [], null), rows: [dtmfRow(result.slot)] };
   }
 }

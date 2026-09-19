@@ -128,17 +128,19 @@ describe('adapter', () => {
     expect(texts(sock).at(-1)).toBe("What's your member ID?");
     await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
     // The wire gets the digits spaced out; the session and the trace keep the readable form.
-    expect(texts(sock).slice(-2)).toEqual(['Member ID 4 4 7 1, 8 2 9 3.', 'Which day next week works for you?']);
-    expect(d.store.get('CA1')?.session.lastPromptText).toBe('Member ID 4471 8293. Which day next week works for you?');
+    expect(texts(sock).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
+    expect(d.store.get('CA1')?.session.lastPromptText).toBe('Your member ID is 4471 8293. Is that right?');
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    expect(texts(sock).at(-1)).toBe('Which day next week works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
     expect(texts(sock).at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
     expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed"}' });
     expect(sock.closed?.code).toBe(1000);
     expect(d.store.get('CA1')?.ended).toBe(true);
     const records = readFileSync(join(d.dir, 'CA1.jsonl'), 'utf8').trim().split('\n');
-    expect(records).toHaveLength(4);
+    expect(records).toHaveLength(5);
     const frames = readFileSync(join(d.dir, 'CA1.frames.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    expect(frames.filter((f) => f.dir === 'in')).toHaveLength(4);
+    expect(frames.filter((f) => f.dir === 'in')).toHaveLength(5);
     expect(frames.filter((f) => f.dir === 'out').length).toBeGreaterThanOrEqual(6);
   });
 
@@ -272,7 +274,7 @@ describe('adapter', () => {
     const ctx = newConnectionContext(tok, sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     expect(d.store.get('CA1')?.socket).toBeNull();
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'yes', 'Tuesday']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(d.store.get('CA1')?.ended).toBe(true);
@@ -311,7 +313,7 @@ describe('adapter', () => {
     const sock = fakeSocket();
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'yes', 'Tuesday']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(d.store.get('CA1')?.ended).toBe(true);
@@ -320,7 +322,7 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '5' }));
     expect(sock.sent.length).toBe(settled);
     const inbound = frameLines(d.dir).filter((f) => f.dir === 'in');
-    expect(inbound).toHaveLength(6);
+    expect(inbound).toHaveLength(7);
     expect(inbound.at(-2)?.msg.voicePrompt).toBe('hello? are you still there?');
     expect(inbound.at(-1)?.msg.digit).toBe('5');
   });

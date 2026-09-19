@@ -9,6 +9,7 @@ export function formatMemberId(value: string): string {
 
 export const memberIdSlot: SlotSpec = {
   id: 'memberId',
+  spokenConfirm: 'always',
 
   questions(ctx) {
     const criteria: Record<string, string | null> = {};

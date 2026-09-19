@@ -161,7 +161,9 @@ describe('server end to end', () => {
     expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your member ID?");
     relay.prompt('four four seven one eight two nine three');
     // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
-    expect((await relay.waitForTexts(4)).slice(-2)).toEqual(['Member ID 4 4 7 1, 8 2 9 3.', 'Which day next week works for you?']);
+    expect((await relay.waitForTexts(3)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
+    relay.prompt('yes');
+    expect((await relay.waitForTexts(4)).at(-1)).toBe('Which day next week works for you?');
     relay.prompt('Tuesday');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed"}');
@@ -169,7 +171,7 @@ describe('server end to end', () => {
     expect((await relay.closed).code).toBe(1000);
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
-    expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(4);
+    expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(5);
     relay.assertKnownTypes();
   });
 
@@ -261,6 +263,8 @@ describe('server end to end', () => {
     again.setup(callSid, 'VX-second');
     expect(await again.waitForTexts(1)).toEqual(["What's your member ID?"]);
     again.prompt('four four seven one eight two nine three');
+    expect((await again.waitForTexts(2)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
+    again.prompt('yes');
     expect((await again.waitForTexts(3)).at(-1)).toBe('Which day next week works for you?');
     const done = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
