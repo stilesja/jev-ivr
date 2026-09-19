@@ -88,7 +88,7 @@ export async function runSweep(cfg: SweepConfig): Promise<SweepRun> {
     writeFileSync(reportPath, renderReport(result, { cassette: cfg.cassette, requests: lines.size, date, misses }));
   }
   if (cfg.json) {
-    writeFileSync(cfg.json, JSON.stringify({ before: result.before, after: result.after, moves: result.moves, table: result.table, final: result.final, misses, converged: result.converged, evaluations: result.evaluations }, (_k, v) => (v instanceof Set ? [...v] : v), 2) + '\n');
+    writeFileSync(cfg.json, JSON.stringify({ before: result.before, after: result.after, moves: result.moves, table: result.table, final: result.final, misses, converged: result.converged, evaluations: result.evaluations }, (k, v) => (k === 'matched' ? undefined : v instanceof Set ? [...v] : v), 2) + '\n');
   }
   return { result, misses, reportPath };
 }
