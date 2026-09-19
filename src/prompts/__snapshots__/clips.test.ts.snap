@@ -1,0 +1,391 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1`] = `
+[
+  {
+    "id": "greeting.0",
+    "note": "closed",
+    "text": "Thanks for calling the clinic. How can I help you today?",
+  },
+  {
+    "id": "nomatch_open.0",
+    "note": "closed",
+    "text": "Sorry, I didn't catch that. You can say things like reschedule, cancel, or check an appointment. How can I help?",
+  },
+  {
+    "id": "nomatch_dtmf_menu.0",
+    "note": "closed",
+    "text": "Let's try the keypad. For a new appointment press 1. To reschedule press 2. To cancel press 3. To confirm an appointment press 4. For billing press 5. For an agent press 0.",
+  },
+  {
+    "id": "ask_memberId.0",
+    "note": "closed",
+    "text": "What's your member ID?",
+  },
+  {
+    "id": "ask_memberId_retry.0",
+    "note": "closed",
+    "text": "Sorry, I need your eight digit member ID. Please say it one digit at a time.",
+  },
+  {
+    "id": "ask_memberId_dtmf.0",
+    "note": "closed",
+    "text": "Please enter your eight digit member ID on the keypad.",
+  },
+  {
+    "id": "ask_provider.0",
+    "note": "closed",
+    "text": "Which provider is the appointment with?",
+  },
+  {
+    "id": "ask_provider_retry.0",
+    "note": "closed",
+    "text": "Sorry, which doctor is it with? For example, Dr. Patel.",
+  },
+  {
+    "id": "ask_provider_dtmf.0",
+    "note": "closed",
+    "text": "Using the keypad: for Dr. Chen press 1, Dr. Cheng 2, Dr. Patel 3, Dr. Okafor 4, Dr. Nguyen 5, Dr. Rossi 6, Dr. Kim 7, Dr. Alvarez 8.",
+  },
+  {
+    "id": "ask_date.0",
+    "note": "closed",
+    "text": "What day works for you?",
+  },
+  {
+    "id": "ask_date_retry.0",
+    "note": "closed",
+    "text": "Sorry, what day would you like? You can say a date, a weekday, or tomorrow.",
+  },
+  {
+    "id": "ask_date_dtmf.0",
+    "note": "closed",
+    "text": "Please enter the date as four digits, month then day.",
+  },
+  {
+    "id": "date_narrow_window.0",
+    "note": "closed",
+    "text": "Which day works for you?",
+  },
+  {
+    "id": "ack_intent.0",
+    "note": "open",
+    "text": "Sure, I can help you",
+  },
+  {
+    "id": "ack_provider.0",
+    "note": "open",
+    "text": "With",
+  },
+  {
+    "id": "ack_memberId.0",
+    "note": "open",
+    "text": "Member ID",
+  },
+  {
+    "id": "ack_date.0",
+    "note": "open",
+    "text": "On",
+  },
+  {
+    "id": "ack_declined.0",
+    "note": "closed",
+    "text": "Sorry about that.",
+  },
+  {
+    "id": "confirm_intent_explicit.0",
+    "note": "open",
+    "text": "Just to check, do you want to",
+  },
+  {
+    "id": "confirm_intent_explicit.1",
+    "note": "closed",
+    "text": "Yes or no.",
+  },
+  {
+    "id": "confirm_memberId.0",
+    "note": "open",
+    "text": "Your member ID is",
+  },
+  {
+    "id": "confirm_memberId.1",
+    "note": "closed",
+    "text": "Is that right?",
+  },
+  {
+    "id": "disambiguate_intent.0",
+    "note": "open",
+    "text": "Do you want to",
+  },
+  {
+    "id": "disambiguate_intent.1",
+    "note": "open",
+    "text": "or",
+  },
+  {
+    "id": "disambiguate_provider.0",
+    "note": "open",
+    "text": "Was that",
+  },
+  {
+    "id": "disambiguate_provider.1",
+    "note": "open",
+    "text": "or",
+  },
+  {
+    "id": "schedule_confirmed.0",
+    "note": "open",
+    "text": "You're booked with",
+  },
+  {
+    "id": "schedule_confirmed.1",
+    "note": "open",
+    "text": "on",
+  },
+  {
+    "id": "schedule_confirmed.2",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "reschedule_confirmed.0",
+    "note": "open",
+    "text": "For member ID",
+  },
+  {
+    "id": "reschedule_confirmed.1",
+    "note": "open",
+    "text": "your appointment with",
+  },
+  {
+    "id": "reschedule_confirmed.2",
+    "note": "open",
+    "text": "is moved to",
+  },
+  {
+    "id": "cancel_confirmed.0",
+    "note": "open",
+    "text": "For member ID",
+  },
+  {
+    "id": "cancel_confirmed.1",
+    "note": "open",
+    "text": "your appointment with",
+  },
+  {
+    "id": "cancel_confirmed.2",
+    "note": "closed",
+    "text": "is cancelled.",
+  },
+  {
+    "id": "appointment_details.0",
+    "note": "open",
+    "text": "For member ID",
+  },
+  {
+    "id": "appointment_details.1",
+    "note": "open",
+    "text": "your next appointment with",
+  },
+  {
+    "id": "appointment_details.2",
+    "note": "closed",
+    "text": "is confirmed.",
+  },
+  {
+    "id": "goodbye.0",
+    "note": "closed",
+    "text": "Goodbye.",
+  },
+  {
+    "id": "ack_queued.0",
+    "note": "open",
+    "text": "Sure, we'll",
+  },
+  {
+    "id": "ack_queued.1",
+    "note": "closed",
+    "text": "after this.",
+  },
+  {
+    "id": "bridge_next.0",
+    "note": "open",
+    "text": "Now, let's",
+  },
+  {
+    "id": "handoff_live_agent.0",
+    "note": "closed",
+    "text": "One moment while I connect you to someone who can help.",
+  },
+  {
+    "id": "handoff_billing.0",
+    "note": "closed",
+    "text": "Connecting you to billing now.",
+  },
+  {
+    "id": "handoff_frustrated.0",
+    "note": "closed",
+    "text": "I'm sorry for the trouble. Let me get you to a person.",
+  },
+  {
+    "id": "handoff_max_attempts.0",
+    "note": "closed",
+    "text": "Let me get someone to help you with that.",
+  },
+  {
+    "id": "handoff_system_failure.0",
+    "note": "closed",
+    "text": "I'm having trouble right now. Let me connect you to someone.",
+  },
+  {
+    "id": "system_slow_dtmf_hint.0",
+    "note": "closed",
+    "text": "Sorry for the delay. You can also use your keypad.",
+  },
+  {
+    "id": "provider.chen",
+    "note": "closed",
+    "text": "Dr. Chen",
+  },
+  {
+    "id": "provider.cheng",
+    "note": "closed",
+    "text": "Dr. Cheng",
+  },
+  {
+    "id": "provider.patel",
+    "note": "closed",
+    "text": "Dr. Patel",
+  },
+  {
+    "id": "provider.okafor",
+    "note": "closed",
+    "text": "Dr. Okafor",
+  },
+  {
+    "id": "provider.nguyen",
+    "note": "closed",
+    "text": "Dr. Nguyen",
+  },
+  {
+    "id": "provider.rossi",
+    "note": "closed",
+    "text": "Dr. Rossi",
+  },
+  {
+    "id": "provider.kim",
+    "note": "closed",
+    "text": "Dr. Kim",
+  },
+  {
+    "id": "provider.alvarez",
+    "note": "closed",
+    "text": "Dr. Alvarez",
+  },
+  {
+    "id": "intent.schedule_new",
+    "note": "closed",
+    "text": "schedule a new appointment",
+  },
+  {
+    "id": "intent.reschedule",
+    "note": "closed",
+    "text": "reschedule an appointment",
+  },
+  {
+    "id": "intent.cancel",
+    "note": "closed",
+    "text": "cancel an appointment",
+  },
+  {
+    "id": "intent.confirm_appointment",
+    "note": "closed",
+    "text": "confirm an appointment",
+  },
+  {
+    "id": "intent.billing",
+    "note": "closed",
+    "text": "ask about billing",
+  },
+  {
+    "id": "window.this_week",
+    "note": "closed",
+    "text": "this week",
+  },
+  {
+    "id": "window.next_week",
+    "note": "closed",
+    "text": "next week",
+  },
+  {
+    "id": "window.this_month",
+    "note": "closed",
+    "text": "this month",
+  },
+  {
+    "id": "window.next_month",
+    "note": "closed",
+    "text": "next month",
+  },
+  {
+    "id": "window.in_january",
+    "note": "closed",
+    "text": "in January",
+  },
+  {
+    "id": "window.in_february",
+    "note": "closed",
+    "text": "in February",
+  },
+  {
+    "id": "window.in_march",
+    "note": "closed",
+    "text": "in March",
+  },
+  {
+    "id": "window.in_april",
+    "note": "closed",
+    "text": "in April",
+  },
+  {
+    "id": "window.in_may",
+    "note": "closed",
+    "text": "in May",
+  },
+  {
+    "id": "window.in_june",
+    "note": "closed",
+    "text": "in June",
+  },
+  {
+    "id": "window.in_july",
+    "note": "closed",
+    "text": "in July",
+  },
+  {
+    "id": "window.in_august",
+    "note": "closed",
+    "text": "in August",
+  },
+  {
+    "id": "window.in_september",
+    "note": "closed",
+    "text": "in September",
+  },
+  {
+    "id": "window.in_october",
+    "note": "closed",
+    "text": "in October",
+  },
+  {
+    "id": "window.in_november",
+    "note": "closed",
+    "text": "in November",
+  },
+  {
+    "id": "window.in_december",
+    "note": "closed",
+    "text": "in December",
+  },
+]
+`;

@@ -1,19 +1,27 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import manifest from './manifest.json';
 import { segmentsOf, VOCAB_VARS } from './segments';
-import type { PromptEntry, PromptId } from './render';
 import { PROVIDERS } from '../domain/slots/provider';
-import { FORM_INTENTS, INTENT_LABELS, type Intent } from '../domain/intents';
-import { MONTHS } from '../core/extract/date';
+import { FORM_INTENTS, INTENT_LABELS } from '../domain/intents';
+import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
 
+/** wav/mp3 file extension → content type. Task 5 lowercases a discovered filename's extension before looking this up, so keys stay lowercase here even though discovery itself is case-insensitive. */
 export const AUDIO_TYPES: Readonly<Record<string, string>> = { wav: 'audio/wav', mp3: 'audio/mpeg' };
-const CLIP_FILE = /^([A-Za-z0-9_.-]+)\.(wav|mp3)$/;
+const CLIP_FILE = new RegExp(`^([A-Za-z0-9_.-]+)\\.(${Object.keys(AUDIO_TYPES).join('|')})$`, 'i');
 
 /** clip id → filename, from the directory listing; a missing directory is an empty index. */
 export function discoverClips(dir: string): Map<string, string> {
   const out = new Map<string, string>();
-  if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir).sort()) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return out;
+    throw err;
+  }
+  const names = entries.filter((e) => e.isFile() || e.isSymbolicLink()).map((e) => e.name).sort();
+  for (const name of names) {
     const m = CLIP_FILE.exec(name);
     if (!m) continue;
     const id = m[1]!;
@@ -24,15 +32,15 @@ export function discoverClips(dir: string): Map<string, string> {
   return out;
 }
 
-const VOCAB_INTENTS: readonly Intent[] = [...FORM_INTENTS, 'agent'];
+const VOCAB_INTENTS = FORM_INTENTS;
 /**
  * Window labels the date code can produce (`describeWindow` in core/extract/date.ts):
- * the four relative windows (`this_week`, `next_week`, `this_month`, `next_month`) plus
- * "in <Month>" for a bare month with no day.
+ * every non-"none" relative window plus "in <Month>" for a bare month with no day, derived
+ * by running each through `describeWindow` itself so this can't drift from that logic.
  */
 const WINDOW_LABELS: readonly string[] = [
-  'next week', 'this week', 'this month', 'next month',
-  ...MONTHS.map((m) => `in ${m[0]!.toUpperCase()}${m.slice(1)}`),
+  ...WINDOWS.filter((label) => label !== 'none').map((label) => describeWindow({ start: '', end: '', label })),
+  ...MONTHS.map((label) => describeWindow({ start: '', end: '', label })),
 ];
 
 function windowId(display: string): string {
@@ -67,7 +75,7 @@ function recordingText(text: string): string {
  */
 export function recordableClips(): RecordableClip[] {
   const rows: RecordableClip[] = [];
-  for (const segments of Object.values(segmentsOf(manifest as Record<PromptId, PromptEntry>))) {
+  for (const segments of Object.values(segmentsOf(manifest))) {
     segments.forEach((s, i) => {
       if (s.kind !== 'fixed') return;
       const text = recordingText(s.text);

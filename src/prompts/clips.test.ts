@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
 import { discoverClips, recordableClips, vocabularyClipId } from './clips';
 
 describe('discoverClips', () => {
@@ -24,6 +25,14 @@ describe('discoverClips', () => {
     writeFileSync(join(dir, 'greeting.0.mp3'), '');
     expect(() => discoverClips(dir)).toThrow(/greeting\.0.*wav.*mp3|greeting\.0.*mp3.*wav/);
   });
+  it('discovers an uppercase extension, keeping the id case as written', () => {
+    writeFileSync(join(dir, 'Greeting.0.WAV'), '');
+    expect(discoverClips(dir)).toEqual(new Map([['Greeting.0', 'Greeting.0.WAV']]));
+  });
+  it('ignores a subdirectory even when its name looks like a clip file', () => {
+    mkdirSync(join(dir, 'sub.wav'));
+    expect(discoverClips(dir).size).toBe(0);
+  });
 });
 
 describe('vocabularyClipId', () => {
@@ -37,6 +46,15 @@ describe('vocabularyClipId', () => {
     expect(vocabularyClipId('provider', 'Dr. Nobody')).toBeNull();
     expect(vocabularyClipId('memberId', '4471 8293')).toBeNull();
     expect(vocabularyClipId('date', 'Tuesday, September 22')).toBeNull();
+  });
+  it('resolves every label describeWindow can produce for a relative window or a bare month', () => {
+    const labels = [
+      ...WINDOWS.filter((label) => label !== 'none').map((label) => describeWindow({ start: '', end: '', label })),
+      ...MONTHS.map((label) => describeWindow({ start: '', end: '', label })),
+    ];
+    for (const label of labels) {
+      expect(vocabularyClipId('window', label)).not.toBeNull();
+    }
   });
 });
 
@@ -53,11 +71,14 @@ describe('recordableClips', () => {
     expect(rows.find((r) => r.id === 'window.this_week')).toMatchObject({ text: 'this week' });
     expect(rows.find((r) => r.id === 'window.in_january')).toMatchObject({ text: 'in January' });
     expect(rows.filter((r) => r.id.startsWith('provider.'))).toHaveLength(8);
-    expect(rows.filter((r) => r.id.startsWith('intent.'))).toHaveLength(6);
+    expect(rows.filter((r) => r.id.startsWith('intent.'))).toHaveLength(5);
     expect(rows.some((r) => r.id === 'memberId' || r.id.startsWith('date.'))).toBe(false);
     // A trailing "." after a variable (e.g. "With {provider}.") has nothing left to record
     // once its leading punctuation is stripped, so it is not a recordable row.
     expect(rows.some((r) => r.text === '')).toBe(false);
     expect(rows.some((r) => r.id === 'ack_provider.1')).toBe(false);
+  });
+  it('matches the recorded snapshot of clip ids and notes', () => {
+    expect(recordableClips()).toMatchSnapshot();
   });
 });
