@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { discoverClips, recordableClips, type RecordableClip } from './clips';
 import { readRecorded, RECORDED_FILE } from './sheet';
@@ -115,6 +115,68 @@ function validateAudio(bytes: Buffer, format: 'wav' | 'mp3'): void {
   if (format === 'wav' && bytes.toString('ascii', 0, 4) !== 'RIFF') throw new Error('not a wav response');
 }
 
+const WAV_HEADER_MIN = 44;
+
+/**
+ * Fish Audio streams its TTS responses, so the WAV files it hands back carry placeholder RIFF and
+ * `data` chunk sizes (`0xFFFFFF24` / `0xFFFFFF00`) rather than the true lengths. This walks the
+ * chunk list from offset 12 to find `data`, then compares its recorded size (and the RIFF size at
+ * offset 4) against the true values derived from the buffer's actual length, fixing both in a copy
+ * when either is wrong. Non-WAV input (mp3, or anything shorter than a full 44-byte PCM header) is
+ * returned unchanged, as is an already-correct header. Trailing chunks after `data` (rare) are just
+ * folded into the data size, since nothing here needs to parse them.
+ */
+export function repairWavHeader(bytes: Buffer): { bytes: Buffer; repaired: boolean } {
+  if (bytes.length < WAV_HEADER_MIN) return { bytes, repaired: false };
+  if (bytes.toString('ascii', 0, 4) !== 'RIFF' || bytes.toString('ascii', 8, 12) !== 'WAVE') return { bytes, repaired: false };
+
+  let offset = 12;
+  let dataHeaderOffset = -1;
+  let recordedDataSize = -1;
+  while (offset + 8 <= bytes.length) {
+    const chunkId = bytes.toString('ascii', offset, offset + 4);
+    const chunkSize = bytes.readUInt32LE(offset + 4);
+    if (chunkId === 'data') {
+      dataHeaderOffset = offset;
+      recordedDataSize = chunkSize;
+      break;
+    }
+    offset += 8 + chunkSize + (chunkSize % 2);
+  }
+  if (dataHeaderOffset === -1) return { bytes, repaired: false };
+
+  const dataStart = dataHeaderOffset + 8;
+  const trueRiffSize = bytes.length - 8;
+  const trueDataSize = bytes.length - dataStart;
+  const recordedRiffSize = bytes.readUInt32LE(4);
+  if (recordedRiffSize === trueRiffSize && recordedDataSize === trueDataSize) return { bytes, repaired: false };
+
+  const out = Buffer.from(bytes);
+  out.writeUInt32LE(trueRiffSize, 4);
+  out.writeUInt32LE(trueDataSize, dataHeaderOffset + 4);
+  return { bytes: out, repaired: true };
+}
+
+/**
+ * Rewrites every `*.wav` directly under `audioDir` (not `candidates/`) in place, repairing any
+ * streamed placeholder header. Used by both `--repair-wav` and its test.
+ */
+export function repairWavFiles(audioDir: string): { checked: number; repaired: string[] } {
+  let entries: string[] = [];
+  try { entries = readdirSync(audioDir); } catch { entries = []; }
+  const wavFiles = entries.filter((f) => f.endsWith('.wav'));
+  const repaired: string[] = [];
+  for (const file of wavFiles) {
+    const full = join(audioDir, file);
+    const { bytes, repaired: changed } = repairWavHeader(readFileSync(full));
+    if (changed) {
+      writeAtomic(full, bytes);
+      repaired.push(file);
+    }
+  }
+  return { checked: wavFiles.length, repaired };
+}
+
 export async function generateClips(rows: RecordableClip[], o: GenerateOptions, fetchFn: Fetch): Promise<GenerateResult> {
   if (!Number.isInteger(o.candidates) || o.candidates < 1 || o.candidates > MAX_CANDIDATES) {
     throw new Error(`candidates must be an integer from 1 to ${MAX_CANDIDATES}, got ${o.candidates}`);
@@ -154,8 +216,9 @@ export async function generateClips(rows: RecordableClip[], o: GenerateOptions, 
       for (let n = 1; n <= o.candidates; n++) {
         const res = await fetchFn(req.url, { method: 'POST', headers: { ...req.headers, authorization: `Bearer ${o.apiKey}` }, body: JSON.stringify(req.body) });
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, MAX_ERROR_BODY)}`);
-        const bytes = Buffer.from(await res.arrayBuffer());
+        let bytes: Buffer = Buffer.from(await res.arrayBuffer());
         validateAudio(bytes, o.format);
+        if (o.format === 'wav') bytes = repairWavHeader(bytes).bytes;
         const target = o.candidates === 1 ? join(o.audioDir, `${row.id}.${o.format}`) : join(o.audioDir, 'candidates', `${row.id}-${n}.${o.format}`);
         writeAtomic(target, bytes);
       }
@@ -249,9 +312,18 @@ async function main(): Promise<void> {
     voice: { type: 'string' }, model: { type: 'string', default: 's2.1-pro' }, format: { type: 'string', default: 'wav' },
     tag: { type: 'string', default: '[calm]' }, candidates: { type: 'string', default: '1' }, only: { type: 'string' },
     force: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false }, 'plain-open': { type: 'boolean', default: false },
-    pick: { type: 'string' },
+    pick: { type: 'string' }, 'repair-wav': { type: 'boolean', default: false },
   } });
   const audioDir = process.env.AUDIO_DIR?.trim() || 'assets/audio';
+  // --repair-wav only rewrites headers of clips already on disk; like --pick, it needs no key and
+  // no voice, so it runs (and exits) before either is checked.
+  if (a['repair-wav']) {
+    const r = repairWavFiles(audioDir);
+    for (const f of r.repaired) console.log(`repaired ${f}`);
+    console.log(`checked ${r.checked}, repaired ${r.repaired.length}`);
+    process.exitCode = 0;
+    return;
+  }
   // --pick only moves files a previous generate run already wrote; it needs no key and no voice,
   // so it runs (and exits) before either is checked.
   if (a.pick) {

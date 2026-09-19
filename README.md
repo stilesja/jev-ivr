@@ -240,7 +240,10 @@ clip say the wrong thing. The generator writes `assets/audio/recorded.json`
 `stale` when that text no longer matches the sheet; regenerate it with
 `--only <id> --force`. `--pick <id>-<n>` promotes an auditioned candidate to
 the final clip and records it in the sidecar, deleting the other candidates
-generated for that id.
+generated for that id. Fish streams its TTS responses, so the WAV headers
+that come back carry placeholder RIFF/data sizes; the generator repairs them
+on download, and `pnpm prompts:generate --repair-wav` fixes clips that were
+generated before this existed.
 
 The server discovers clips once at startup (restart it after adding one),
 serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that

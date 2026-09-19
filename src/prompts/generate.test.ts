@@ -2,12 +2,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync as fsMkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync as fsWriteFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FISH_TAGS, generateClips, pickCandidates, resolveVoice, tagBodies, ttsRequest, validateTags, type GenerateOptions } from './generate';
+import { FISH_TAGS, generateClips, pickCandidates, repairWavFiles, repairWavHeader, resolveVoice, tagBodies, ttsRequest, validateTags, type GenerateOptions } from './generate';
 import { recordableClips } from './clips';
 import tags from './tags.json';
 import fishTags from './fishTags.json';
 
 const row = { id: 'ack_provider.0', text: 'With', note: 'open' as const };
+
+/** A synthetic PCM WAV: 44-byte header (RIFF/WAVE, a 16-byte `fmt `, a `data` chunk at offset 36) plus `sampleBytes` of sample data, with the given RIFF/data sizes written into the header regardless of whether they're true. */
+function makeWav(riffSize: number, dataSize: number, sampleBytes = 1000): Buffer {
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(riffSize, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(44100, 24);
+  header.writeUInt32LE(44100 * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(dataSize, 40);
+  return Buffer.concat([header, Buffer.alloc(sampleBytes, 1)]);
+}
 
 describe('ttsRequest', () => {
   it('prefixes the tag, sets the model header, and never includes the key in the printable form', () => {
@@ -232,6 +251,69 @@ describe('pickCandidates', () => {
     expect(readFileSync(join(dir, 'a.0.mp3'), 'utf8')).toBe('old-final');
     expect(readdirSync(join(dir, 'candidates')).sort()).toEqual(['a.0-1.wav', 'a.0-2.wav']);
     expect(readdirSync(dir).includes('recorded.json')).toBe(false);
+  });
+});
+
+describe('repairWavHeader', () => {
+  it('fixes a placeholder RIFF/data size to the true lengths', () => {
+    const wav = makeWav(0xffffff24, 0xffffff00, 1000);
+    const r = repairWavHeader(wav);
+    expect(r.repaired).toBe(true);
+    expect(r.bytes.readUInt32LE(4)).toBe(1036);
+    expect(r.bytes.readUInt32LE(40)).toBe(1000);
+    expect(r.bytes.length).toBe(wav.length);
+  });
+
+  it('leaves an already-correct header unchanged', () => {
+    const wav = makeWav(1036, 1000, 1000);
+    const r = repairWavHeader(wav);
+    expect(r.repaired).toBe(false);
+    expect(r.bytes).toEqual(wav);
+  });
+
+  it('returns non-wav or too-short input unchanged', () => {
+    const id3 = Buffer.concat([Buffer.from('ID3', 'ascii'), Buffer.alloc(60)]);
+    expect(repairWavHeader(id3)).toEqual({ bytes: id3, repaired: false });
+    const short = Buffer.from('RIFF');
+    expect(repairWavHeader(short)).toEqual({ bytes: short, repaired: false });
+  });
+});
+
+describe('repairWavFiles', () => {
+  let dir: string;
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'audio-')); });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('repairs placeholder wavs in place, leaves correct ones and mp3s alone, and reports counts', () => {
+    fsWriteFileSync(join(dir, 'placeholder.wav'), makeWav(0xffffff24, 0xffffff00, 1000));
+    fsWriteFileSync(join(dir, 'correct.wav'), makeWav(1036, 1000, 1000));
+    fsWriteFileSync(join(dir, 'other.mp3'), 'not a wav');
+
+    const r = repairWavFiles(dir);
+    expect(r.checked).toBe(2);
+    expect(r.repaired).toEqual(['placeholder.wav']);
+
+    const fixed = readFileSync(join(dir, 'placeholder.wav'));
+    expect(fixed.readUInt32LE(4)).toBe(1036);
+    expect(fixed.readUInt32LE(40)).toBe(1000);
+    expect(readFileSync(join(dir, 'other.mp3'), 'utf8')).toBe('not a wav');
+  });
+});
+
+describe('generateClips (wav header repair)', () => {
+  it('repairs a streamed placeholder header before writing the clip to disk', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'audio-'));
+    try {
+      const placeholder = makeWav(0xffffff24, 0xffffff00, 1000);
+      const fetchStub = async () => ({ ok: true, status: 200, arrayBuffer: async () => placeholder.buffer.slice(placeholder.byteOffset, placeholder.byteOffset + placeholder.byteLength) });
+      const opts: GenerateOptions = { audioDir: dir, apiKey: 'k', voiceId: 'v1', model: 's2.1-pro', format: 'wav', tag: '[calm]', tags: {}, openComma: true, candidates: 1, force: false, only: null, dryRun: false };
+      await generateClips([row], opts, fetchStub as never);
+      const written = readFileSync(join(dir, 'ack_provider.0.wav'));
+      expect(written.readUInt32LE(4)).toBe(1036);
+      expect(written.readUInt32LE(40)).toBe(1000);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
