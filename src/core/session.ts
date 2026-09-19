@@ -59,7 +59,7 @@ export interface Session {
   pendingConfirmation: PendingConfirmation | null;
   /** intents the caller added mid-form, handled in order after the current form completes */
   queued: FormId[];
-  /** forms finished on this call, reported in handoff data */
+  /** forms closed by a completion prompt on this call, reported in handoff data */
   completed: FormId[];
   history: HistoryEntry[];
   caller: CallerRecord;
@@ -154,6 +154,9 @@ export function bucketPriorCalls(n: number): PriorCallsBucket {
 
 export function setForm(session: Session, form: FormId): Session {
   session.form = form;
+  // The form in hand is never also waiting in the queue, however it was entered:
+  // a switch to a queued intent starts it now rather than promising it twice.
+  session.queued = session.queued.filter((q) => q !== form);
   session.intentAttempts = 0;
   session.pendingConfirmation = null;
   session.menuActive = false;

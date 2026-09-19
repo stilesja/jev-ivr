@@ -83,7 +83,7 @@ describe('turn', () => {
     r = resolve(r.session, dtmfFrames('44718293')[0]!, null, tc);
     for (const d of dtmfFrames('4718293')) r = resolve(r.session, d, null, tc);
     expect(r.decision).toMatchObject({ kind: 'complete', form: 'cancel', promptId: 'cancel_confirmed' });
-    expect(r.frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed"}' });
+    expect(r.frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed","completed":["cancel"]}' });
     expect(r.session.ended).toBe(true);
   });
 
@@ -318,6 +318,154 @@ describe('turn', () => {
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
       expect(s.slots.memberId).toMatchObject({ value: '81793314', confirmed: true });
       expect(s.pendingConfirmation).toBeNull();
+    });
+  });
+  describe('queue and chain', () => {
+    const answering = choice({ answering: 0.95, adding: 0.03, replacing: 0.02 });
+    const adding = choice({ adding: 0.9, answering: 0.05, replacing: 0.05 });
+
+    it('queues an added intent, acks it once, re-asks the current slot without counting an attempt, and chains into a handoff after completion', () => {
+      const routed = say(started(), 'reschedule with dr chen next tuesday', {
+        intent: choice({ reschedule: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }),
+        dateMode: choice({ weekday: 0.9, none: 0.1 }), dateWeekday: choice({ tuesday: 0.95, none: 0.05 }), dateWeekdayQualifier: choice({ next: 0.9, none: 0.1 }),
+      });
+      expect(routed.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+      const added = say(routed.session, 'and can i also ask about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
+      expect(added.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId', acks: [{ promptId: 'ack_queued', vars: { intentLabel: 'ask about billing' } }] });
+      expect(added.session.queued).toEqual(['billing']);
+      expect(added.session.slots.memberId.attempts).toBe(0);
+      const again = say(added.session, 'and can i also ask about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
+      expect(again.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId', acks: [] });
+      expect(again.session.queued).toEqual(['billing']);
+      let s = again.session;
+      let r;
+      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({
+        kind: 'handoff', reason: 'billing', completed: ['reschedule'],
+        acks: [{ promptId: 'reschedule_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }],
+      });
+      expect(s.completed).toEqual(['reschedule']);
+      expect(s.ended).toBe(true);
+    });
+
+    it('chains into a slot form with the member id carried over and the rest cleared', () => {
+      const routed = say(started(), 'cancel with dr chen', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }) });
+      const added = say(routed.session, 'also book a new one', { intent: choice({ schedule_new: 0.95, none: 0.05 }), intentChange: adding });
+      let s = added.session;
+      let r;
+      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next' }] });
+      expect(s.form).toBe('schedule_new');
+      expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: true });
+      expect(s.slots.provider.value).toBeNull();
+      expect(s.completed).toEqual(['cancel']);
+      expect(s.queued).toEqual([]);
+    });
+
+    it('starts a queued intent the caller switches to instead of promising it twice', () => {
+      const routed = say(started(), 'reschedule with dr chen next tuesday', {
+        intent: choice({ reschedule: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }),
+        dateMode: choice({ weekday: 0.9, none: 0.1 }), dateWeekday: choice({ tuesday: 0.95, none: 0.05 }), dateWeekdayQualifier: choice({ next: 0.9, none: 0.1 }),
+      });
+      const added = say(routed.session, 'also cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: adding });
+      expect(added.session.queued).toEqual(['cancel']);
+      const switched = say(added.session, 'actually just cancel it instead', {
+        intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }),
+      });
+      expect(switched.session.form).toBe('cancel');
+      expect(switched.session.queued).toEqual([]);
+      let s = switched.session;
+      let r;
+      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({ kind: 'complete', promptId: 'cancel_confirmed', completed: ['cancel'] });
+      expect(s.completed).toEqual(['cancel']);
+      expect(s.queued).toEqual([]);
+    });
+
+    it('runs the forms it can finish before the one that ends the call', () => {
+      const routed = say(started(), 'cancel with dr chen', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }) });
+      const bill = say(routed.session, 'i also have a billing question', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
+      const book = say(bill.session, 'and also book a new one', { intent: choice({ schedule_new: 0.95, none: 0.05 }), intentChange: adding });
+      expect(book.session.queued).toEqual(['billing', 'schedule_new']);
+      let s = book.session;
+      let r;
+      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({
+        kind: 'prompt', promptId: 'ask_provider',
+        acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'schedule a new appointment' } }],
+      });
+      expect(s.form).toBe('schedule_new');
+      expect(s.queued).toEqual(['billing']);
+    });
+
+    it('hands the unstarted queue to the agent', () => {
+      const routed = say(started(), 'cancel with dr chen', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }) });
+      const added = say(routed.session, 'also book a new one', { intent: choice({ schedule_new: 0.95, none: 0.05 }), intentChange: adding });
+      const human = say(added.session, 'get me a person', { wantsHuman: noul(0.9) });
+      expect(human.decision).toMatchObject({ kind: 'handoff', reason: 'live-agent', queued: ['schedule_new'] });
+      expect(human.frames.at(-1)).toMatchObject({ type: 'end' });
+      const end = human.frames.at(-1)!;
+      expect(end.type === 'end' && end.handoffData).toContain('"queued":["schedule_new"]');
+    });
+
+    it('bridges without promising a request the caller added on the completing turn', () => {
+      const routed = say(started(), 'cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }) });
+      let s = routed.session;
+      let r;
+      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
+      const done = say(s, 'doctor kim, and also i have a billing question', {
+        intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding, provider: choice({ kim: 0.95, none: 0.05 }),
+      });
+      expect(done.decision).toMatchObject({
+        kind: 'handoff', reason: 'billing', completed: ['cancel'],
+        acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }],
+      });
+      expect((done.decision as { acks: { promptId: string }[] }).acks).toHaveLength(2);
+    });
+
+    it('chains three forms in the order the caller asked for them', () => {
+      const routed = say(started(), 'reschedule with dr chen next tuesday', {
+        intent: choice({ reschedule: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }),
+        dateMode: choice({ weekday: 0.9, none: 0.1 }), dateWeekday: choice({ tuesday: 0.95, none: 0.05 }), dateWeekdayQualifier: choice({ next: 0.9, none: 0.1 }),
+      });
+      const cancel = say(routed.session, 'also cancel my other appointment', { intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: adding });
+      const bill = say(cancel.session, 'and i have a question about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
+      expect(bill.session.queued).toEqual(['cancel', 'billing']);
+      let s = bill.session;
+      let r;
+      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      expect(r!.decision).toMatchObject({
+        kind: 'prompt', promptId: 'ask_provider',
+        acks: [{ promptId: 'reschedule_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'cancel an appointment' } }],
+      });
+      expect(s.form).toBe('cancel');
+      const last = say(s, 'doctor kim', { intent: choice({ none: 0.95, cancel: 0.05 }), intentChange: answering, provider: choice({ kim: 0.95, none: 0.05 }) });
+      expect(last.decision).toMatchObject({
+        kind: 'handoff', reason: 'billing', completed: ['reschedule', 'cancel'],
+        acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }],
+      });
+      expect(last.session.queued).toEqual([]);
+    });
+
+    it('keeps an added intent that arrives while a readback is pending, and re-asks the readback with the ack', () => {
+      const inCancel = say(started(), 'cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }) }).session;
+      const asked = say(inCancel, 'four four seven one eight two nine three', {
+        intent: choice({ none: 0.95, cancel: 0.05 }), intentChange: answering,
+        containsMemberId: noul(0.95), memberIdComplete: noul(0.95),
+        memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
+      });
+      expect(asked.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId' });
+      const added = say(asked.session, 'and can i also ask about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding, confirmsYes: noul(0.1), confirmsNo: noul(0.1) });
+      expect(added.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId', acks: [{ promptId: 'ack_queued' }] });
+      expect(added.session.queued).toEqual(['billing']);
+      expect(added.session.pendingConfirmation).toMatchObject({ target: 'slot', slot: 'memberId' });
+      // Adding a request is not a dodged readback, so it must not walk the caller to the keypad.
+      expect(added.session.slots.memberId.attempts).toBe(0);
+      const second = say(added.session, 'and i want to book another one too', { intent: choice({ schedule_new: 0.95, none: 0.05 }), intentChange: adding, confirmsYes: noul(0.1), confirmsNo: noul(0.1) });
+      expect(second.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_memberId', acks: [{ promptId: 'ack_queued' }] });
+      expect(second.session.slots.memberId.attempts).toBe(0);
+      expect(second.session.queued).toEqual(['billing', 'schedule_new']);
     });
   });
 });

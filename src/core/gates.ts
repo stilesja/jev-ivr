@@ -20,7 +20,7 @@ export type Verdict =
   | { kind: 'handoff'; reason: string }
   | { kind: 'confirmed' }
   | { kind: 'rejected' }
-  | { kind: 'confirm_unanswered' }
+  | { kind: 'confirm_unanswered'; queue?: FormId }
   | { kind: 'replay' }
   | { kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit' }
   | { kind: 'queue'; intent: FormId }
@@ -191,7 +191,9 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
   // confirmation goes stale and captures a later yes. A clear new route still
   // wins; enterForm/setForm clears the pending state.
   if (confirmationUnanswered && (routeVerdict.kind === 'intent_failed' || routeVerdict.kind === 'proceed' || routeVerdict.kind === 'queue')) {
-    routeVerdict = { kind: 'confirm_unanswered' };
+    // An added intent still counts: the rescue carries it so the form can queue it
+    // while the confirmation is re-asked.
+    routeVerdict = routeVerdict.kind === 'queue' ? { kind: 'confirm_unanswered', queue: routeVerdict.intent } : { kind: 'confirm_unanswered' };
     intentRow.outcome = `confirm_unanswered:${label}`;
   }
 

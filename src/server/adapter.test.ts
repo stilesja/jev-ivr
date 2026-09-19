@@ -133,8 +133,9 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, prompt('yes'));
     expect(texts(sock).at(-1)).toBe('Which day next week works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
-    expect(texts(sock).at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
-    expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed"}' });
+    expect(texts(sock).at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
+    expect(texts(sock).at(-1)).toBe('Goodbye.');
+    expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed","completed":["reschedule"]}' });
     expect(sock.closed?.code).toBe(1000);
     expect(d.store.get('CA1')?.ended).toBe(true);
     const records = readFileSync(join(d.dir, 'CA1.jsonl'), 'utf8').trim().split('\n');
@@ -156,7 +157,8 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
     expect(sock.sent.length).toBe(before);
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '3' }));
-    expect(texts(sock).at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Kim is cancelled. Goodbye.');
+    expect(texts(sock).at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Kim is cancelled.');
+    expect(texts(sock).at(-1)).toBe('Goodbye.');
   });
 
   it('records an interrupt as barge-in on the next prompt turn', async () => {

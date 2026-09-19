@@ -189,7 +189,7 @@ describe('runScenario', () => {
 const outcome: Outcome = {
   id: 'x', decision: 'prompt', promptId: 'ask_memberId', acks: [], reason: null,
   decidedGate: 'intent', verdict: 'route', form: 'cancel',
-  slots: { memberId: null, provider: 'patel', date: null },
+  slots: { memberId: null, provider: 'patel', date: null }, queued: [],
 };
 
 describe('checkExpectation', () => {
@@ -238,7 +238,7 @@ describe('outcomeOf', () => {
     } satisfies TurnResult;
     expect(outcomeOf('i', ignored)).toEqual({
       id: 'i', decision: 'ignore', promptId: null, acks: [], reason: null, decidedGate: null, verdict: null,
-      form: null, slots: { memberId: null, provider: null, date: null },
+      form: null, slots: { memberId: null, provider: null, date: null }, queued: [],
     });
   });
 });

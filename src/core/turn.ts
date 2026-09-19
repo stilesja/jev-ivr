@@ -11,7 +11,7 @@ import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
 import { evaluateGates, type GateRow, type Verdict } from './gates';
 import { applyDtmf, fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, type Ack, type FillEvent } from './fia';
-import type { Decision, PromptDecision } from './decision';
+import type { Decision, HandoffDecision, PromptDecision } from './decision';
 import type { Thresholds } from './thresholds';
 import { decisionToFrames, handoffPromptId, spokenText } from '../prompts/render';
 
@@ -86,8 +86,10 @@ function prompt(promptId: string, target: PromptDecision['target'], vars: Record
   return { kind: 'prompt', promptId, vars, acks, target, options };
 }
 
-function handoff(reason: string): Decision {
-  return { kind: 'handoff', reason, promptId: handoffPromptId(reason) };
+function handoff(s: Session, reason: string, acks: Ack[] = []): HandoffDecision {
+  // Whatever the caller added and the call never got to is the agent's problem now,
+  // so it rides along in the handoff data.
+  return { kind: 'handoff', reason, promptId: handoffPromptId(reason), acks, completed: [...s.completed], queued: [...s.queued] };
 }
 
 function askSlot(slot: SlotId, window: DateWindow | null, acks: Ack[]): PromptDecision {
@@ -95,18 +97,32 @@ function askSlot(slot: SlotId, window: DateWindow | null, acks: Ack[]): PromptDe
   return prompt(`ask_${slot}`, slot, {}, acks);
 }
 
-function completeForm(s: Session, form: FormId): Decision {
+/** Close the form: end the call, or bridge into the next queued intent with the member id carried over. */
+function completeForm(s: Session, form: FormId, acks: Ack[]): Decision {
   const completion = FORMS[form].completion;
-  if (completion.kind === 'handoff') return handoff(completion.reason);
+  if (completion.kind === 'handoff') return handoff(s, completion.reason, acks);
   const vars: Record<string, string> = {};
   for (const id of Object.keys(s.slots) as SlotId[]) vars[id] = s.slots[id].display ?? '';
-  return { kind: 'complete', form, promptId: completion.promptId, vars };
+  s.completed.push(form);
+  // A form that ends in a handoff ends the call, so anything this line can finish itself
+  // goes first; only when nothing else is left does the queue hand the caller over.
+  const idx = s.queued.findIndex((q) => FORMS[q].completion.kind === 'prompt');
+  const next = idx >= 0 ? s.queued.splice(idx, 1)[0] : s.queued.shift();
+  if (!next) return { kind: 'complete', form, promptId: completion.promptId, vars, acks, completed: [...s.completed] };
+  s.slots.provider = emptySlot();
+  s.slots.date = emptySlot();
+  setForm(s, next);
+  // The request was added on this very turn, so the caller already hears it bridged into;
+  // promising it "after this" as well would say the same thing twice.
+  const label = INTENT_LABELS[next];
+  const kept = acks.filter((a) => !(a.promptId === 'ack_queued' && a.vars.intentLabel === label));
+  return continueForm(s, [...kept, { promptId: completion.promptId, vars }, { promptId: 'bridge_next', vars: { intentLabel: label } }], null);
 }
 
 function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Decision {
   const attempts = target === 'intent' ? ++s.intentAttempts : ++s.slots[target].attempts;
   const step = retryStep(attempts, t);
-  if (step === 'agent') return handoff('max-attempts');
+  if (step === 'agent') return handoff(s, 'max-attempts');
   if (target === 'intent') {
     if (step === 'dtmf') return { ...prompt('nomatch_dtmf_menu', 'intent', {}, [], INTENT_MENU.map((m) => m.digit)), menu: true };
     return prompt('nomatch_open', 'intent');
@@ -118,29 +134,35 @@ function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Deci
   return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target);
 }
 
-/** A confirmation the caller did not answer stands; re-ask it until the retry policy runs out. */
-function reaskConfirmation(s: Session, t: Thresholds): Decision {
+/**
+ * A confirmation the caller did not answer stands; re-ask it until the retry policy runs out.
+ * `count` is false when the turn spent itself adding a request rather than dodging the
+ * question, which is not a failed answer and must not walk the caller toward the keypad.
+ */
+function reaskConfirmation(s: Session, t: Thresholds, acks: Ack[] = [], count = true): Decision {
   const pc = s.pendingConfirmation!;
   if (pc.target === 'slot') {
     const st = s.slots[pc.slot];
+    if (!count) return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, acks, ['yes', 'no']);
     const attempts = ++st.attempts;
     const step = retryStep(attempts, t);
-    if (step === 'agent') { s.pendingConfirmation = null; return handoff('max-attempts'); }
+    if (step === 'agent') { s.pendingConfirmation = null; return handoff(s, 'max-attempts', acks); }
     // A readback the caller never answers burns the same attempts as a wrong value, so it
     // lands on the keypad rather than looping on a value we still cannot vouch for.
     if (step === 'dtmf') {
       s.pendingConfirmation = null;
       Object.assign(st, emptySlot(), { attempts });
-      return prompt(`ask_${pc.slot}_dtmf`, pc.slot);
+      return prompt(`ask_${pc.slot}_dtmf`, pc.slot, {}, acks);
     }
-    return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, [], ['yes', 'no']);
+    return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, acks, ['yes', 'no']);
   }
+  if (!count) return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[pc.intent] }, acks, ['yes', 'no']);
   s.intentAttempts += 1;
   if (retryStep(s.intentAttempts, t) === 'agent') {
     s.pendingConfirmation = null;
-    return handoff('max-attempts');
+    return handoff(s, 'max-attempts', acks);
   }
-  return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[pc.intent] }, [], ['yes', 'no']);
+  return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[pc.intent] }, acks, ['yes', 'no']);
 }
 
 /** After slots changed: disambiguate, ask the next slot, or complete. */
@@ -154,7 +176,7 @@ function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: 
     return prompt(`confirm_${readback.slot}`, readback.slot, { [readback.slot]: readback.display }, acks, ['yes', 'no']);
   }
   const next = nextPrompt(s);
-  if (next.kind === 'complete') return completeForm(s, s.form!);
+  if (next.kind === 'complete') return completeForm(s, s.form!, acks);
   return askSlot(next.slot, next.window, acks);
 }
 
@@ -181,7 +203,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       if (s.pendingConfirmation) return { decision: reaskConfirmation(s, t), events: [] };
       return { decision: failAttempt(s, s.promptedFor ?? 'intent', t), events: [] };
     case 'handoff':
-      return { decision: handoff(verdict.reason), events: [] };
+      return { decision: handoff(s, verdict.reason), events: [] };
     case 'replay':
       return { decision: { kind: 'replay', text: s.lastPromptText }, events: [] };
     case 'confirmed': {
@@ -193,7 +215,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         s.slots[pc.slot].confirmed = true;
         return { decision: continueForm(s, [], null), events: [] };
       }
-      if (pc.intent === 'agent') return { decision: handoff('live-agent'), events: [] };
+      if (pc.intent === 'agent') return { decision: handoff(s, 'live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
       // Fill from what the caller originally said, not from the "yes".
       return enterForm(s, pc.intent, 'none', pc.answers, slotContext(s, pc.text, tc));
@@ -206,7 +228,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // and let a second decline hand off rather than read a third value back.
         const st = s.slots[pc.slot];
         st.attempts = Math.max(st.attempts + 1, t.MAX_ATTEMPTS - 1);
-        if (retryStep(st.attempts, t) === 'agent') return { decision: handoff('max-attempts'), events: [] };
+        if (retryStep(st.attempts, t) === 'agent') return { decision: handoff(s, 'max-attempts'), events: [] };
         Object.assign(st, emptySlot(), { attempts: st.attempts });
         return { decision: prompt(`ask_${pc.slot}_dtmf`, pc.slot, {}, [{ promptId: 'ack_declined', vars: {} }]), events: [] };
       }
@@ -215,8 +237,16 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       if (s.form) return { decision: continueForm(s, [], null), events: [] };
       return { decision: failAttempt(s, 'intent', t), events: [] };
     }
-    case 'confirm_unanswered':
-      return { decision: reaskConfirmation(s, t), events: [] };
+    case 'confirm_unanswered': {
+      // The confirmation still owns the turn, but an added request is not lost on the way:
+      // it joins the queue and is acked in front of the re-asked confirmation.
+      const acks: Ack[] = [];
+      if (verdict.queue !== undefined && verdict.queue !== s.form && !s.queued.includes(verdict.queue)) {
+        s.queued.push(verdict.queue);
+        acks.push({ promptId: 'ack_queued', vars: { intentLabel: INTENT_LABELS[verdict.queue] } });
+      }
+      return { decision: reaskConfirmation(s, t, acks, verdict.queue === undefined), events: [] };
+    }
     case 'route':
       if (verdict.confirm === 'explicit') {
         s.pendingConfirmation = { target: 'intent', intent: verdict.intent, answers, text: ctx.text };
@@ -227,9 +257,18 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       return { decision: prompt('disambiguate_intent', 'intent', { a: INTENT_LABELS[verdict.a], b: INTENT_LABELS[verdict.b] }, [], [INTENT_LABELS[verdict.a], INTENT_LABELS[verdict.b]]), events: [] };
     case 'intent_failed':
       return { decision: failAttempt(s, 'intent', t), events: [] };
-    case 'queue':
-      // Task 8 wires the queue; until then an added intent is treated as answering.
-      return handleVerdict(s, { kind: 'proceed' }, answers, ctx, tc);
+    case 'queue': {
+      // The gates only emit queue inside a form; without one there is nothing to add to.
+      if (!s.form) return handleVerdict(s, { kind: 'proceed' }, answers, ctx, tc);
+      const acks: Ack[] = [];
+      if (verdict.intent !== s.form && !s.queued.includes(verdict.intent)) {
+        s.queued.push(verdict.intent);
+        acks.push({ promptId: 'ack_queued', vars: { intentLabel: INTENT_LABELS[verdict.intent] } });
+      }
+      const fill = fillSlots(s, answers, ctx, slotsFor(s.form));
+      // Adding a request is not a failed answer: re-ask the open slot without counting an attempt.
+      return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+    }
     case 'proceed': {
       const specs = s.form ? slotsFor(s.form) : allSlots();
       const fill = fillSlots(s, answers, ctx, specs);
@@ -249,7 +288,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
     s.dtmfBuffer = '';
     // A wrong key is a failed menu attempt, not dead air.
     if (!option) return { decision: failAttempt(s, 'intent', tc.thresholds), rows: [] };
-    if (option.intent === 'agent') return { decision: handoff('live-agent'), rows: [] };
+    if (option.intent === 'agent') return { decision: handoff(s, 'live-agent'), rows: [] };
     if (!isFormIntent(option.intent)) return { decision: { kind: 'ignore' }, rows: [] };
     setForm(s, option.intent);
     return { decision: continueForm(s, [], null), rows: [] };
@@ -273,7 +312,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
 
 function handleFailure(s: Session): Decision {
   s.consecutiveFailures += 1;
-  if (s.consecutiveFailures >= 2) return handoff('system-failure');
+  if (s.consecutiveFailures >= 2) return handoff(s, 'system-failure');
   return prompt('system_slow_dtmf_hint', s.promptedFor ?? 'intent');
 }
 

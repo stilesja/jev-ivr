@@ -166,8 +166,9 @@ describe('server end to end', () => {
     expect((await relay.waitForTexts(4)).at(-1)).toBe('Which day next week works for you?');
     relay.prompt('Tuesday');
     const end = await relay.waitFor((m) => m.type === 'end');
-    expect(end.handoffData).toBe('{"reasonCode":"completed"}');
-    expect(relay.texts().at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
+    expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
+    expect(relay.texts().at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
+    expect(relay.texts().at(-1)).toBe('Goodbye.');
     expect((await relay.closed).code).toBe(1000);
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
@@ -181,7 +182,7 @@ describe('server end to end', () => {
     await relay.waitForTexts(2);
     relay.dtmf('44718293');
     const end = await relay.waitFor((m) => m.type === 'end');
-    expect(end.handoffData).toBe('{"reasonCode":"completed"}');
+    expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["cancel"]}');
     const token2 = running!.tokens.mint('CA5');
     const second = await FakeRelay.connect(`ws://127.0.0.1:${running!.port}/conversation?token=${token2}`);
     second.setup('CA5');
@@ -210,7 +211,7 @@ describe('server end to end', () => {
       relay.prompt('Cancel my appointment with Dr. Kim please');
       relay.dtmf('44718293');
       const end = await relay.waitFor((m) => m.type === 'end', 4000);
-      expect(end.handoffData).toBe('{"reasonCode":"completed"}');
+      expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["cancel"]}');
       const records = readFileSync(join(s.traceDir, 'CA7.jsonl'), 'utf8')
         .trim()
         .split('\n')

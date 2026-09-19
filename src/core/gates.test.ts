@@ -187,7 +187,7 @@ describe('evaluateGates', () => {
       expect(run(s, baseAnswers({
         confirmsYes: noul(0.1), confirmsNo: noul(0.1),
         intent: choice({ billing: 0.95, none: 0.05 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }),
-      })).verdict).toEqual({ kind: 'confirm_unanswered' });
+      })).verdict).toEqual({ kind: 'confirm_unanswered', queue: 'billing' });
     });
   });
 });
