@@ -11,7 +11,7 @@
   "ask_date": { "text": "What day works for you?", "interruptible": true },
   "ask_date_retry": { "text": "Sorry, what day would you like? You can say a date, a weekday, or tomorrow.", "interruptible": true },
   "ask_date_dtmf": { "text": "Please enter the date as four digits, month then day.", "interruptible": true },
-  "date_narrow_window": { "text": "Which day {window} works for you?", "interruptible": true },
+  "date_narrow_window": { "text": "{window}. Which day works for you?", "interruptible": true },
   "ack_intent": { "text": "Sure, I can help you {intentLabel}.", "interruptible": false },
   "ack_provider": { "text": "With {provider}.", "interruptible": false },
   "ack_memberId": { "text": "Member ID {memberId}.", "interruptible": false },

@@ -163,7 +163,7 @@ describe('server end to end', () => {
     // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
     expect((await relay.waitForTexts(3)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
     relay.prompt('yes');
-    expect((await relay.waitForTexts(4)).at(-1)).toBe('Which day next week works for you?');
+    expect((await relay.waitForTexts(4)).at(-1)).toBe('next week. Which day works for you?');
     relay.prompt('Tuesday');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
@@ -266,7 +266,7 @@ describe('server end to end', () => {
     again.prompt('four four seven one eight two nine three');
     expect((await again.waitForTexts(2)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
     again.prompt('yes');
-    expect((await again.waitForTexts(3)).at(-1)).toBe('Which day next week works for you?');
+    expect((await again.waitForTexts(3)).at(-1)).toBe('next week. Which day works for you?');
     const done = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),

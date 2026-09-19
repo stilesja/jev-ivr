@@ -131,7 +131,7 @@ describe('adapter', () => {
     expect(texts(sock).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
     expect(d.store.get('CA1')?.session.lastPromptText).toBe('Your member ID is 4471 8293. Is that right?');
     await handleSocketMessage(d, sock, ctx, prompt('yes'));
-    expect(texts(sock).at(-1)).toBe('Which day next week works for you?');
+    expect(texts(sock).at(-1)).toBe('next week. Which day works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
     expect(texts(sock).at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
