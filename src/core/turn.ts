@@ -187,6 +187,9 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       return { decision: prompt('disambiguate_intent', 'intent', { a: INTENT_LABELS[verdict.a], b: INTENT_LABELS[verdict.b] }, [], [INTENT_LABELS[verdict.a], INTENT_LABELS[verdict.b]]), events: [] };
     case 'intent_failed':
       return { decision: failAttempt(s, 'intent', t), events: [] };
+    case 'queue':
+      // Task 8 wires the queue; until then an added intent is treated as answering.
+      return handleVerdict(s, { kind: 'proceed' }, answers, ctx, tc);
     case 'proceed': {
       const specs = s.form ? slotsFor(s.form) : allSlots();
       const fill = fillSlots(s, answers, ctx, specs);

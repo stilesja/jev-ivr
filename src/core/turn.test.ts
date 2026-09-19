@@ -134,7 +134,7 @@ describe('turn', () => {
     });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date' });
 
-    r = say(r.session, 'actually cancel', { intent: choice({ cancel: 0.7, none: 0.3 }) });
+    r = say(r.session, 'actually cancel', { intent: choice({ cancel: 0.7, none: 0.3 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
     expect(r.session.pendingConfirmation).toEqual({ target: 'intent', intent: 'cancel' });
 

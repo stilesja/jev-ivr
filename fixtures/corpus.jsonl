@@ -156,14 +156,14 @@
 {"id":"dt-17","text":"Tuesday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"tuesday"}}}
 {"id":"dt-18","text":"any day is fine","intent":"none","context":"reschedule","prompted":"date","tags":["no_progress"]}
 
-{"id":"sw-01","text":"actually I want to cancel it instead","intent":"cancel","context":"reschedule","tags":["intent_switch"]}
-{"id":"sw-02","text":"wait, never mind, cancel the appointment","intent":"cancel","context":"reschedule","tags":["intent_switch"]}
+{"id":"sw-01","text":"actually I want to cancel it instead","intent":"cancel","context":"reschedule","change":"replacing","tags":["intent_switch"]}
+{"id":"sw-02","text":"wait, never mind, cancel the appointment","intent":"cancel","context":"reschedule","change":"replacing","tags":["intent_switch"]}
 {"id":"sw-03","text":"actually can I just talk to someone","intent":"agent","context":"reschedule","tags":["wants_human"]}
 {"id":"sw-04","text":"I'd rather talk to a person","intent":"agent","context":"cancel","tags":["wants_human"]}
 {"id":"sw-05","text":"what did you say","intent":"repeat_prompt","context":"reschedule","tags":["repeat"]}
 {"id":"sw-06","text":"repeat that","intent":"repeat_prompt","context":"billing","tags":["repeat"]}
 {"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","tags":["secondary_intent"]}
-{"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}
+{"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","change":"replacing","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}
 {"id":"dt-19","text":"sometime this week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"this_week"}}}
 {"id":"dt-20","text":"Monday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"monday"}}}
 {"id": "dt-21", "text": "tuesday of next week", "intent": "none", "context": "reschedule", "prompted": "date", "slots": {"date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}}

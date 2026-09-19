@@ -23,6 +23,7 @@ export type Verdict =
   | { kind: 'confirm_unanswered' }
   | { kind: 'replay' }
   | { kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit' }
+  | { kind: 'queue'; intent: FormId }
   | { kind: 'disambiguate_intent'; a: Intent; b: Intent }
   | { kind: 'intent_failed' }
   | { kind: 'proceed' };
@@ -135,6 +136,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
 
   let routeVerdict: Verdict | null = null;
   let outcome: string;
+  const tentative = noulValue(answers, 'intentTentative') >= t.INTENT_TENTATIVE;
 
   if (activeForm === null) {
     if (label === 'agent' && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'handoff', reason: 'live-agent' }; outcome = 'agent'; }
@@ -143,13 +145,40 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     else if (isFormIntent(label) && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'implicit' }; outcome = 'route_implicit'; }
     else if (isFormIntent(label) && top.p >= t.INTENT_EXPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'explicit' }; outcome = 'route_explicit'; }
     else { routeVerdict = { kind: 'intent_failed' }; outcome = 'failed'; }
+    // A hedged request is confirmed however sure the model is which request it is (spec 2026-09-19 §3.1).
+    if (tentative && routeVerdict.kind === 'route' && routeVerdict.confirm !== 'explicit') {
+      routeVerdict = { kind: 'route', intent: routeVerdict.intent, confirm: 'explicit' };
+      outcome = 'route_tentative';
+    }
   } else {
+    // Spec 2026-09-19 §3.2: what the utterance does to the current task decides how the intent is used.
+    const change = answers.intentChange;
+    const [changeTop] = isChoice(change) ? rankProbabilities(change.probabilities) : [];
+    const changePassed = changeTop !== undefined && changeTop.p >= t.INTENT_CHANGE;
+    // Too unsure to act on a change is the same as answering the question we asked.
+    const mode = changePassed ? changeTop.label : 'answering';
+    rows.push({ gate: 'intentChange', value: changeTop?.p ?? null, threshold: t.INTENT_CHANGE, passed: changePassed, outcome: changePassed ? mode : `${mode}:below`, decided: false });
+
+    // Only an intent that is a form other than the one in hand can add or replace.
+    const other = isFormIntent(label) && label !== activeForm ? label : null;
+
     if (label === 'agent' && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'handoff', reason: 'live-agent' }; outcome = 'agent'; }
     else if (label === 'repeat_prompt' && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'replay' }; outcome = 'replay'; }
-    else if (isFormIntent(label) && label !== activeForm && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'route', intent: label, confirm: 'none' }; outcome = 'switch'; }
-    else if (isFormIntent(label) && label !== activeForm && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'explicit' }; outcome = 'switch_explicit'; }
+    else if (mode === 'answering') { routeVerdict = { kind: 'proceed' }; outcome = 'answering'; }
+    else if (mode === 'adding') {
+      if (other && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'queue', intent: other }; outcome = 'queue'; }
+      else { routeVerdict = { kind: 'proceed' }; outcome = 'add_unused'; }
+    }
+    else if (mode === 'replacing') {
+      if (other && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'route', intent: other, confirm: tentative ? 'explicit' : 'none' }; outcome = tentative ? 'switch_tentative' : 'switch'; }
+      else if (other && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'route', intent: other, confirm: 'explicit' }; outcome = 'switch_explicit'; }
+      else { routeVerdict = { kind: 'proceed' }; outcome = 'replace_unresolved'; }
+    }
+    // An unrecognized change label decides nothing; carry on with the form.
     else { routeVerdict = { kind: 'proceed' }; outcome = 'proceed'; }
   }
+
+  rows.push({ gate: 'intentTentative', value: noulValue(answers, 'intentTentative'), threshold: t.INTENT_TENTATIVE, passed: true, outcome: tentative ? 'tentative' : 'plain', decided: false });
 
   const intentRow: GateRow = {
     gate: 'intent', value: top.p, threshold: activeForm === null ? t.INTENT_EXPLICIT : t.INTENT_SWITCH,
@@ -161,7 +190,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
   // intent gate returns 'proceed', so that case has to be rescued too or the
   // confirmation goes stale and captures a later yes. A clear new route still
   // wins; enterForm/setForm clears the pending state.
-  if (confirmationUnanswered && (routeVerdict.kind === 'intent_failed' || routeVerdict.kind === 'proceed')) {
+  if (confirmationUnanswered && (routeVerdict.kind === 'intent_failed' || routeVerdict.kind === 'proceed' || routeVerdict.kind === 'queue')) {
     routeVerdict = { kind: 'confirm_unanswered' };
     intentRow.outcome = `confirm_unanswered:${label}`;
   }
