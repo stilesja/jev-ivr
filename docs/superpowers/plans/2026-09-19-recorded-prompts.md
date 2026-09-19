@@ -954,3 +954,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   shared.
 
 Process: Task 4's commit trailer was amended by the controller.
+
+Final whole-branch review (after Task 8): ready to merge. Follow-ups it raised, not built:
+a duplicate clip id (one id in two formats) refuses server startup, which is the spec's rule
+but harsh for a stray file; `PlayFrame.interruptible` is not in Twilio's documented play
+schema and should be confirmed on the first live call; barge-in across multi-frame prompts
+(Task 3 note) and the TTS `replay` (Task 4 note) are the two most audible things to test;
+`confirm_intent_explicit` loses its `?` after an intent clip the same way `disambiguate_*`
+does, so audition that pair by hand; a dry run prints the voice title as `reference_id`,
+not the resolved id. The cassette re-record after the window prompt rewrite is Task 9.

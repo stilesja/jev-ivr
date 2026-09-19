@@ -81,4 +81,7 @@ describe('recordableClips', () => {
   it('matches the recorded snapshot of clip ids and notes', () => {
     expect(recordableClips()).toMatchSnapshot();
   });
+  it('gives every clip an id the filename grammar accepts, so a generated file is never silently ignored', () => {
+    for (const r of recordableClips()) expect(r.id, r.id).toMatch(/^[A-Za-z0-9_.-]+$/);
+  });
 });

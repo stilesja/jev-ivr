@@ -215,7 +215,7 @@ queued.
 
 ### Recorded prompts
 
-    pnpm prompts:sheet > clips.tsv    # every clip id with the exact text to record
+    pnpm -s prompts:sheet > clips.tsv # every clip id with the exact text to record (-s keeps pnpm's banner out)
     pnpm prompts:check                # which clips are present under AUDIO_DIR, and which are stale
     pnpm prompts:generate             # generate every missing clip with Fish Audio (FISH_AUDIO_API_KEY, FISH_VOICE)
     pnpm prompts:generate --only greeting.0 --candidates 3 --force   # audition variants under assets/audio/candidates/
@@ -236,8 +236,8 @@ clip say the wrong thing. The generator writes `assets/audio/recorded.json`
 `stale` when that text no longer matches the sheet; regenerate it with
 `--only <id> --force`.
 
-The server serves clips at `https://PUBLIC_HOST/audio/<file>` and logs
-coverage at startup; any segment without a clip falls back to TTS for that
+The server discovers clips once at startup (restart it after adding one),
+serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that
 segment only, and adjacent TTS segments are merged so prosody survives.
 Clips are generated with Fish Audio's `s2.1-pro` model and the voice named
 in `FISH_VOICE`; a `[warm]`-style tag prefixes every clip (per clip in
