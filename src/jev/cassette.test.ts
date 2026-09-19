@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { canonicalJson, requestKey } from './cassette';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { appendCassette, canonicalJson, loadCassette, requestKey, type CassetteLine } from './cassette';
 import type { JevRequest, QuestionMap } from './types';
+import { choice, noul } from '../testing/answers';
 
 const questions: QuestionMap = {
   intent: { type: 'choice', instructions: 'What does the caller want?', criteria: { cancel: null, none: null } },
@@ -51,5 +55,73 @@ describe('requestKey', () => {
 
   it('has a frozen digest so a canonical-form change is caught here, not as cassette misses', () => {
     expect(requestKey({ state, questions })).toBe('866aec084970efac11e63920bf5541b114742c6017a91cfe87136978a2a3b35a');
+  });
+});
+
+function line(key: string, extra: Partial<CassetteLine> = {}): CassetteLine {
+  return {
+    v: 1,
+    key,
+    model: 'jev-1.13.0',
+    text: 'cancel my appointment',
+    answers: { intent: choice({ cancel: 0.9, none: 0.1 }), ok: noul(0.8) },
+    usage: { inputTokens: 100, outputTokens: 10 },
+    recordedAt: '2026-09-18T00:00:00.000Z',
+    ...extra,
+  };
+}
+
+describe('cassette file', () => {
+  let dir: string;
+  let path: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'cassette-'));
+    path = join(dir, 'nested', 'jev-1.13.0.jsonl');
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('loads an empty map when the file does not exist', () => {
+    expect(loadCassette(path).size).toBe(0);
+  });
+
+  it('appends one JSON line per call, creating the directory', () => {
+    appendCassette(path, line('a'.repeat(64)));
+    appendCassette(path, line('b'.repeat(64)));
+    const raw = readFileSync(path, 'utf8');
+    expect(raw.split('\n').filter(Boolean)).toHaveLength(2);
+    expect(raw.endsWith('\n')).toBe(true);
+    expect(loadCassette(path).get('b'.repeat(64))?.text).toBe('cancel my appointment');
+  });
+
+  it('lets a later line for the same key win', () => {
+    appendCassette(path, line('a'.repeat(64), { model: 'old' }));
+    appendCassette(path, line('a'.repeat(64), { model: 'new' }));
+    const loaded = loadCassette(path);
+    expect(loaded.size).toBe(1);
+    expect(loaded.get('a'.repeat(64))?.model).toBe('new');
+  });
+
+  it('fails the load naming the bad line number', () => {
+    const flat = join(dir, 'jev-1.13.0.jsonl');
+    writeFileSync(flat, `${JSON.stringify(line('a'.repeat(64)))}\n{"v":2,"key":"x"}\nnot json\n`);
+    expect(() => loadCassette(flat)).toThrow(/line 2/);
+  });
+
+  it('fails the load on a line with no key', () => {
+    const flat = join(dir, 'jev-1.13.0.jsonl');
+    writeFileSync(flat, `{"v":1,"model":"m"}\n`);
+    expect(() => loadCassette(flat)).toThrow(/line 1/);
+  });
+
+  it('fails the load on a truncated trailing line, naming its line number and the fix', () => {
+    const flat = join(dir, 'jev-1.13.0.jsonl');
+    writeFileSync(flat, `${JSON.stringify(line('a'.repeat(64)))}\n{"v":1,"key":"b`);
+    expect(() => loadCassette(flat)).toThrow(/jev-1\.13\.0\.jsonl line 2: not JSON.*delete this line/);
+  });
+
+  it('fails the load on a line with no answers', () => {
+    const flat = join(dir, 'jev-1.13.0.jsonl');
+    writeFileSync(flat, `{"v":1,"key":"${'a'.repeat(64)}","model":"m"}\n`);
+    expect(() => loadCassette(flat)).toThrow(/line 1: expected v:1 with a key and answers/);
   });
 });
