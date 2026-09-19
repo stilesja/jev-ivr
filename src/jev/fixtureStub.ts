@@ -1,5 +1,5 @@
 import { choiceAnswer, choiceLabels, noulAnswer, normalize, scoreAnswer, sharp } from './distributions';
-import { quietAnswer } from './defaults';
+import { QUIET_NOUL, quietAnswer } from './defaults';
 import { normalizeText, type CorpusEntry, type DateLabel } from './corpus';
 import {
   JevClientError, estimateTokens,
@@ -45,6 +45,7 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
       }
       return pick(exact);
     }
+    if (id === 'intentChange') return choiceAnswer(sharp(labels, entry.change ?? 'answering', sharpness));
     if (Object.hasOwn(DATE_IDS, id)) return pick(slots.date?.[DATE_IDS[id]!]);
     return quietAnswer(id, q, sharpness);
   }
@@ -52,6 +53,8 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
     if (id === 'containsMemberId') return noulAnswer(slots.memberId ? 0.92 : 0.05);
     if (id === 'memberIdComplete') return noulAnswer(slots.memberId ? 0.9 : 0.4);
     if (id === 'wantsHuman') return noulAnswer(entry.intent === 'agent' ? 0.9 : 0.04);
+    if (id === 'intentTentative') return noulAnswer(entry.tentative ? 0.9 : QUIET_NOUL.intentTentative!);
+    if (id === 'providerUnsure') return noulAnswer(entry.providerUnsure ? 0.9 : QUIET_NOUL.providerUnsure!);
     return quietAnswer(id, q, sharpness);
   }
   return quietAnswer(id, q, sharpness);
