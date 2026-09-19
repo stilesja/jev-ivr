@@ -152,7 +152,7 @@ TwiML) so the seams between clips and TTS spans are inaudible.
   clip exists.
 - `sheet.test.ts`: the sheet lists every id once with open/closed notes;
   `check` exit codes.
-- Manual: generate a handful of clips, `pnpm prompts:check`, `pnpm server`,
+- Manual: generate a handful of clips, `pnpm prompts:check`, `pnpm serve`,
   and one live call hears the recorded greeting.
 
 ## 9. README

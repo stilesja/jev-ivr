@@ -867,7 +867,7 @@ git commit -m "assets: first recorded clips; record the turns after the rewritte
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
-3. `pnpm server` and one live call: the greeting plays from the clip, and the startup log shows the coverage line.
+3. `pnpm serve` and one live call: the greeting plays from the clip, and the startup log shows the coverage line.
 
 ---
 

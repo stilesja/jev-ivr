@@ -176,7 +176,7 @@ rest (see "Recorded prompts" below).
 
     cp .env.example .env      # fill in PUBLIC_HOST, TWILIO_AUTH_TOKEN, HANDOFF_NUMBER
     set -a; source .env; set +a
-    pnpm server
+    pnpm serve                # not "pnpm server": that is pnpm's own store-server command and exits silently
 
 Routes: `POST /voice` (the number's voice webhook), `POST /cr-action`
 (ConversationRelay's connect callback), `GET /health`, and the WebSocket at
@@ -266,7 +266,7 @@ as quiet as possible.
 
 ### Live-call checklist
 
-1. `ngrok http --domain=PUBLIC_HOST 3000` in one terminal; `pnpm server` in another.
+1. `ngrok http --domain=PUBLIC_HOST 3000` in one terminal; `pnpm serve` in another.
 2. In the Twilio console, set the number's voice webhook to
    `https://PUBLIC_HOST/voice` (HTTP POST). Nothing else is configured there;
    the TwiML returned by `/voice` carries every ConversationRelay attribute.
@@ -287,7 +287,7 @@ as quiet as possible.
 9. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
 10. Call again, say "what are your hours" three times. Expect the open
     reprompt, the keypad menu, then the transfer.
-11. Call again, get as far as the member ID question, then kill `pnpm server`
+11. Call again, get as far as the member ID question, then kill `pnpm serve`
     (Ctrl-C) and start it again. ConversationRelay's session fails, `/cr-action`
     reconnects, and the caller hears the last prompt again. Repeat the kill more
     than `RECONNECT_LIMIT` times on one call: the next callback stops
