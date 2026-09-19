@@ -60,11 +60,33 @@ describe('validateTags', () => {
 });
 
 describe('resolveVoice', () => {
-  it('returns an id unchanged and looks a title up in the list response', async () => {
-    const fetchStub = async (url: string) => ({ ok: true, status: 200, json: async () => ({ items: [{ _id: 'abc123', title: 'Hanna' }, { _id: 'zzz', title: 'Hannah B' }] }), arrayBuffer: async () => new ArrayBuffer(0) });
-    expect(await resolveVoice('abc123def', 'k', fetchStub as never)).toBe('abc123def');
-    expect(await resolveVoice('Hanna', 'k', fetchStub as never)).toBe('abc123');
-    await expect(resolveVoice('Hannah', 'k', fetchStub as never)).rejects.toThrow(/no voice titled "Hannah".*Hanna, Hannah B/);
+  const ambiguousStub = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ items: [
+      { _id: 'abc123', title: 'Hanna', author: { nickname: 'nick1' } },
+      { _id: 'def456', title: 'Hanna', author: { name: 'name2' } },
+      { _id: 'zzz', title: 'Hannah B', author: { nickname: 'other' } },
+    ] }),
+    arrayBuffer: async () => new ArrayBuffer(0),
+  });
+
+  it('returns a hex id unchanged, with title and author left null', async () => {
+    expect(await resolveVoice('abc123def', 'k', ambiguousStub as never)).toEqual({ id: 'abc123def', title: null, author: null });
+  });
+
+  it('returns the single exact match with its title and author', async () => {
+    expect(await resolveVoice('Hannah B', 'k', ambiguousStub as never)).toEqual({ id: 'zzz', title: 'Hannah B', author: 'other' });
+  });
+
+  it('throws listing every match by id and author when more than one item has the exact title', async () => {
+    await expect(resolveVoice('Hanna', 'k', ambiguousStub as never)).rejects.toThrow(
+      "voice title \"Hanna\" is ambiguous (2 matches): abc123 by nick1, def456 by name2; set FISH_VOICE to the id from the voice's page URL (fish.audio/m/<id>/)",
+    );
+  });
+
+  it('keeps the existing no-match error, listing the titles that were found', async () => {
+    await expect(resolveVoice('Hannahx', 'k', ambiguousStub as never)).rejects.toThrow(/no voice titled "Hannahx".*Hanna, Hanna, Hannah B/);
     await expect(resolveVoice('Nobody', 'k', async () => ({ ok: true, status: 200, json: async () => ({ items: [] }) }) as never)).rejects.toThrow(/no voice titled/);
   });
 });

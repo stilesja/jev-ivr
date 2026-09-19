@@ -243,7 +243,11 @@ The server discovers clips once at startup (restart it after adding one),
 serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that
 segment only, and adjacent TTS segments are merged so prosody survives.
 Clips are generated with Fish Audio's `s2.1-pro` model and the voice named
-in `FISH_VOICE`; a tag prefixes every clip (per clip in
+in `FISH_VOICE`. Set `FISH_VOICE` to the voice's id from its page URL
+(`fish.audio/m/<id>/`), not its title: Fish's library is public and titles
+are shared across voices, so a title can match more than one; the generator
+prints which voice it resolved (or refuses to run if the title is
+ambiguous). A tag prefixes every clip (per clip in
 `src/prompts/tags.json`). Tags come from Fish's documented S2 bracket-tag
 inventory, checked into `src/prompts/fishTags.json` and enforced by a test;
 free-form phrases are accepted by the API but untested against the web

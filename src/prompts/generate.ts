@@ -77,16 +77,28 @@ export function ttsRequest(row: RecordableClip, o: RequestOptions) {
   };
 }
 
-/** A hex id is used as is; anything else must match a voice title exactly. */
-export async function resolveVoice(voice: string, apiKey: string, fetchFn: Fetch): Promise<string> {
-  if (/^[0-9a-f]{8,}$/i.test(voice)) return voice;
+export interface ResolvedVoice { id: string; title: string | null; author: string | null }
+
+/**
+ * A hex id is used as is (title/author come back null, since it was never looked up). Anything
+ * else must match a voice title exactly; Fish's library is public and many voices share a title,
+ * so more than one exact match is an error rather than a silent pick of the first one.
+ */
+export async function resolveVoice(voice: string, apiKey: string, fetchFn: Fetch): Promise<ResolvedVoice> {
+  if (/^[0-9a-f]{8,}$/i.test(voice)) return { id: voice, title: null, author: null };
   const res = await fetchFn(`${MODELS_URL}?title=${encodeURIComponent(voice)}&page_size=20`, { headers: { authorization: `Bearer ${apiKey}` } });
   if (!res.ok) throw new Error(`voice lookup failed: HTTP ${res.status}`);
-  const data = (await res.json()) as { items?: Array<{ _id: string; title: string }> };
+  const data = (await res.json()) as { items?: Array<{ _id: string; title: string; author?: { nickname?: string; name?: string } }> };
   const items = data.items ?? [];
-  const hit = items.find((m) => m.title === voice);
-  if (!hit) throw new Error(`no voice titled "${voice}"${items.length ? ` (found: ${items.map((m) => m.title).join(', ')})` : ''}`);
-  return hit._id;
+  const authorOf = (m: { author?: { nickname?: string; name?: string } }): string => m.author?.nickname ?? m.author?.name ?? 'unknown';
+  const matches = items.filter((m) => m.title === voice);
+  if (matches.length === 0) throw new Error(`no voice titled "${voice}"${items.length ? ` (found: ${items.map((m) => m.title).join(', ')})` : ''}`);
+  if (matches.length > 1) {
+    const listed = matches.map((m) => `${m._id} by ${authorOf(m)}`).join(', ');
+    throw new Error(`voice title "${voice}" is ambiguous (${matches.length} matches): ${listed}; set FISH_VOICE to the id from the voice's page URL (fish.audio/m/<id>/)`);
+  }
+  const hit = matches[0]!;
+  return { id: hit._id, title: hit.title, author: authorOf(hit) };
 }
 
 /** Write `data` to `target` via a same-directory temp file plus rename, so a reader never sees a partial file. */
@@ -180,7 +192,15 @@ async function main(): Promise<void> {
   if (tagErrors.length) throw new Error(tagErrors.join('; '));
   // Dry run never resolves the voice (a network call) even when a key happens to be set: it only
   // ever prints requests, so the id printed is whatever was passed on the command line.
-  const voiceId = a['dry-run'] ? voice : await resolveVoice(voice, apiKey ?? '', fetch);
+  let voiceId: string;
+  if (a['dry-run']) {
+    voiceId = voice;
+    console.log(`voice: ${voice} (not resolved on a dry run)`);
+  } else {
+    const resolved = await resolveVoice(voice, apiKey ?? '', fetch);
+    voiceId = resolved.id;
+    console.log(resolved.title !== null ? `voice: ${resolved.title} by ${resolved.author} (${resolved.id})` : `voice: ${resolved.id}`);
+  }
   const r = await generateClips(recordableClips(), {
     audioDir: process.env.AUDIO_DIR?.trim() || 'assets/audio',
     apiKey: apiKey ?? '',
