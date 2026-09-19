@@ -1390,7 +1390,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 12 (Jason, not an agent): re-record the cassette
 
-Every changed question re-keys its requests, so nearly the whole corpus is live again. From the repo root, with the branch checked out. Prove the key first with one utterance in `pnpm cli --client jev`, then:
+Every changed question re-keys its requests, so the whole corpus is live again; the old cassette was removed from the branch (a replay against it missed on all 252 turns), so the record run starts from an empty file. From the repo root, with the branch checked out. Prove the key first with one utterance in `pnpm cli --client jev`, then:
 
 ```bash
 set -a; source .env; set +a; pnpm regress --client record --threshold JEV_TIMEOUT_MS=15000
@@ -1428,7 +1428,7 @@ The remaining diff is the input to the threshold-sweep sub-project. If `frustrat
 - **Task 9.** New corpus ids were renumbered to avoid collisions with entries already in the file (landing as `mi-13`..`mi-16`, `pv-09`, `pv-10`, `fr-07` rather than the plan's placeholder numbers). `lc-05`'s `other` label rests on a weak real-model plurality and may be revisited once the threshold sweep runs.
 - **Task 10.** The rewritten scenario file holds 45 scenarios. The silent-switch scenario was named `replace-intent-keeps-same-appointment` rather than the plan's placeholder name. The 301-line pre-update `pnpm regress` diff was classified line by line against the expected categories (queued keys, `confirm_memberId` readbacks, tentative/switch gate outcomes, the Task 9 relabels, in-form `answering`, completion acks) and nothing fell outside them.
 
-Follow-ups, not in this branch:
+Follow-ups, not in this branch: a hedged provider that fills a form's last slot gets its implicit ack folded into the completion, so the readback is the caller's only chance to object;
 - A caller who answers the member-ID readback with a corrected number (rather than a plain yes/no) loses the correction and is sent to the keypad instead of having the new number heard.
 - A bare "never mind" with no new request re-asks the current slot rather than doing anything else; it is visible in the trace as `replace_unresolved`.
 - Adding the active form's own intent ("also book another one" while already booking) is dropped as `answering` rather than recognized as a no-op.

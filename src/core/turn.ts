@@ -167,6 +167,8 @@ function reaskConfirmation(s: Session, t: Thresholds, acks: Ack[] = [], count = 
 
 /** After slots changed: disambiguate, ask the next slot, or complete. */
 function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: { display: string }; b: { display: string } } | null): Decision {
+  // Gates never proceed outside a form, but the defensive queue path can; re-ask for an intent rather than crash.
+  if (!s.form) return prompt('nomatch_open', 'intent', {}, acks);
   if (disambiguate) {
     return prompt(`disambiguate_${disambiguate.slot}`, disambiguate.slot, { a: disambiguate.a.display, b: disambiguate.b.display }, acks, [disambiguate.a.display, disambiguate.b.display]);
   }

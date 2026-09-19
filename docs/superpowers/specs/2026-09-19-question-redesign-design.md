@@ -172,7 +172,7 @@ empty.
 
 When the queue is non-empty, `completeForm` instead shifts the next intent
 and returns a `prompt` decision whose acks are the completion text and
-`bridge_next` ("Now, {intentLabel}."), followed by the next form's first
+`bridge_next` ("Now, let's {intentLabel}."), followed by the next form's first
 ask. The session enters the next form with `memberId` carried over
 (value, display, confirmed) and `provider` and `date` cleared. If the next
 form's completion is a handoff (billing), the form is entered and its

@@ -27,7 +27,7 @@
   "appointment_details": { "text": "For member ID {memberId}, your next appointment with {provider} is confirmed.", "interruptible": false },
   "goodbye": { "text": "Goodbye.", "interruptible": false },
   "ack_queued": { "text": "Sure, we'll {intentLabel} after this.", "interruptible": false },
-  "bridge_next": { "text": "Now, {intentLabel}.", "interruptible": false },
+  "bridge_next": { "text": "Now, let's {intentLabel}.", "interruptible": false },
   "handoff_live_agent": { "text": "One moment while I connect you to someone who can help.", "interruptible": false },
   "handoff_billing": { "text": "Connecting you to billing now.", "interruptible": false },
   "handoff_frustrated": { "text": "I'm sorry for the trouble. Let me get you to a person.", "interruptible": false },

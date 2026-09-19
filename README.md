@@ -159,7 +159,7 @@ right?"; a "no" goes straight to the keypad, a second "no" or repeated
 silence hands off, and digits typed on the keypad need no readback. A
 request added mid-task ("can I also ask about my bill") is acknowledged
 once and queued: the current task finishes, its summary is spoken without
-a goodbye, and the call moves on with "Now, ask about billing." The member
+a goodbye, and the call moves on with "Now, let's ask about billing." The member
 ID carries over; provider and date are asked again, because an added task
 is a different appointment. "Never mind, I have a question about my bill"
 replaces the current task instead, and "actually, just cancel it instead"
