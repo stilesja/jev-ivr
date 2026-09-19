@@ -39,10 +39,74 @@ are 35 scenarios available for multi-turn testing.
 
 ## Regression
 
-    pnpm regress            # diff outcomes against fixtures/expected
-    pnpm regress --update   # re-record after an intended change
+    pnpm regress                       # stub: diff outcomes against fixtures/expected
+    pnpm regress --update              # re-record the baseline after an intended change (stub only)
+    pnpm regress --client record       # real model; records every answer into fixtures/recorded
+    pnpm regress --client recorded     # replay the recording offline; a miss is a failed turn
+    pnpm regress --client jev          # real model, nothing recorded
+    pnpm regress --client heuristic    # keyword stub, for comparison
 
-Outcomes include the final decision, prompt id, deciding gate, filled slots, and implicit-confirm acks, so a threshold change that only alters spoken confirmations still shows up in the diff.
+Outcomes include the final decision, prompt id, deciding gate, filled slots,
+and implicit-confirm acks, so a threshold change that only alters spoken
+confirmations still shows up in the diff.
+
+The baseline in `fixtures/expected/` is what the decision core does given
+label-perfect answers from the fixture stub. Every other client diffs against
+that same baseline, so each line is either the model disagreeing with a
+corpus label or a threshold mapping a real distribution wrongly. `--update`
+is refused for any client but the stub, including `heuristic`; the baseline
+means "the labels", and only the stub re-records it.
+
+Every run ends with a summary: corpus outcomes matching the baseline,
+scenarios passing their own expectation and matching the baseline, a cost
+line when real answers were involved (request count, input tokens, dollars;
+tagged `[replayed]` when every answer came from the cassette, in which case
+the figure is what the recording cost, not what the run cost), ask latency
+p50/p95, and a `cassette misses N` line when any turn missed the recording.
+Diff lines and the summary go to stdout; progress for live runs goes to
+stderr, so `pnpm regress --client recorded > diff.txt` captures a clean
+artifact.
+
+### The answer cassette
+
+`fixtures/recorded/<model>.jsonl` holds one line per distinct request,
+keyed by a hash of the request state and questions, with the model's
+answers and token usage. It contains corpus text and model output only, no
+caller data, and is committed. One file per pinned model version: a line
+whose `model` differs from the pin fails the load at startup, and a live
+answer from another model aborts the run without recording. A model bump
+means a new file, not an edit.
+
+Recording, from the repo root:
+
+    set -a; source .env; set +a
+    pnpm regress --client record
+
+- Run at default thresholds. Thresholds do not change what is asked, but a
+  `--threshold` override changes what an earlier turn decided, and that
+  state is part of the next turn's key; recording under overrides fills the
+  file with a second, parallel set of lines.
+- Ctrl-C is safe. Every answer is appended as it arrives, and the run order
+  is fixed (corpus in file order, then scenarios), so re-running `record`
+  replays what is already there and pays only for the rest.
+- A free lower bound on the request count: `pnpm regress --client recorded`
+  with no cassette prints `cassette misses N`, and N is the number of live
+  requests the recording will make at minimum (scenarios run further once
+  real answers keep the call going).
+- A corrupt line fails the load naming the file and line number. The file
+  is append-only by design: delete the line and record again rather than
+  editing it.
+- `pnpm cli --client record` appends to the same file. Interactive
+  exploration therefore grows the cassette with lines the regression run
+  never replays; that is harmless but worth knowing.
+- Once the cassette is committed, `pnpm test` validates it: the client
+  builder's tests construct a `recorded` client, which loads and checks
+  every line.
+
+Threshold tuning then runs against `--client recorded`: no network, no
+cost, and the diff shrinks as the thresholds fit the real distributions. A
+tuned threshold that alters an earlier turn changes later turns' state and
+misses the cassette; run `record` again to fill the gaps.
 
 ## Phone line (Twilio ConversationRelay)
 
