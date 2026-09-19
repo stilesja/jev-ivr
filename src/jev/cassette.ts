@@ -60,6 +60,8 @@ export function appendCassette(path: string, line: CassetteLine): void {
   appendFileSync(path, JSON.stringify(line) + '\n');
 }
 
+export const CASSETTE_MISS = 'cassette miss:';
+
 export type CassetteMode = 'replay' | 'record';
 
 export interface CassetteOptions {
@@ -122,7 +124,7 @@ export class CassetteClient implements JevClient {
         source: 'recorded',
       };
     }
-    if (this.opts.mode === 'replay') throw new JevClientError(`cassette miss: ${key} ${textOf(req.state)} (${this.opts.path})`);
+    if (this.opts.mode === 'replay') throw new JevClientError(`${CASSETTE_MISS} ${key} ${textOf(req.state)} (${this.opts.path})`);
     const res = await this.opts.inner!.ask(req);
     if (this.opts.expectModel && res.model !== this.opts.expectModel) throw new Error(`cassette ${this.opts.path}: live answer came from ${res.model}, expected ${this.opts.expectModel}; not recorded`);
     const line: CassetteLine = {
