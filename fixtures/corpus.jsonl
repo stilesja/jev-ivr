@@ -81,18 +81,18 @@
 {"id":"ns-07","text":"hello","intent":"none","context":"no_form"}
 {"id":"ns-08","text":"yeah so","intent":"none","context":"no_form","answers":{"utteranceComplete":{"noul":0.35}},"tags":["incomplete"]}
 
-{"id":"lc-01","text":"I need to do something about my appointment","intent":"reschedule","context":"no_form","answers":{"intent":{"probabilities":{"reschedule":0.45,"cancel":0.35,"confirm_appointment":0.1}}},"tags":["low_margin"]}
-{"id":"lc-02","text":"My appointment with Dr. Chen","intent":"confirm_appointment","context":"no_form","slots":{"provider":"chen"},"answers":{"intent":{"probabilities":{"confirm_appointment":0.5,"reschedule":0.2}}},"tags":["explicit_confirm"]}
-{"id":"lc-03","text":"Maybe cancel it","intent":"cancel","context":"no_form","answers":{"intent":{"probabilities":{"cancel":0.55,"none":0.3}}},"tags":["explicit_confirm"]}
-{"id":"lc-04","text":"I think I need to reschedule or maybe cancel","intent":"reschedule","context":"no_form","answers":{"intent":{"probabilities":{"reschedule":0.5,"cancel":0.42}}},"tags":["low_margin"]}
-{"id":"lc-05","text":"Change it","intent":"reschedule","context":"no_form","answers":{"intent":{"probabilities":{"reschedule":0.65,"cancel":0.15}}},"tags":["implicit_confirm"]}
-{"id":"lc-06","text":"I'm seeing Dr. Chen, or Cheng, I'm not sure","intent":"confirm_appointment","context":"no_form","slots":{"provider":"chen"},"answers":{"provider":{"probabilities":{"chen":0.46,"cheng":0.44}}},"tags":["provider_margin"]}
-{"id":"lc-07","text":"Reschedule with Dr. Chen","intent":"reschedule","context":"no_form","slots":{"provider":"chen"},"answers":{"provider":{"probabilities":{"chen":0.5,"cheng":0.4}}},"tags":["provider_margin"]}
-{"id":"lc-08","text":"Book something","intent":"schedule_new","context":"no_form","answers":{"intent":{"probabilities":{"schedule_new":0.42,"other":0.3}}},"tags":["explicit_confirm"]}
-{"id":"lc-09","text":"Check on my appointment","intent":"confirm_appointment","context":"no_form","answers":{"intent":{"probabilities":{"confirm_appointment":0.75,"cancel":0.1}}},"tags":["implicit_confirm"]}
-{"id":"lc-10","text":"I guess I need to cancel","intent":"cancel","context":"no_form","answers":{"intent":{"probabilities":{"cancel":0.35,"none":0.4}}},"tags":["intent_failed"]}
-{"id":"lc-11","text":"Rossi I think","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"rossi"},"answers":{"provider":{"probabilities":{"rossi":0.55,"none":0.4}}},"tags":["implicit_confirm"]}
-{"id":"lc-12","text":"It might be Dr. Kim","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"kim"},"answers":{"provider":{"probabilities":{"kim":0.4,"none":0.5}}},"tags":["slot_absent"]}
+{"id":"lc-01","text":"I need to do something about my appointment","intent":"other","context":"no_form","tags":["vague"]}
+{"id":"lc-02","text":"My appointment with Dr. Chen","intent":"confirm_appointment","context":"no_form","slots":{"provider":"chen"},"tags":["implicit_confirm"]}
+{"id":"lc-03","text":"Maybe cancel it","intent":"cancel","context":"no_form","tentative":true,"tags":["tentative"]}
+{"id":"lc-04","text":"I think I need to reschedule or maybe cancel","intent":"reschedule","context":"no_form","tentative":true,"tags":["tentative","two_intents"]}
+{"id":"lc-05","text":"Change it","intent":"other","context":"no_form","tags":["vague"]}
+{"id":"lc-06","text":"I'm seeing Dr. Chen, or Cheng, I'm not sure","intent":"none","context":"no_form","slots":{"provider":"chen"},"providerUnsure":true,"tags":["provider_unsure"]}
+{"id":"lc-07","text":"Reschedule with Dr. Chen","intent":"reschedule","context":"no_form","slots":{"provider":"chen"},"tags":[]}
+{"id":"lc-08","text":"Book something","intent":"schedule_new","context":"no_form","tags":[]}
+{"id":"lc-09","text":"Check on my appointment","intent":"confirm_appointment","context":"no_form","tags":[]}
+{"id":"lc-10","text":"I guess I need to cancel","intent":"cancel","context":"no_form","tentative":true,"tags":["tentative"]}
+{"id":"lc-11","text":"Rossi I think","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"rossi"},"providerUnsure":true,"tags":["provider_unsure"]}
+{"id":"lc-12","text":"It might be Dr. Kim","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"kim"},"providerUnsure":true,"tags":["provider_unsure"]}
 
 {"id":"fr-01","text":"This is ridiculous, I just want to reschedule","intent":"reschedule","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.75,"mild":0.2}}},"tags":["frustration"]}
 {"id":"fr-02","text":"I already told you, cancel it","intent":"cancel","context":"no_form","answers":{"frustration":{"probabilities":{"high":0.65,"mild":0.25}},"rephrasingLastTurn":{"noul":0.8}},"tags":["frustration"]}
@@ -162,9 +162,21 @@
 {"id":"sw-04","text":"I'd rather talk to a person","intent":"agent","context":"cancel","tags":["wants_human"]}
 {"id":"sw-05","text":"what did you say","intent":"repeat_prompt","context":"reschedule","tags":["repeat"]}
 {"id":"sw-06","text":"repeat that","intent":"repeat_prompt","context":"billing","tags":["repeat"]}
-{"id":"sw-07","text":"and can I also ask about my bill","intent":"none","context":"reschedule","prompted":"date","tags":["secondary_intent"]}
-{"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","change":"replacing","answers":{"intent":{"probabilities":{"cancel":0.7,"reschedule":0.15}}},"tags":["intent_switch","switch_explicit"]}
+{"id":"sw-07","text":"and can I also ask about my bill","intent":"billing","context":"reschedule","prompted":"date","change":"adding","tags":["adding"]}
+{"id":"sw-08","text":"or maybe just cancel it instead","intent":"cancel","context":"reschedule","tentative":true,"change":"replacing","tags":["intent_switch","tentative"]}
 {"id":"dt-19","text":"sometime this week","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"window","window":"this_week"}}}
 {"id":"dt-20","text":"Monday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"monday"}}}
 {"id": "dt-21", "text": "tuesday of next week", "intent": "none", "context": "reschedule", "prompted": "date", "slots": {"date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}}
 {"id": "rs-13", "text": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three", "intent": "reschedule", "context": "no_form", "slots": {"provider": "chen", "memberId": {"span": "four four seven one eight two nine three", "value": "44718293"}, "date": {"mode": "window", "window": "next_week", "weekday": "tuesday"}}, "tags": ["over_answer", "all_slots"]}
+{"id":"mi-13","text":"forty four one eighty seven three hundred fifty five","intent":"none","context":"schedule_new","slots":{"memberId":{"span":"forty four one eighty seven three hundred fifty five","value":"44187355"}},"tags":["chunked_numbers"]}
+{"id":"mi-14","text":"four four one eight seven three hundred five","intent":"none","context":"cancel","slots":{"memberId":{"span":"four four one eight seven three hundred five","value":"44187305"}},"tags":["chunked_numbers"]}
+{"id":"mi-15","text":"my ID is 44 187 355","intent":"none","context":"reschedule","slots":{"memberId":{"span":"44 187 355","value":"44187355"}},"tags":["digit_groups"]}
+{"id":"mi-16","text":"8 1 7 9 3 3 1 4","intent":"none","context":"reschedule","slots":{"memberId":{"span":"8 1 7 9 3 3 1 4","value":"81793314"}},"tags":["digit_string"]}
+{"id":"sw-09","text":"and can I also check on a bill I got","intent":"billing","context":"cancel","prompted":"provider","change":"adding","tags":["adding"]}
+{"id":"sw-10","text":"also I want to make another appointment while I'm on","intent":"schedule_new","context":"cancel","prompted":"memberId","change":"adding","tags":["adding"]}
+{"id":"sw-11","text":"never mind, I have a question about my bill","intent":"billing","context":"reschedule","prompted":"memberId","change":"replacing","tags":["replacing"]}
+{"id":"sw-12","text":"actually forget the reschedule, just cancel it","intent":"cancel","context":"reschedule","prompted":"date","change":"replacing","tags":["replacing"]}
+{"id":"pv-09","text":"I think it's Dr. Patel","intent":"none","context":"schedule_new","prompted":"provider","slots":{"provider":"patel"},"providerUnsure":true,"tags":["provider_unsure"]}
+{"id":"pv-10","text":"either Dr. Chen or Dr. Cheng, I'm not sure which","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"providerUnsure":true,"answers":{"provider":{"probabilities":{"chen":0.48,"cheng":0.46}}},"tags":["provider_unsure","two_providers"]}
+{"id":"lc-13","text":"Maybe cancel it, it's with Dr. Chen","intent":"cancel","context":"no_form","slots":{"provider":"chen"},"tentative":true,"tags":["tentative","over_answer"]}
+{"id":"fr-07","text":"This is ridiculous, I already said Dr. Chen three times","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"answers":{"frustration":{"probabilities":{"high":0.8,"mild":0.15}}},"tags":["frustration_high"]}
