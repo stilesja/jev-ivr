@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer, type RunningServer, type ServerOverrides } from './index';
@@ -8,9 +8,12 @@ import { FakeRelay } from '../testing/fakeRelay';
 import type { JevClient } from '../jev/types';
 
 let running: RunningServer | null = null;
+/** Temp dirs minted by makeConfig() for this test, swept up alongside the server it started. */
+let tempDirs: string[] = [];
 afterEach(async () => {
   await running?.close();
   running = null;
+  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 /** Shaped like a minted token (32 hex), but never minted: the upgrade itself must refuse it. */
@@ -18,6 +21,11 @@ const UNMINTED_TOKEN = 'f'.repeat(32);
 
 function makeConfig(extra: Record<string, string> = {}) {
   const traceDir = mkdtempSync(join(tmpdir(), 'server-'));
+  tempDirs.push(traceDir);
+  // AUDIO_DIR defaults to a fresh, empty temp dir (not the repo's assets/audio) so these tests
+  // never depend on, or are broken by, whatever real recorded clips live in the working tree.
+  const audioDir = extra.AUDIO_DIR ?? mkdtempSync(join(tmpdir(), 'audio-'));
+  if (!extra.AUDIO_DIR) tempDirs.push(audioDir);
   const config = loadConfig({
     PUBLIC_HOST: 'localhost',
     TWILIO_AUTH_TOKEN: 't',
@@ -26,6 +34,7 @@ function makeConfig(extra: Record<string, string> = {}) {
     SIGNATURE_CHECK: 'off',
     TODAY_OVERRIDE: '2026-09-18',
     TRACE_DIR: traceDir,
+    AUDIO_DIR: audioDir,
     ...extra,
   });
   return { traceDir, config };
