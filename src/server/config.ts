@@ -2,6 +2,9 @@ import { defaultTimeZone, localDateIso } from '../run/clock';
 
 export type ClientKind = 'stub' | 'heuristic' | 'jev';
 
+/** ConversationRelay's documented TTS providers (Twilio docs, <ConversationRelay> ttsProvider). */
+const TTS_PROVIDERS = ['Google', 'Amazon', 'ElevenLabs'] as const;
+
 export interface ServerConfig {
   port: number;
   publicHost: string;
@@ -68,6 +71,12 @@ export function loadConfig(env: Env): ServerConfig {
   if (sig !== 'on' && sig !== 'off') throw new Error(`SIGNATURE_CHECK must be on or off, got "${env.SIGNATURE_CHECK}"`);
   const ttsProvider = env.TTS_PROVIDER?.trim() || null;
   const ttsVoice = env.TTS_VOICE?.trim() || null;
+  if (ttsProvider && !(TTS_PROVIDERS as readonly string[]).includes(ttsProvider)) {
+    throw new Error(`TTS_PROVIDER must be one of ${TTS_PROVIDERS.join(', ')}, got "${ttsProvider}"`);
+  }
+  // Twilio itself allows a provider with the connection's default voice, but we require both:
+  // the fallback voice for unrecorded segments should be a deliberate match to the recorded
+  // clips, not whatever ConversationRelay defaults to.
   if ((ttsProvider === null) !== (ttsVoice === null)) throw new Error('TTS_PROVIDER and TTS_VOICE must be set together');
   return {
     port,

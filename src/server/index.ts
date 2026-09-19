@@ -16,6 +16,7 @@ import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
 import { discoverClips, recordableClips } from '../prompts/clips';
+import { coverage, readRecorded } from '../prompts/sheet';
 
 export interface RunningServer {
   server: Server;
@@ -57,12 +58,15 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
 
   const clips = discoverClips(config.audioDir);
-  const rows = recordableClips();
-  const missing = rows.filter((r) => !clips.has(r.id)).map((r) => r.id);
-  log(
-    `audio: ${rows.length - missing.length} of ${rows.length} clips present (${missing.length} segments fall back to TTS)` +
-      (missing.length > 0 && missing.length < 10 ? `: missing ${missing.join(', ')}` : ''),
-  );
+  const cov = coverage(recordableClips(), clips, readRecorded(config.audioDir));
+  const missingSuffix =
+    cov.missing.length === 0
+      ? ''
+      : `: missing ${cov.missing.slice(0, 10).join(', ')}${cov.missing.length > 10 ? ` +${cov.missing.length - 10} more` : ''}`;
+  log(`audio: ${cov.present} of ${cov.total} clips present in ${config.audioDir} (${cov.missing.length} segments fall back to TTS)${missingSuffix}`);
+  if (cov.stale.length > 0) {
+    log(`audio: ${cov.stale.length} stale clips (recorded text differs from the sheet): ${cov.stale.join(', ')}`);
+  }
   const render = { clips, audioBase: `https://${config.publicHost}/audio/` };
 
   const store = new SessionStore(
@@ -81,7 +85,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     config.sessionMaxAgeMs,
   );
   const tokens = new CallTokens(TOKEN_TTL_MS, now);
-  const deps = { config, store, tokens, hints: buildHints(), audioDir: config.audioDir, log };
+  const deps = { config, store, tokens, hints: buildHints(), log };
 
   const server = createServer(createRequestHandler(deps));
   const wss = attachWebSocketServer(server, { store, tokens, log }, overrides.setupTimeoutMs);

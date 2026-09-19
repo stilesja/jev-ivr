@@ -74,6 +74,17 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, TTS_VOICE: 'x' })).toThrow(/TTS_PROVIDER and TTS_VOICE/);
   });
 
+  it('requires TTS_PROVIDER to be one ConversationRelay actually offers, and requires TTS_VOICE alongside it', () => {
+    expect(() => loadConfig({ ...base, TTS_PROVIDER: 'Polly', TTS_VOICE: 'x' })).toThrow('TTS_PROVIDER must be one of Google, Amazon, ElevenLabs, got "Polly"');
+    // Symmetric to TTS_VOICE alone (already covered above): a provider with no voice is just as incomplete.
+    expect(() => loadConfig({ ...base, TTS_PROVIDER: 'Google' })).toThrow(/TTS_PROVIDER and TTS_VOICE/);
+  });
+
+  it('describes the tts setting as default or as the configured provider and voice', () => {
+    expect(describeConfig(loadConfig(base))).toContain('tts default');
+    expect(describeConfig(loadConfig({ ...base, TTS_PROVIDER: 'Google', TTS_VOICE: 'en-US-Neural2-F' }))).toContain('tts Google en-US-Neural2-F');
+  });
+
   it('rejects a PUBLIC_HOST with a path, query, or port', () => {
     expect(() => loadConfig({ ...base, PUBLIC_HOST: 'demo.ngrok.app/foo' })).toThrow(/bare hostname/);
     expect(loadConfig({ ...base, PUBLIC_HOST: 'https://demo.ngrok.app/' }).publicHost).toBe('demo.ngrok.app');

@@ -13,7 +13,6 @@ export interface HttpDeps {
   store: SessionStore;
   tokens: CallTokens;
   hints: string;
-  audioDir: string;
   log: (line: string) => void;
 }
 
@@ -60,21 +59,33 @@ function reply(res: ServerResponse, status: number, type: string, body: string):
 }
 
 /**
- * Serves a recorded clip from `audioDir` by filename. Any read failure — missing file, a
- * directory, a dangling symlink — is a 404, never a 500; the filename must also match the same
- * shape `discoverClips` accepts, and `..` is rejected outright even though the URL and
- * `decodeURIComponent` normalization above should already keep it out of the joined path.
+ * Decodes a raw `/audio/<raw>` path segment and checks it against the same filename shape
+ * `discoverClips` accepts: an id made of `[A-Za-z0-9_.-]`, a dot, and a wav/mp3 extension.
+ * That shape has no room for a `/` (or, once decoded, a bare `..`), so it alone rules out path
+ * traversal — no separate `..` check is needed, and `discoverClips` itself has none either;
+ * the two are meant to accept exactly the same names. Returns the decoded name, or null if the
+ * segment fails to decode or doesn't match.
  */
-function serveClip(req: IncomingMessage, res: ServerResponse, audioDir: string, raw: string): void {
+export function clipName(raw: string): string | null {
   let name: string;
   try {
     name = decodeURIComponent(raw);
   } catch {
-    reply(res, 404, 'text/plain', 'not found');
-    return;
+    return null;
   }
-  const m = CLIP_FILE.exec(name);
-  if (!m || name.includes('..')) {
+  return CLIP_FILE.test(name) ? name : null;
+}
+
+/**
+ * Serves a recorded clip from `audioDir` by filename. Clips are read synchronously, one file
+ * per request: there are few of them, each is small, and the response is cached for a day, so
+ * this is not a hot path. If that stops being true, the next step is an in-memory Map of
+ * Buffers built once at startup rather than a per-request `readFileSync`.
+ * Any read failure — missing file, a directory, a dangling symlink — is a 404, never a 500.
+ */
+function serveClip(req: IncomingMessage, res: ServerResponse, audioDir: string, raw: string): void {
+  const name = clipName(raw);
+  if (!name) {
     reply(res, 404, 'text/plain', 'not found');
     return;
   }
@@ -85,10 +96,12 @@ function serveClip(req: IncomingMessage, res: ServerResponse, audioDir: string, 
     reply(res, 404, 'text/plain', 'not found');
     return;
   }
+  const ext = CLIP_FILE.exec(name)![2]!.toLowerCase();
   res.writeHead(200, {
-    'content-type': AUDIO_TYPES[m[2]!.toLowerCase()]!,
+    'content-type': AUDIO_TYPES[ext]!,
     'content-length': body.length,
     'cache-control': 'public, max-age=86400',
+    'accept-ranges': 'none',
   });
   res.end(req.method === 'HEAD' ? undefined : body);
 }
@@ -160,9 +173,9 @@ export function decideActionTwiml(deps: HttpDeps, params: Record<string, string>
 export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     void (async () => {
-      const path = (req.url ?? '/').split('?')[0]!;
+      const path = (req.url ?? '/').split('?')[0] ?? '/';
       if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/audio/')) {
-        serveClip(req, res, deps.audioDir, path.slice('/audio/'.length));
+        serveClip(req, res, deps.config.audioDir, path.slice('/audio/'.length));
         return;
       }
       if ((req.method === 'GET' || req.method === 'HEAD') && path === '/health') {

@@ -91,6 +91,7 @@ export class FakeRelay {
 
   /** Wait until at least n messages of any type have arrived; returns everything received so far. */
   async waitForMessages(n: number, timeoutMs = 3000): Promise<Msg[]> {
+    if (n <= 0) return this.received;
     await this.waitFor(() => this.received.length >= n, timeoutMs);
     return this.received;
   }

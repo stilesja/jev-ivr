@@ -65,19 +65,24 @@ describe('server end to end', () => {
     const { config } = makeConfig({ AUDIO_DIR: audioDir });
     const logs: string[] = [];
     running = await startServer(config, { log: (line) => logs.push(line) });
+    const base = `http://127.0.0.1:${running.port}`;
     const ws = `ws://127.0.0.1:${running.port}/conversation`;
     const token = running.tokens.mint('CA1');
     const relay = await FakeRelay.connect(`${ws}?token=${token}`);
     relay.setup('CA1');
     await relay.waitForMessages(1);
-    expect(relay.received[0]).toEqual({
-      type: 'play',
-      source: 'https://localhost/audio/greeting.0.wav',
-      loop: 1,
-      preemptible: false,
-      interruptible: true,
-    });
+    // No trailing text frame: the whole greeting is one recorded clip, so the turn produces
+    // exactly this one play frame.
+    expect(relay.received).toEqual([
+      { type: 'play', source: 'https://localhost/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true },
+    ]);
+    relay.assertKnownTypes();
     expect(logs.some((l) => l.includes('audio: 1 of') && l.includes('clips present'))).toBe(true);
+    // The renderer's audioBase points here, so the clip it just referenced must actually be
+    // reachable at that URL's path.
+    const clip = await fetch(`${base}/audio/greeting.0.wav`);
+    expect(clip.status).toBe(200);
+    expect(clip.headers.get('content-type')).toBe('audio/wav');
   });
 
   it('greets on setup and refuses a well-shaped token that was never minted', async () => {

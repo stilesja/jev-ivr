@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createRequestHandler, decideActionTwiml, type HttpDeps } from './http';
+import { clipName, createRequestHandler, decideActionTwiml, type HttpDeps } from './http';
 import { loadConfig } from './config';
 import { computeTwilioSignature } from './signature';
 import { SessionStore } from './sessions';
@@ -20,14 +20,21 @@ afterEach(() => new Promise<void>((r) => (server ? server.close(() => r()) : r()
 
 function deps(overrides: Record<string, string> = {}, audioDir?: string): HttpDeps {
   const dir = mkdtempSync(join(tmpdir(), 'http-'));
-  const config = loadConfig({ PUBLIC_HOST: 'demo.ngrok.app', TWILIO_AUTH_TOKEN: TOKEN, HANDOFF_NUMBER: '+15551234567', RECONNECT_LIMIT: '1', ...overrides });
+  const config = loadConfig({
+    PUBLIC_HOST: 'demo.ngrok.app',
+    TWILIO_AUTH_TOKEN: TOKEN,
+    HANDOFF_NUMBER: '+15551234567',
+    RECONNECT_LIMIT: '1',
+    AUDIO_DIR: audioDir ?? dir,
+    ...overrides,
+  });
   const store = new SessionStore((callSid) => ({
     session: newSession(callSid, 0),
     opts: { client: new HeuristicStubClient(), thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18' },
     trace: new TraceWriter(join(dir, `${callSid}.jsonl`)),
     frames: new FrameLog(join(dir, `${callSid}.frames.jsonl`)),
   }), 60_000);
-  return { config, store, tokens: new CallTokens(60_000), hints: 'Dr. Chen', log: () => {}, audioDir: audioDir ?? dir };
+  return { config, store, tokens: new CallTokens(60_000), hints: 'Dr. Chen', log: () => {} };
 }
 
 async function listen(d: HttpDeps): Promise<string> {
@@ -52,7 +59,7 @@ async function get(base: string, path: string) {
 
 async function head(base: string, path: string) {
   const res = await fetch(base + path, { method: 'HEAD' });
-  return { status: res.status, headers: Object.fromEntries(res.headers.entries()) };
+  return { status: res.status, headers: Object.fromEntries(res.headers.entries()), body: Buffer.from(await res.arrayBuffer()) };
 }
 
 describe('http routes', () => {
@@ -131,13 +138,32 @@ describe('http routes', () => {
     expect(ok.body.toString()).toBe('RIFFdata');
     // No Twilio signature header is sent, and /audio still answers 200: this route is not gated
     // by the signature check that /voice and /cr-action apply.
-    expect((await head_('/audio/greeting.0.wav')).status).toBe(200);
+    const headRes = await head_('/audio/greeting.0.wav');
+    expect(headRes.status).toBe(200);
+    expect(headRes.headers['content-length']).toBe(String(Buffer.byteLength('RIFFdata')));
+    expect(headRes.body.length).toBe(0);
     expect((await get_('/audio/Loud.0.WAV')).headers['content-type']).toBe('audio/wav');
     expect((await get_('/audio/missing.wav')).status).toBe(404);
     expect((await get_('/audio/notes.txt')).status).toBe(404);
-    expect((await get_('/audio/../package.json')).status).toBe(404);
-    expect((await get_('/audio/%2e%2e/package.json')).status).toBe(404);
+    // fetch's URL parser collapses a literal `../` before the request is even sent, so these
+    // traversal attempts are shaped to survive that normalization and actually reach the
+    // server: an escaped `/` inside what would otherwise be a `..` segment.
+    expect((await get_('/audio/..%2fpackage.json')).status).toBe(404);
+    expect((await get_('/audio/%2e%2e%2fetc%2fpasswd')).status).toBe(404);
+    expect((await get_('/audio/sub%2fclip.wav')).status).toBe(404);
     expect((await get_('/audio/%E0%A4%A')).status).toBe(404);
+  });
+});
+
+describe('clipName', () => {
+  it('decodes a well-formed clip name and rejects traversal, wrong extensions, and bad percent-encoding', () => {
+    expect(clipName('greeting.0.wav')).toBe('greeting.0.wav');
+    expect(clipName('Loud.0.WAV')).toBe('Loud.0.WAV');
+    expect(clipName('..%2fpackage.json')).toBeNull();
+    expect(clipName('%2e%2e%2fetc%2fpasswd')).toBeNull();
+    expect(clipName('sub%2fclip.wav')).toBeNull();
+    expect(clipName('notes.txt')).toBeNull();
+    expect(clipName('%E0%A4%A')).toBeNull();
   });
 });
 
