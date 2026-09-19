@@ -58,7 +58,7 @@ export interface NoulAnswer {
 export type Answer = ChoiceAnswer | ScoreAnswer | NoulAnswer;
 export type AnswerMap = Record<string, Answer>;
 
-export type AnswerSource = 'jev' | 'stub:fixture' | 'stub:heuristic' | 'replay';
+export type AnswerSource = 'jev' | 'stub:fixture' | 'stub:heuristic' | 'replay' | 'recorded';
 
 export interface JevUsage {
   inputTokens: number;
