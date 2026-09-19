@@ -3,9 +3,10 @@ import { DEFAULT_THRESHOLDS, withOverrides, parseOverride } from './thresholds';
 
 describe('thresholds', () => {
   it('applies a single override without mutating defaults', () => {
+    const before = DEFAULT_THRESHOLDS.INTENT_ROUTE;
     const t = withOverrides({ INTENT_ROUTE: 0.9 });
     expect(t.INTENT_ROUTE).toBe(0.9);
-    expect(DEFAULT_THRESHOLDS.INTENT_ROUTE).toBe(0.85);
+    expect(DEFAULT_THRESHOLDS.INTENT_ROUTE).toBe(before);
   });
 
   it('parses NAME=VALUE strings', () => {

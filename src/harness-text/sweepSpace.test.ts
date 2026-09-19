@@ -21,7 +21,7 @@ describe('sweep space', () => {
     expect(violated({ ...DEFAULT_THRESHOLDS })).toBeNull();
     expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_IMPLICIT: 0.9 })).toBe('INTENT_IMPLICIT <= INTENT_ROUTE');
     expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_EXPLICIT: 0.7 })).toBe('INTENT_EXPLICIT <= INTENT_IMPLICIT');
-    expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_SWITCH: 0.7 })).toBe('INTENT_ROUTE <= INTENT_SWITCH');
+    expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_SWITCH: 0.5 })).toBe('INTENT_ROUTE <= INTENT_SWITCH');
     expect(violated({ ...DEFAULT_THRESHOLDS, SLOT_CHOICE_FILL: 0.4 })).toBe('SLOT_CHOICE_CONFIRM <= SLOT_CHOICE_FILL');
     expect(CONSTRAINTS).toHaveLength(4);
   });

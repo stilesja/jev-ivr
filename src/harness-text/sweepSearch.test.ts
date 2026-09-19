@@ -167,7 +167,7 @@ describe('coordinateDescent', () => {
   it('refuses to start from thresholds that violate a constraint or break the stub', async () => {
     let called = 0;
     const counting = async (t: Thresholds) => { called += 1; return peak(t); };
-    await expect(coordinateDescent(counting, ['INTENT_ROUTE'], { ...DEFAULT_THRESHOLDS, INTENT_SWITCH: 0.7 }, 5))
+    await expect(coordinateDescent(counting, ['INTENT_ROUTE'], { ...DEFAULT_THRESHOLDS, INTENT_SWITCH: 0.5 }, 5))
       .rejects.toThrow('the starting thresholds violate INTENT_ROUTE <= INTENT_SWITCH');
     expect(called).toBe(0);
     await expect(coordinateDescent(async () => ({ score: score(0), breaksStub: true }), ['INTENT_ROUTE'], { ...DEFAULT_THRESHOLDS }, 5))

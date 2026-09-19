@@ -20,7 +20,7 @@ describe('providerSlot', () => {
   });
 
   it('fills with implicit confirm in the confirm band', () => {
-    expect(providerSlot.fill({ provider: choice({ patel: 0.55, none: 0.45 }) }, ctx))
+    expect(providerSlot.fill({ provider: choice({ patel: 0.47, none: 0.44, okafor: 0.09 }) }, ctx))
       .toMatchObject({ kind: 'filled', value: 'patel', confirm: 'implicit' });
   });
 

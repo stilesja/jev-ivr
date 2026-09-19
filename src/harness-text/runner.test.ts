@@ -156,7 +156,7 @@ describe('runScenario', () => {
 
     // an intent in the implicit band is acknowledged before the next prompt
     const implicitClient = new FixtureStubClient(
-      [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.7, reschedule: 0.2 } } } }],
+      [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.65, reschedule: 0.2 } } } }],
       { sharpness: 0.9, fallback: new HeuristicStubClient() },
     );
     const acked = await runScenario({ id: 'acks-implicit', steps, expect: { decision: 'prompt' } }, { ...opts, client: implicitClient });

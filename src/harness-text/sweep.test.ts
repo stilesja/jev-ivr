@@ -29,7 +29,8 @@ describe('runSweep', () => {
     const stub = new FixtureStubClient(corpus, { sharpness: 0.9, fallback: new HeuristicStubClient() });
     const base = await runAll(corpus, [], { client: stub, thresholds, todayIso: REGRESS_TODAY, now: () => 0 });
     writeExpected({ corpus: base.corpus, scenarios: base.scenarios }, join(dir, 'expected'));
-    const soft = new FixtureStubClient(corpus, { sharpness: 0.8, fallback: new HeuristicStubClient() });
+    // one grid step below DEFAULT_THRESHOLDS.INTENT_ROUTE, so the recorded intent lands in the implicit band
+    const soft = new FixtureStubClient(corpus, { sharpness: 0.65, fallback: new HeuristicStubClient() });
     const recorder = new CassetteClient({ path: join(dir, 'cassette.jsonl'), mode: 'record', inner: soft });
     await runAll(corpus, [], { client: recorder, thresholds, todayIso: REGRESS_TODAY, now: () => 0 });
     writeFileSync(join(dir, 'thresholds.ts'), readFileSync('src/core/thresholds.ts', 'utf8'));
@@ -47,7 +48,7 @@ describe('runSweep', () => {
     expect(r.result.before).toMatchObject({ primary: 3, secondary: 0 });
     expect(r.result.after).toMatchObject({ primary: 3, secondary: 3 });
     expect(r.result.moves).toHaveLength(1);
-    expect(r.result.moves[0]).toMatchObject({ name: 'INTENT_ROUTE', from: 0.85, to: 0.7, reason: 'secondary', plateau: { from: 0.6, to: 0.8 } });
+    expect(r.result.moves[0]).toMatchObject({ name: 'INTENT_ROUTE', from: DEFAULT_THRESHOLDS.INTENT_ROUTE, to: 0.6, reason: 'secondary', plateau: { from: 0.6, to: 0.65 } });
     // 0.95 would put INTENT_ROUTE above INTENT_SWITCH and 0.50 below INTENT_IMPLICIT: both skipped.
     expect(r.result.table.INTENT_ROUTE?.points.find((p) => p.value === 0.95)?.status).toBe('skipped');
     expect(r.result.table.INTENT_ROUTE?.points.find((p) => p.value === 0.5)?.status).toBe('skipped');
@@ -58,9 +59,9 @@ describe('runSweep', () => {
 
   it('applies the result to the thresholds file and writes the report', async () => {
     const r = await runSweep(config({ apply: true, json: join(dir, 'out.json') }));
-    expect(readFileSync(join(dir, 'thresholds.ts'), 'utf8')).toContain('  INTENT_ROUTE: 0.7,');
+    expect(readFileSync(join(dir, 'thresholds.ts'), 'utf8')).toContain('  INTENT_ROUTE: 0.6,');
     const report = readFileSync(r.reportPath!, 'utf8');
-    expect(report).toContain('pass 1: INTENT_ROUTE 0.85 -> 0.70');
+    expect(report).toContain(`pass 1: INTENT_ROUTE ${DEFAULT_THRESHOLDS.INTENT_ROUTE.toFixed(2)} -> 0.60`);
     expect(report).toContain(`passes ${r.result.passes} (converged)`);
     expect(report).toContain(`evaluations ${r.result.evaluations}`);
     const json = JSON.parse(readFileSync(join(dir, 'out.json'), 'utf8'));
