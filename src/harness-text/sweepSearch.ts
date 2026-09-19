@@ -17,11 +17,16 @@ export interface Move {
   from: number;
   to: number;
   reason: MoveReason;
+  /** the descent pass that made this move */
+  pass: number;
   before: Score;
   after: Score;
   plateau: { from: number; to: number };
   flips: { gained: string[]; lost: string[] };
 }
+
+/** What `chooseMove` proposes; only the descent knows which pass it belongs to. */
+export type MoveCandidate = Omit<Move, 'pass'>;
 
 export interface ThresholdRow {
   current: number;
@@ -29,6 +34,10 @@ export interface ThresholdRow {
   points: GridPoint[];
   cliff: boolean;
   insensitive: boolean;
+  /** exactly one grid value is legal here, so there is nothing to learn from the grid */
+  pinned: boolean;
+  /** the best plateau runs to a grid endpoint, so no move onto it was made */
+  unbounded: boolean;
 }
 
 export interface SweepResult {
@@ -39,6 +48,18 @@ export interface SweepResult {
   moves: Move[];
   table: Partial<Record<ThresholdName, ThresholdRow>>;
   passes: number;
+  /** true when a pass made no improving move; false when `maxPasses` cut a still-improving descent short */
+  converged: boolean;
+  /** distinct candidates evaluated (the memo's size) */
+  evaluations: number;
+}
+
+export interface MoveChoice {
+  move: MoveCandidate | null;
+  cliff: boolean;
+  insensitive: boolean;
+  pinned: boolean;
+  unbounded: boolean;
 }
 
 export type Evaluate = (candidate: Thresholds) => Promise<{ score: Score; breaksStub: boolean }>;
@@ -72,29 +93,71 @@ function middle(p: Plateau): number {
   return p.start + Math.floor((p.end - p.start) / 2);
 }
 
-export function chooseMove(name: ThresholdName, current: number, points: GridPoint[], currentScore: Score): { move: Move | null; cliff: boolean; insensitive: boolean } {
-  const currentIndex = points.findIndex((p) => Math.abs(p.value - current) < 1e-9);
+/** The grid index closest to `value`; ties take the lower index. */
+function nearestIndex(points: GridPoint[], value: number): number {
+  let index = 0;
+  let closest = Infinity;
+  points.forEach((p, i) => {
+    const d = Math.abs(p.value - value);
+    if (d < closest) { closest = d; index = i; }
+  });
+  return index;
+}
+
+/**
+ * The move this threshold's grid argues for, or why there is none. `allowCenter` is false once
+ * the descent has already re-centred this threshold: a centre move is a one-off tidy-up, not
+ * something to repeat every pass.
+ */
+export function chooseMove(
+  name: ThresholdName,
+  current: number,
+  points: GridPoint[],
+  currentScore: Score,
+  allowCenter: boolean,
+): MoveChoice {
+  const none: MoveChoice = { move: null, cliff: false, insensitive: false, pinned: false, unbounded: false };
+  // A hand-edited thresholds.ts can hold a value that is not on the grid. The tie-breaks (which
+  // plateau holds the current value, which is nearest, whether it sits on a plateau edge) need a
+  // position on the grid, so an off-grid value snaps to the nearest index for those. `Move.from`
+  // still reports the true current value and the "already there" test below stays an exact
+  // comparison, so an off-grid value is never mistaken for the grid point it rounds to.
+  const exactIndex = points.findIndex((p) => Math.abs(p.value - current) < 1e-9);
+  const currentIndex = exactIndex >= 0 ? exactIndex : nearestIndex(points, current);
   const plateau = bestPlateau(points, currentIndex);
-  if (!plateau) return { move: null, cliff: false, insensitive: false };
+  if (!plateau) return none;
   const scoredPoints = points.filter(scored);
-  const insensitive = scoredPoints.every((p) => equal(p.score, scoredPoints[0]!.score));
-  if (insensitive) return { move: null, cliff: false, insensitive: true };
-  if (plateau.start === plateau.end) return { move: null, cliff: true, insensitive: false };
+  // One legal value is not evidence that the threshold does not matter: the constraints (or the
+  // stub invariant) left nothing to compare it against, so it is pinned rather than insensitive.
+  if (scoredPoints.length < 2) return { ...none, pinned: true };
+  if (scoredPoints.every((p) => equal(p.score, scoredPoints[0]!.score))) return { ...none, insensitive: true };
+  if (plateau.start === plateau.end) return { ...none, cliff: true };
+  // A best plateau that runs to a grid endpoint is not evidence of an optimum: the score may
+  // still be climbing past the last value we can evaluate, and the "middle" of such a run is an
+  // artefact of where the grid stops rather than safer ground. No move of any reason is made
+  // onto it — a center move changes no score but would still write an unevidenced value into
+  // thresholds.ts — so the current value stays and the row is flagged for a human. A plateau
+  // bounded by a skipped or stub-breaking point is genuinely bounded: those are real limits,
+  // not the edge of what was sampled.
+  if (plateau.start === 0 || plateau.end === points.length - 1) return { ...none, unbounded: true };
   const target = middle(plateau);
   const to = points[target]!;
-  if (!scored(to) || Math.abs(to.value - current) < 1e-9) return { move: null, cliff: false, insensitive: false };
+  // Invariant: a plateau's interior is scored by construction (bestPlateau only joins scored
+  // points), so `!scored(to)` cannot fire; it is kept so a future change to plateau building
+  // fails safe by refusing the move instead of moving onto an unscored value.
+  if (!scored(to) || Math.abs(to.value - current) < 1e-9) return none;
   let reason: MoveReason | null = null;
   if (to.score.primary > currentScore.primary) reason = 'primary';
   else if (to.score.primary === currentScore.primary && to.score.secondary > currentScore.secondary) reason = 'secondary';
-  else if (equal(to.score, currentScore) && (currentIndex === plateau.start || currentIndex === plateau.end) && plateau.end - plateau.start >= 2) reason = 'center';
-  if (!reason) return { move: null, cliff: false, insensitive: false };
+  else if (allowCenter && equal(to.score, currentScore) && (currentIndex === plateau.start || currentIndex === plateau.end) && plateau.end - plateau.start >= 2) reason = 'center';
+  if (!reason) return none;
   return {
+    ...none,
     move: {
       name, from: current, to: to.value, reason, before: currentScore, after: to.score,
       plateau: { from: points[plateau.start]!.value, to: points[plateau.end]!.value },
       flips: flips(currentScore, to.score),
     },
-    cliff: false, insensitive: false,
   };
 }
 
@@ -105,6 +168,11 @@ export async function coordinateDescent(
   maxPasses: number,
   onProgress?: (name: ThresholdName, pass: number, index: number, total: number) => void,
 ): Promise<SweepResult> {
+  // Checked before the first evaluation: a start that already violates a constraint would have
+  // every candidate on the violated axis skipped, and the sweep would report a recommendation
+  // built on a set the runtime forbids.
+  const startViolation = violated(start);
+  if (startViolation) throw new Error(`the starting thresholds violate ${startViolation}`);
   const cache = new Map<string, { score: Score; breaksStub: boolean }>();
   const memo = async (t: Thresholds) => {
     const key = JSON.stringify(t);
@@ -118,10 +186,14 @@ export async function coordinateDescent(
   let currentScore = first.score;
   const moves: Move[] = [];
   const table: SweepResult['table'] = {};
+  // One centre move per threshold per descent: centring is a free tidy-up onto safer ground, and
+  // allowing it every pass would let two thresholds re-centre each other for ever.
+  const centred = new Set<ThresholdName>();
   let passes = 0;
+  let converged = false;
   for (let pass = 1; pass <= maxPasses; pass++) {
     passes = pass;
-    let moved = false;
+    let improved = false;
     for (const name of names) {
       const grid = gridFor(name);
       const points: GridPoint[] = [];
@@ -132,16 +204,24 @@ export async function coordinateDescent(
         const r = await memo(candidate);
         points.push(r.breaksStub ? { value, status: 'breaks_stub', score: null } : { value, status: 'scored', score: r.score });
       }
-      const { move, cliff, insensitive } = chooseMove(name, current[name], points, currentScore);
+      const choice = chooseMove(name, current[name], points, currentScore, !centred.has(name));
+      const move = choice.move;
       if (move) {
-        moves.push(move);
+        moves.push({ ...move, pass });
         current = { ...current, [name]: move.to };
         currentScore = move.after;
-        moved = true;
+        if (move.reason === 'center') centred.add(name);
+        else improved = true;
       }
-      table[name] = { current: start[name], recommended: current[name], points, cliff, insensitive };
+      table[name] = {
+        current: start[name], recommended: current[name], points,
+        cliff: choice.cliff, insensitive: choice.insensitive, pinned: choice.pinned, unbounded: choice.unbounded,
+      };
     }
-    if (!moved) break;
+    // Only a scoring move earns another pass. A pass whose moves were all centre moves stops the
+    // descent: centring never changes the score, and `centred` caps it at one per threshold, so
+    // the next pass would re-run the same (cached) evaluations and choose nothing.
+    if (!improved) { converged = true; break; }
   }
-  return { start, final: current, before: first.score, after: currentScore, moves, table, passes };
+  return { start, final: current, before: first.score, after: currentScore, moves, table, passes, converged, evaluations: cache.size };
 }

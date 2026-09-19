@@ -40,21 +40,31 @@ describe('render', () => {
   const result: SweepResult = {
     start: { ...DEFAULT_THRESHOLDS }, final: { ...DEFAULT_THRESHOLDS, INTENT_ROUTE: 0.2 },
     before: score(3), after: score(5),
-    moves: [{ name: 'INTENT_ROUTE', from: 0.1, to: 0.2, reason: 'primary', before: score(3), after: score(5), plateau: { from: 0.2, to: 0.25 }, flips: { gained: ['lc-02', 's1'], lost: [] } }],
-    table: { INTENT_ROUTE: { current: 0.1, recommended: 0.2, points, cliff: false, insensitive: false }, MENU_NUMBER: { current: 0.7, recommended: 0.7, points: points.map((p) => ({ ...p, status: 'scored', score: score(3) })), cliff: false, insensitive: true } },
+    moves: [{ name: 'INTENT_ROUTE', from: 0.1, to: 0.2, reason: 'primary', pass: 1, before: score(3), after: score(5), plateau: { from: 0.2, to: 0.25 }, flips: { gained: ['lc-02', 'scenario:s1'], lost: [] } }],
+    table: {
+      INTENT_ROUTE: { current: 0.1, recommended: 0.2, points, cliff: false, insensitive: false, pinned: false, unbounded: false },
+      MENU_NUMBER: { current: 0.7, recommended: 0.7, points: points.map((p) => ({ ...p, status: 'scored', score: score(3) })), cliff: false, insensitive: true, pinned: false, unbounded: false },
+      CONFIRM_YES: { current: 0.7, recommended: 0.7, points, cliff: false, insensitive: false, pinned: false, unbounded: true },
+    },
     passes: 2,
+    converged: true,
+    evaluations: 41,
   };
   it('renders the table, moves, and report', () => {
     const table = renderTable(result);
     expect(table).toMatch(/INTENT_ROUTE\s+0\.10\s+0\.20\s+5\s+x-\+##!/);
     expect(table).toMatch(/MENU_NUMBER.*insensitive/);
+    expect(table).toMatch(/CONFIRM_YES.*unbounded/);
     const moves = renderMoves(result);
-    expect(moves).toContain('INTENT_ROUTE 0.10 -> 0.20 (primary; plateau 0.20..0.25)');
-    expect(moves).toContain('gained: lc-02, s1');
+    expect(moves).toContain('pass 1: INTENT_ROUTE 0.10 -> 0.20 (primary; plateau 0.20..0.25)');
+    expect(moves).toContain('gained: lc-02, scenario:s1');
     const report = renderReport(result, { cassette: 'fixtures/recorded/jev-1.13.0.jsonl', requests: 223, date: '2026-09-19', misses: [{ id: 's9', text: 'four four' }] });
     expect(report).toContain('# Threshold sweep 2026-09-19');
     expect(report).toContain('before 3/0');
     expect(report).toContain('after 5/0');
+    expect(report).toContain('passes 2 (converged)');
+    expect(report).toContain('evaluations 41');
+    expect(report).toContain('## Unbounded (plateau reaches a grid edge; not applied)\n\n- CONFIRM_YES');
     expect(report).toContain('s9: "four four"');
   });
 });

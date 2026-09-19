@@ -23,11 +23,15 @@ export function gridFor(name: ThresholdName): readonly number[] {
   return MARGINS.has(name) ? MARGIN_GRID : PROBABILITY_GRID;
 }
 
-/** lower <= upper, in the order the bands are read. */
+/**
+ * lower <= upper, in the order the bands are read. `INTENT_ROUTE <= INTENT_SWITCH` because
+ * abandoning a form already in progress must need at least the confidence of starting one;
+ * `INTENT_IMPLICIT <= INTENT_SWITCH` then follows transitively from the route bound.
+ */
 export const CONSTRAINTS: ReadonlyArray<{ lower: ThresholdName; upper: ThresholdName }> = [
   { lower: 'INTENT_EXPLICIT', upper: 'INTENT_IMPLICIT' },
   { lower: 'INTENT_IMPLICIT', upper: 'INTENT_ROUTE' },
-  { lower: 'INTENT_IMPLICIT', upper: 'INTENT_SWITCH' },
+  { lower: 'INTENT_ROUTE', upper: 'INTENT_SWITCH' },
   { lower: 'SLOT_CHOICE_CONFIRM', upper: 'SLOT_CHOICE_FILL' },
 ];
 
@@ -41,11 +45,16 @@ export function isSweepable(name: string): name is ThresholdName {
   return (SWEEPABLE as readonly string[]).includes(name);
 }
 
-/** The --only list, or every sweepable threshold when absent. */
+/** The --only list, or every sweepable threshold when absent. Repeats are dropped (sweeping one
+ * threshold twice in a pass only re-runs cached evaluations); the first occurrence sets the order. */
 export function parseOnly(spec: string | undefined): ThresholdName[] {
   if (spec === undefined || spec.trim() === '') return [...SWEEPABLE];
-  return spec.split(',').map((s) => s.trim()).filter(Boolean).map((name) => {
+  const out: ThresholdName[] = [];
+  for (const raw of spec.split(',')) {
+    const name = raw.trim();
+    if (name === '') continue;
     if (!isSweepable(name)) throw new Error(`${name} is not sweepable; choose from ${SWEEPABLE.join(', ')}`);
-    return name;
-  });
+    if (!out.includes(name)) out.push(name);
+  }
+  return out;
 }

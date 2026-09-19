@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { better, flips, scoreOutcomes, type ScoreInput } from './sweepScore';
+import { better, equal, flips, scoreOutcomes, type ScoreInput } from './sweepScore';
 import type { Outcome } from './runner';
 import type { ScenarioOutcome } from './baseline';
 import type { TraceRecord } from '../trace/types';
@@ -31,7 +31,7 @@ describe('scoreOutcomes', () => {
     expect(s.cosmeticMatch).toBe(1);         // a only (b has an extra ack, s1 a different gate, s2 fails)
     expect(s.primary).toBe(3);
     expect(s.secondary).toBe(1);
-    expect([...s.matched].sort()).toEqual(['a', 'b', 's1']);
+    expect([...s.matched].sort()).toEqual(['a', 'b', 'scenario:s1']);
     expect(s.misses).toEqual([]);
   });
 
@@ -40,7 +40,7 @@ describe('scoreOutcomes', () => {
     expect(s.scenarioPass).toBe(0);
     expect(s.cosmeticMatch).toBe(1);
     expect(s.misses).toEqual([{ id: 's1', text: 'four four' }]);
-    expect(s.matched.has('s1')).toBe(false);
+    expect(s.matched.has('scenario:s1')).toBe(false);
   });
 
   it('orders by primary then secondary', () => {
@@ -51,6 +51,25 @@ describe('scoreOutcomes', () => {
     const tidier = scoreOutcomes({ ...base, actualCorpus: { ...base.actualCorpus, b: outcome('b') } });
     expect(better(tidier, lo)).toBe(true);
     expect(better(lo, lo)).toBe(false);
+  });
+
+  it('treats a client error that is not a cassette miss as an ordinary turn', () => {
+    const s = scoreOutcomes({ ...base, scenarioRecords: { s1: [record('injected timeout')], s2: [record(null)] } });
+    expect(s.misses).toEqual([]);
+    expect(s.scenarioPass).toBe(1);
+    expect(s.primary).toBe(3);
+    expect(s.matched.has('scenario:s1')).toBe(true);
+  });
+
+  it('prefers fewer cassette misses once primary and secondary tie', () => {
+    const clean = scoreOutcomes(base);
+    // s2 fails either way, so missing it changes nothing but the miss count.
+    const missing = scoreOutcomes({ ...base, scenarioRecords: { s1: [record(null)], s2: [record(`${CASSETTE_MISS} abc nine`, 'nine')] } });
+    expect([missing.primary, missing.secondary]).toEqual([clean.primary, clean.secondary]);
+    expect(better(clean, missing)).toBe(true);
+    expect(better(missing, clean)).toBe(false);
+    expect(equal(clean, clean)).toBe(true);
+    expect(equal(clean, missing)).toBe(false);
   });
 
   it('reports flips as ids gained and lost', () => {

@@ -1,6 +1,6 @@
 import type { ThresholdName } from '../core/thresholds';
 import { better, equal, type Score } from './sweepScore';
-import type { GridPoint, SweepResult } from './sweepSearch';
+import type { GridPoint, SweepResult, ThresholdRow } from './sweepSearch';
 
 /** Replace the numeric literal on each named key's line inside DEFAULT_THRESHOLDS; everything else is untouched. */
 export function rewriteThresholds(source: string, values: Partial<Record<ThresholdName, number>>): string {
@@ -41,7 +41,7 @@ export function renderTable(r: SweepResult): string {
   for (const name of names) {
     const row = r.table[name]!;
     const best = bestOf(row.points);
-    const note = row.insensitive ? '  insensitive' : row.cliff ? '  cliff' : '';
+    const note = row.pinned ? '  pinned' : row.insensitive ? '  insensitive' : row.unbounded ? '  unbounded' : row.cliff ? '  cliff' : '';
     lines.push(`${name.padEnd(w)}  ${f(row.current).padStart(7)}  ${f(row.recommended).padStart(7)}  ${String(best?.primary ?? '-').padStart(4)}  ${renderStrip(row.points)}${note}`);
   }
   return lines.join('\n');
@@ -50,7 +50,7 @@ export function renderTable(r: SweepResult): string {
 export function renderMoves(r: SweepResult): string {
   if (r.moves.length === 0) return 'no moves';
   return r.moves.map((m) => [
-    `${m.name} ${f(m.from)} -> ${f(m.to)} (${m.reason}; plateau ${f(m.plateau.from)}..${f(m.plateau.to)}) ${m.before.primary}/${m.before.secondary} -> ${m.after.primary}/${m.after.secondary}`,
+    `pass ${m.pass}: ${m.name} ${f(m.from)} -> ${f(m.to)} (${m.reason}; plateau ${f(m.plateau.from)}..${f(m.plateau.to)}) ${m.before.primary}/${m.before.secondary} -> ${m.after.primary}/${m.after.secondary}`,
     m.flips.gained.length ? `  gained: ${m.flips.gained.join(', ')}` : null,
     m.flips.lost.length ? `  lost: ${m.flips.lost.join(', ')}` : null,
   ].filter(Boolean).join('\n')).join('\n');
@@ -59,8 +59,10 @@ export function renderMoves(r: SweepResult): string {
 export interface ReportMeta { cassette: string; requests: number; date: string; misses: Array<{ id: string; text: string }> }
 
 export function renderReport(r: SweepResult, meta: ReportMeta): string {
-  const cliffs = (Object.keys(r.table) as ThresholdName[]).filter((n) => r.table[n]!.cliff);
-  const insensitive = (Object.keys(r.table) as ThresholdName[]).filter((n) => r.table[n]!.insensitive);
+  const named = (pick: (row: ThresholdRow) => boolean) => (Object.keys(r.table) as ThresholdName[]).filter((n) => pick(r.table[n]!));
+  const cliffs = named((row) => row.cliff);
+  const insensitive = named((row) => row.insensitive);
+  const unbounded = named((row) => row.unbounded);
   return [
     `# Threshold sweep ${meta.date}`,
     '',
@@ -68,13 +70,15 @@ export function renderReport(r: SweepResult, meta: ReportMeta): string {
     '',
     `before ${r.before.primary}/${r.before.secondary}`,
     `after ${r.after.primary}/${r.after.secondary}`,
-    `passes ${r.passes}`,
+    `passes ${r.passes} (${r.converged ? 'converged' : 'not converged'})`,
+    `evaluations ${r.evaluations}`,
     '',
     '## Moves', '', '```', renderMoves(r), '```', '',
     '## Sensitivity', '', '```', renderTable(r), '```', '',
     `Strip: # best, + within one of best, - below, x constraint-skipped, ! breaks the stub baseline.`, '',
     `## Cliffs (not applied)`, '', cliffs.length ? cliffs.map((n) => `- ${n}`).join('\n') : '- none', '',
     `## Insensitive on this corpus`, '', insensitive.length ? insensitive.map((n) => `- ${n}`).join('\n') : '- none', '',
+    `## Unbounded (plateau reaches a grid edge; not applied)`, '', unbounded.length ? unbounded.map((n) => `- ${n}`).join('\n') : '- none', '',
     `## Cassette misses to record for the recommended set`, '',
     meta.misses.length ? meta.misses.map((m) => `- ${m.id}: "${m.text}"`).join('\n') : '- none', '',
   ].join('\n');

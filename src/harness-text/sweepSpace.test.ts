@@ -21,15 +21,29 @@ describe('sweep space', () => {
     expect(violated({ ...DEFAULT_THRESHOLDS })).toBeNull();
     expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_IMPLICIT: 0.9 })).toBe('INTENT_IMPLICIT <= INTENT_ROUTE');
     expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_EXPLICIT: 0.7 })).toBe('INTENT_EXPLICIT <= INTENT_IMPLICIT');
-    expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_SWITCH: 0.5 })).toBe('INTENT_IMPLICIT <= INTENT_SWITCH');
+    expect(violated({ ...DEFAULT_THRESHOLDS, INTENT_SWITCH: 0.7 })).toBe('INTENT_ROUTE <= INTENT_SWITCH');
     expect(violated({ ...DEFAULT_THRESHOLDS, SLOT_CHOICE_FILL: 0.4 })).toBe('SLOT_CHOICE_CONFIRM <= SLOT_CHOICE_FILL');
     expect(CONSTRAINTS).toHaveLength(4);
   });
 
-  it('parses --only and rejects unknown or fixed names', () => {
+  it('parses --only, dedupes, and rejects unknown or fixed names', () => {
     expect(parseOnly(undefined)).toEqual(SWEEPABLE);
     expect(parseOnly('INTENT_ROUTE, SLOT_CHOICE_FILL')).toEqual(['INTENT_ROUTE', 'SLOT_CHOICE_FILL']);
+    expect(parseOnly('INTENT_ROUTE,INTENT_ROUTE,SLOT_CHOICE_FILL')).toEqual(['INTENT_ROUTE', 'SLOT_CHOICE_FILL']);
     expect(() => parseOnly('MAX_ATTEMPTS')).toThrow(/not sweepable/);
     expect(() => parseOnly('NOPE')).toThrow(/not sweepable/);
+  });
+
+  it('covers every threshold exactly once, sweepable or deliberately fixed', () => {
+    const FIXED = ['MAX_ATTEMPTS', 'STUB_SHARPNESS', 'JEV_TIMEOUT_MS', 'JEV_PRICE_PER_MTOK'];
+    expect(new Set([...SWEEPABLE, ...FIXED])).toEqual(new Set(Object.keys(DEFAULT_THRESHOLDS)));
+  });
+
+  it('starts every sweepable threshold on its own grid', () => {
+    for (const name of SWEEPABLE) {
+      const grid = gridFor(name);
+      const current = DEFAULT_THRESHOLDS[name];
+      expect(grid.some((v) => Math.abs(v - current) < 1e-9), `${name} ${current} is not on its grid`).toBe(true);
+    }
   });
 });

@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { loadCorpus } from '../jev/corpus';
 import { parseOverride, withOverrides } from '../core/thresholds';
 import { buildClient, cassettePath, CLIENT_KINDS, DEFAULT_CORPUS_FILE, isClientKind } from '../run/client';
-import { CASSETTE_MISS } from '../jev/cassette';
+import { isCassetteMiss } from '../jev/cassette';
 import { diff } from './regressDiff';
 import { formatRegressSummary } from './regressSummary';
 import type { TraceRecord } from '../trace/types';
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
   let firstClientErrorMessage = '';
   function checkClientError(record: TraceRecord): void {
     if (!live) return;
-    const isClientError = record.source === 'error' && record.error !== null && !record.error.message.startsWith(CASSETTE_MISS);
+    const isClientError = record.source === 'error' && record.error !== null && !isCassetteMiss(record);
     if (!isClientError) {
       consecutiveClientErrors = 0;
       return;

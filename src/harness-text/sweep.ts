@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadCorpus } from '../jev/corpus';
-import { CassetteClient, loadCassette } from '../jev/cassette';
+import { CassetteClient, isCassetteMiss, loadCassette } from '../jev/cassette';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
 import { JEV_MODEL } from '../jev/sdkClient';
@@ -60,6 +60,14 @@ export async function runSweep(cfg: SweepConfig): Promise<SweepRun> {
     const breaksStub = diff('corpus', expected.corpus, stub.corpus).lines.length > 0 || diff('scenario', expected.scenarios, stub.scenarios).lines.length > 0;
     if (breaksStub) return { score: emptyScore(), breaksStub };
     const real = await runAll(corpus, scenarios, opts(recorded, candidate));
+    // runAll records the corpus in file order first, so these are exactly the corpus turns. A
+    // corpus request key never depends on the thresholds (it is the state and the questions), so
+    // a corpus miss can only mean the recording is stale — never something this candidate did.
+    // Left unchecked it would silently cost the candidate a point and skew the whole sweep.
+    for (const [i, entry] of corpus.entries()) {
+      const record = real.records[i];
+      if (record && isCassetteMiss(record)) throw new Error(`stale cassette: corpus entry ${entry.id} has no recorded answer; run pnpm regress --client record`);
+    }
     const score = scoreOutcomes({ expectedCorpus: expected.corpus, expectedScenarios: expected.scenarios, actualCorpus: real.corpus, actualScenarios: real.scenarios, scenarioRecords: real.scenarioRecords });
     return { score, breaksStub: false };
   };
@@ -80,7 +88,7 @@ export async function runSweep(cfg: SweepConfig): Promise<SweepRun> {
     writeFileSync(reportPath, renderReport(result, { cassette: cfg.cassette, requests: lines.size, date, misses }));
   }
   if (cfg.json) {
-    writeFileSync(cfg.json, JSON.stringify({ before: result.before, after: result.after, moves: result.moves, table: result.table, final: result.final, misses }, (_k, v) => (v instanceof Set ? [...v] : v), 2) + '\n');
+    writeFileSync(cfg.json, JSON.stringify({ before: result.before, after: result.after, moves: result.moves, table: result.table, final: result.final, misses, converged: result.converged, evaluations: result.evaluations }, (_k, v) => (v instanceof Set ? [...v] : v), 2) + '\n');
   }
   return { result, misses, reportPath };
 }
@@ -108,7 +116,7 @@ async function main(): Promise<void> {
     onProgress: (line) => console.error(`  ${line}`),
   });
   const r = run.result;
-  console.log(`before ${r.before.primary}/${r.before.secondary}   after ${r.after.primary}/${r.after.secondary}   passes ${r.passes}`);
+  console.log(`before ${r.before.primary}/${r.before.secondary}   after ${r.after.primary}/${r.after.secondary}   passes ${r.passes} (${r.converged ? 'converged' : 'not converged'})   evaluations ${r.evaluations}`);
   console.log('');
   console.log(renderTable(r));
   console.log('');

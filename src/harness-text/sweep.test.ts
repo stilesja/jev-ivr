@@ -48,15 +48,23 @@ describe('runSweep', () => {
     expect(r.result.after).toMatchObject({ primary: 3, secondary: 3 });
     expect(r.result.moves).toHaveLength(1);
     expect(r.result.moves[0]).toMatchObject({ name: 'INTENT_ROUTE', from: 0.85, to: 0.7, reason: 'secondary', plateau: { from: 0.6, to: 0.8 } });
-    expect(r.result.table.INTENT_ROUTE?.points.find((p) => p.value === 0.95)?.status).toBe('breaks_stub');
+    // 0.95 would put INTENT_ROUTE above INTENT_SWITCH and 0.50 below INTENT_IMPLICIT: both skipped.
+    expect(r.result.table.INTENT_ROUTE?.points.find((p) => p.value === 0.95)?.status).toBe('skipped');
     expect(r.result.table.INTENT_ROUTE?.points.find((p) => p.value === 0.5)?.status).toBe('skipped');
+    expect(r.result.converged).toBe(true);
+    expect(r.result.evaluations).toBe(new Set(r.result.table.INTENT_ROUTE?.points.filter((p) => p.status !== 'skipped')).size);
     expect(r.misses).toEqual([]);
   });
 
   it('applies the result to the thresholds file and writes the report', async () => {
     const r = await runSweep(config({ apply: true, json: join(dir, 'out.json') }));
     expect(readFileSync(join(dir, 'thresholds.ts'), 'utf8')).toContain('  INTENT_ROUTE: 0.7,');
-    expect(readFileSync(r.reportPath!, 'utf8')).toContain('INTENT_ROUTE 0.85 -> 0.70');
-    expect(JSON.parse(readFileSync(join(dir, 'out.json'), 'utf8')).moves).toHaveLength(1);
+    const report = readFileSync(r.reportPath!, 'utf8');
+    expect(report).toContain('pass 1: INTENT_ROUTE 0.85 -> 0.70');
+    expect(report).toContain(`passes ${r.result.passes} (converged)`);
+    expect(report).toContain(`evaluations ${r.result.evaluations}`);
+    const json = JSON.parse(readFileSync(join(dir, 'out.json'), 'utf8'));
+    expect(json.moves).toHaveLength(1);
+    expect(json).toMatchObject({ converged: true, evaluations: r.result.evaluations });
   });
 });
