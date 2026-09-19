@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAnswers, formatGates, formatDecision } from './print';
+import { formatAnswers, formatGates, formatDecision, formatSlots } from './print';
 import { choice, noul, score } from '../testing/answers';
 import type { QuestionMap } from '../jev/types';
 
@@ -39,5 +39,23 @@ describe('print', () => {
     );
     expect(text).toContain('prompt ask_memberId');
     expect(text).toContain("What's your member ID?");
+  });
+});
+
+describe('formatSlots', () => {
+  const empty = { value: null, display: null, confirmed: false, attempts: 0, window: null };
+  it('lists only filled slots with value, display and confirmation', () => {
+    const text = formatSlots({
+      memberId: { ...empty, value: '81793314', display: '8179 3314' },
+      provider: { ...empty, value: 'chen', display: 'Dr. Chen', confirmed: true },
+      date: empty,
+    });
+    expect(text).toMatch(/memberId\s+81793314\s+8179 3314/);
+    expect(text).toMatch(/provider\s+chen\s+Dr\. Chen\s+confirmed/);
+    expect(text).not.toContain('date');
+  });
+
+  it('returns an empty string when no slot is filled', () => {
+    expect(formatSlots({ memberId: empty, provider: empty, date: empty })).toBe('');
   });
 });

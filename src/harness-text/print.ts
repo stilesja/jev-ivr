@@ -4,6 +4,8 @@ import type { GateRow } from '../core/gates';
 import type { Decision } from '../core/decision';
 import type { OutboundFrame } from '../channel/frames';
 import type { Metrics } from './metrics';
+import type { SlotState } from '../core/session';
+import type { SlotId } from '../domain/forms';
 
 const f2 = (n: number): string => n.toFixed(2);
 
@@ -30,6 +32,19 @@ export function formatGates(rows: GateRow[]): string {
     const thresh = r.threshold === null ? '   -  ' : f2(r.threshold).padStart(6);
     const result = r.threshold === null ? 'info' : r.passed ? 'pass' : 'FAIL';
     lines.push(`${r.gate.padEnd(width)}  ${value}  ${thresh}  ${result.padEnd(6)}  ${r.outcome}${r.decided ? '  <==' : ''}`);
+  }
+  return lines.join('\n');
+}
+
+/** Filled slots only, one per line: id, stored value, spoken form, and whether the caller confirmed it. */
+export function formatSlots(slots: Record<SlotId, SlotState>): string {
+  const filled = Object.entries(slots).filter(([, s]) => s.value !== null);
+  if (!filled.length) return '';
+  const idWidth = Math.max(...filled.map(([id]) => id.length), 4);
+  const valueWidth = Math.max(...filled.map(([, s]) => s.value!.length), 5);
+  const lines = [`${'slot'.padEnd(idWidth)}  ${'value'.padEnd(valueWidth)}  display`];
+  for (const [id, s] of filled) {
+    lines.push(`${id.padEnd(idWidth)}  ${s.value!.padEnd(valueWidth)}  ${s.display ?? s.value}${s.confirmed ? '  confirmed' : ''}`);
   }
   return lines.join('\n');
 }

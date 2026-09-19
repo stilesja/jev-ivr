@@ -10,7 +10,7 @@ import type { TraceRecord } from '../trace/types';
 import { loadScenarios, runCorpusEntry, runScenario, runTurn, type RunOptions, type TurnRun } from './runner';
 import { replayFrameLog } from './replay';
 import { summarize } from './metrics';
-import { formatAnswers, formatDecision, formatGates, formatMetrics } from './print';
+import { formatAnswers, formatDecision, formatGates, formatMetrics, formatSlots } from './print';
 export { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { buildThresholds, buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { defaultTimeZone, localDateIso } from '../run/clock';
@@ -55,6 +55,11 @@ function printRun(run: TurnRun, quiet: boolean): void {
   }
   if (result.rows.length) {
     console.log(formatGates(result.rows));
+    console.log('');
+  }
+  const slots = formatSlots(result.session.slots);
+  if (slots) {
+    console.log(slots);
     console.log('');
   }
   if (run.error) console.log(`client error: ${run.error.name}: ${run.error.message}`);

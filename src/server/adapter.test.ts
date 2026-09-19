@@ -131,7 +131,7 @@ describe('adapter', () => {
     expect(texts(sock).slice(-2)).toEqual(['Member ID 4 4 7 1, 8 2 9 3.', 'Which day next week works for you?']);
     expect(d.store.get('CA1')?.session.lastPromptText).toBe('Member ID 4471 8293. Which day next week works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
-    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
+    expect(texts(sock).at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22. Goodbye.');
     expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed"}' });
     expect(sock.closed?.code).toBe(1000);
     expect(d.store.get('CA1')?.ended).toBe(true);
@@ -154,7 +154,7 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
     expect(sock.sent.length).toBe(before);
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '3' }));
-    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim is cancelled. Goodbye.');
+    expect(texts(sock).at(-1)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Kim is cancelled. Goodbye.');
   });
 
   it('records an interrupt as barge-in on the next prompt turn', async () => {
