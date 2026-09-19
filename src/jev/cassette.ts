@@ -126,7 +126,8 @@ export class CassetteClient implements JevClient {
     }
     if (this.opts.mode === 'replay') throw new JevClientError(`${CASSETTE_MISS} ${key} ${textOf(req.state)} (${this.opts.path})`);
     const res = await this.opts.inner!.ask(req);
-    if (this.opts.expectModel && res.model !== this.opts.expectModel) throw new Error(`cassette ${this.opts.path}: live answer came from ${res.model}, expected ${this.opts.expectModel}; not recorded`);
+    if (this.opts.expectModel && res.model !== this.opts.expectModel)
+      throw new Error(`cassette ${this.opts.path}: the pinned model is ${this.opts.expectModel} but the API answered ${res.model}; bump JEV_MODEL in src/jev/sdkClient.ts and record a fresh cassette (nothing was recorded)`);
     const line: CassetteLine = {
       v: 1,
       key,

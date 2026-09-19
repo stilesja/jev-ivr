@@ -46,10 +46,8 @@ describe('formatRegressSummary', () => {
   it('tags an all-recorded run as replayed and a mix as mixed', () => {
     const replayed = summary({ records: [row('recorded', 1, 10), row('recorded', 1, 10)] });
     expect(replayed).toMatch(/cost usd.*\[replayed\]$/m);
-    expect(replayed).toMatch(/ask latency ms.*\[replayed\]$/m);
     const mixed = summary({ records: [row('recorded', 1, 10), row('jev', 1, 10)] });
     expect(mixed).toMatch(/cost usd.*\[mixed\]$/m);
-    expect(mixed).toMatch(/ask latency ms.*\[mixed\]$/m);
   });
 
   it('counts cassette misses and omits the line at zero', () => {
@@ -59,10 +57,10 @@ describe('formatRegressSummary', () => {
     expect(summary({ records: [other] })).not.toContain('cassette misses');
   });
 
-  it('reports zero latency and no cost line when nothing was answered', () => {
+  it('omits the cost and latency lines when nothing was answered', () => {
     const text = summary({ records: [row('none', 0, 0)] });
     expect(text).not.toContain('cost usd');
     expect(text).not.toMatch(/\[(replayed|mixed)\]/);
-    expect(text).toContain('ask latency ms p50 0.0  p95 0.0');
+    expect(text).not.toContain('ask latency ms');
   });
 });

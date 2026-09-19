@@ -204,7 +204,7 @@ describe('CassetteClient', () => {
 
   it('rejects a record miss whose live model differs from expectModel, without recording', async () => {
     const inner = fakeInner(answers);
-    await expect(new CassetteClient({ path, mode: 'record', inner, expectModel: 'jev-9' }).ask({ state, questions })).rejects.toThrow(/not recorded/);
+    await expect(new CassetteClient({ path, mode: 'record', inner, expectModel: 'jev-9' }).ask({ state, questions })).rejects.toThrow(/nothing was recorded/);
     expect(loadCassette(path).size).toBe(0);
   });
 

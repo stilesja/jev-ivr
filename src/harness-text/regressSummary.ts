@@ -40,8 +40,10 @@ export function formatRegressSummary(i: RegressSummaryInput): string {
     const tokens = priced.reduce((s, r) => s + r.usage.inputTokens, 0);
     lines.push(`cost usd   ${cost.toFixed(4)}  (${priced.length} requests, ${String(tokens).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} input tokens)${tag}`);
   }
-  const latencies = answered.map((r) => r.timing.askMs);
-  lines.push(`ask latency ms p50 ${percentile(latencies, 50).toFixed(1)}  p95 ${percentile(latencies, 95).toFixed(1)}${tag}`);
+  if (answered.length > 0) {
+    const latencies = answered.map((r) => r.timing.askMs);
+    lines.push(`ask latency ms p50 ${percentile(latencies, 50).toFixed(1)}  p95 ${percentile(latencies, 95).toFixed(1)}`);
+  }
   const misses = i.records.filter((r) => r.error?.message.startsWith(CASSETTE_MISS)).length;
   if (misses > 0) lines.push(`cassette misses ${misses}`);
   return lines.join('\n');
