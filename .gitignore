@@ -8,3 +8,4 @@ traces/
 *.swo
 .DS_Store
 assets/audio/candidates/
+*.tmp
