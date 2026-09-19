@@ -239,7 +239,9 @@ describe('turn', () => {
     const ctx = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
     const r = resolve(newSession('s', 0), setupFrame('s'), null, { ...tc, render: ctx });
     expect(r.frames).toEqual([{ type: 'play', source: 'https://h/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true }]);
-    expect(resolve(newSession('s', 0), setupFrame('s'), null, tc).frames[0]).toMatchObject({ type: 'text' });
+    expect(resolve(newSession('s', 0), setupFrame('s'), null, tc).frames[0]).toEqual({
+      type: 'text', token: 'Thanks for calling the clinic. How can I help you today?', last: true, lang: 'en-US', interruptible: true, preemptible: false,
+    });
     expect(r.session.lastPromptText).toBe('Thanks for calling the clinic. How can I help you today?');
   });
 

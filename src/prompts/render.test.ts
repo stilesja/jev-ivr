@@ -277,5 +277,11 @@ describe('decisionToFrames with clips', () => {
         expect(actual, id).toBe(expected);
       }
     });
+
+    it('ignores a clip recorded for a punctuation-only segment', () => {
+      const stray = { clips: new Map([...full, ['ack_provider.1', 'ack_provider.1.wav']]), audioBase: base };
+      const frames = promptFrames('ack_provider', vars, false, stray);
+      expect(frames.some((f) => f.type === 'play' && f.source.endsWith('ack_provider.1.wav'))).toBe(false);
+    });
   });
 });

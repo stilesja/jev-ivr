@@ -13,7 +13,9 @@
     "cli": "tsx src/harness-text/cli.ts",
     "regress": "tsx src/harness-text/regress.ts",
     "sweep": "tsx src/harness-text/sweep.ts",
-    "server": "tsx src/server/index.ts"
+    "server": "tsx src/server/index.ts",
+    "prompts:sheet": "tsx src/prompts/sheet.ts sheet",
+    "prompts:check": "tsx src/prompts/sheet.ts check"
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0",

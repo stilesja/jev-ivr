@@ -14,6 +14,7 @@ export interface RunOptions {
   todayIso: string;
   trace?: TraceWriter | null;
   now?: () => number;
+  /** Server-only. The text harness scores `text` frames and must leave this unset. */
   render?: RenderContext | null;
 }
 
