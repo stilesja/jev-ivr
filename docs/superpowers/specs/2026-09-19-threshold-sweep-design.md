@@ -1,7 +1,7 @@
 # Design: Automated threshold sweep
 
 Date: 2026-09-19
-Status: approved for planning
+Status: approved for planning; amended as shipped (see the plan's deviation record for the unbounded-plateau rule, the center-move cap, `queued` as a decision field, misses as a third sort key, and `INTENT_ROUTE <= INTENT_SWITCH`)
 Parent: `JEV-IVR-HANDOFF.md` §6 and §12 (thresholds are placeholders until
 tuned against real answers); builds on `2026-09-18-real-model-regression-design.md`
 (the cassette and label baseline) and `2026-09-19-question-redesign-design.md`
