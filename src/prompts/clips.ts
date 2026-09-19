@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import manifest from './manifest.json';
-import { segmentsOf, VOCAB_VARS } from './segments';
+import { segmentsOf, stripLeadingPause, VOCAB_VARS } from './segments';
 import { PROVIDERS } from '../domain/slots/provider';
 import { FORM_INTENTS, INTENT_LABELS } from '../domain/intents';
 import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
@@ -60,11 +60,6 @@ export function vocabularyClipId(name: string, display: string): string | null {
 
 export interface RecordableClip { id: string; text: string; note: 'open' | 'closed' }
 
-/** Text a person records for a fixed segment: the template text without its leading punctuation. */
-function recordingText(text: string): string {
-  return text.replace(/^[,.?!;:]\s*/, '');
-}
-
 /**
  * Every clip the manifest and vocabularies can use, each once, with the text to record.
  *
@@ -78,7 +73,7 @@ export function recordableClips(): RecordableClip[] {
   for (const segments of Object.values(segmentsOf(manifest))) {
     segments.forEach((s, i) => {
       if (s.kind !== 'fixed') return;
-      const text = recordingText(s.text);
+      const text = stripLeadingPause(s.text);
       if (!text) return;
       const next = segments[i + 1];
       rows.push({ id: s.id, text, note: next?.kind === 'var' ? 'open' : 'closed' });

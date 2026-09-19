@@ -52,6 +52,11 @@ export function joinSpoken(pieces: string[]): string {
   return out;
 }
 
+/** Strip a leading pause (comma, period, etc.) and the whitespace after it, e.g. before text that follows a played clip. */
+export function stripLeadingPause(text: string): string {
+  return text.replace(/^[,.?!;:]\s*/, '');
+}
+
 /**
  * Spec §3: a TTS span inside a recorded sentence is the audible seam, so a spoken variable
  * must end its clause. Vocabulary variables sit between clips and are free.
