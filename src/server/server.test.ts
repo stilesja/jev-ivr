@@ -85,6 +85,20 @@ describe('server end to end', () => {
     expect(clip.headers.get('content-type')).toBe('audio/wav');
   });
 
+  it('still boots and greets when recorded.json is malformed, logging that it is ignored', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    writeFileSync(join(audioDir, 'recorded.json'), 'not json');
+    const { config } = makeConfig({ AUDIO_DIR: audioDir });
+    const logs: string[] = [];
+    running = await startServer(config, { log: (line) => logs.push(line) });
+    expect(logs.some((l) => l.startsWith('audio: ignoring unreadable recorded.json:'))).toBe(true);
+    const ws = `ws://127.0.0.1:${running.port}/conversation`;
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`${ws}?token=${token}`);
+    relay.setup('CA1');
+    expect(await relay.waitForTexts(1)).toEqual(['Thanks for calling the clinic. How can I help you today?']);
+  });
+
   it('greets on setup and refuses a well-shaped token that was never minted', async () => {
     const { relay, ws } = await connected();
     expect(relay.texts()).toEqual(['Thanks for calling the clinic. How can I help you today?']);

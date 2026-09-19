@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync as fsWriteFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generateClips, resolveVoice, ttsRequest, type GenerateOptions } from './generate';
@@ -71,6 +71,76 @@ describe('generateClips', () => {
     expect(dry.generated).toEqual([]);
     expect(readdirSync(dir)).toEqual([]);
   });
+
+  it('rejects an unknown --only id before making any request', async () => {
+    const mustNotBeCalled = async () => { throw new Error('fetch should not have been called'); };
+    await expect(generateClips([row], opts({ only: ['nope', 'also-nope'] }), mustNotBeCalled as never)).rejects.toThrow(
+      'unknown clip id(s): nope, also-nope',
+    );
+  });
+
+  it('rejects a candidates count outside 1..20', async () => {
+    await expect(generateClips([row], opts({ candidates: 0 }), fetchStub as never)).rejects.toThrow(/candidates must be an integer from 1 to 20/);
+    await expect(generateClips([row], opts({ candidates: 21 }), fetchStub as never)).rejects.toThrow(/candidates must be an integer from 1 to 20/);
+    await expect(generateClips([row], opts({ candidates: 1.5 }), fetchStub as never)).rejects.toThrow(/candidates must be an integer from 1 to 20/);
+  });
+
+  it('rejects a response that is not a plausible wav, and writes nothing for it', async () => {
+    const badBody = async () => ({ ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('{"error":"x"}').buffer });
+    const r = await generateClips([row], opts(), badBody as never);
+    expect(r.failed).toEqual([{ id: 'ack_provider.0', error: 'not a wav response' }]);
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it('keeps a partial run: the clip and sidecar entry for the row that succeeded exist, the failed one does not', async () => {
+    let n = 0;
+    const mixed = async () => {
+      n += 1;
+      if (n === 1) return { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('RIFFok').buffer };
+      return { ok: false, status: 500, text: async () => 'boom', arrayBuffer: async () => new ArrayBuffer(0) };
+    };
+    const r = await generateClips([row, { id: 'greeting.0', text: 'Hi.', note: 'closed' }], opts(), mixed as never);
+    expect(r.generated).toEqual(['ack_provider.0']);
+    expect(r.failed).toEqual([{ id: 'greeting.0', error: 'HTTP 500: boom' }]);
+    expect(readdirSync(dir).sort()).toEqual(['ack_provider.0.wav', 'recorded.json']);
+    expect(JSON.parse(readFileSync(join(dir, 'recorded.json'), 'utf8'))).toEqual({ 'ack_provider.0': 'With' });
+  });
+
+  it('records a rejected fetch (a network error) in failed, with its message', async () => {
+    const networkError = async () => { throw new Error('getaddrinfo ENOTFOUND api.fish.audio'); };
+    const r = await generateClips([row], opts(), networkError as never);
+    expect(r.failed).toEqual([{ id: 'ack_provider.0', error: 'getaddrinfo ENOTFOUND api.fish.audio' }]);
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it('never logs the API key during a dry run', async () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await generateClips([row], opts({ apiKey: 'SECRET', dryRun: true }), fetchStub as never);
+    } finally {
+      spy.mockRestore();
+    }
+    for (const call of spy.mock.calls) {
+      for (const arg of call) expect(String(arg)).not.toMatch(/SECRET/);
+    }
+  });
+
+  it('starts a fresh sidecar (and reports why) when the existing recorded.json is malformed', async () => {
+    fsWriteFileSync(join(dir, 'recorded.json'), 'not json');
+    // vi.spyOn(console, 'error') does not observe calls made from inside generateClips in this
+    // suite (vitest's own console interception appears to intervene), so restore-after-use a
+    // plain override instead of relying on the spy here.
+    const origError = console.error;
+    const logs: unknown[][] = [];
+    console.error = (...a: unknown[]) => { logs.push(a); };
+    try {
+      await generateClips([row], opts(), fetchStub as never);
+    } finally {
+      console.error = origError;
+    }
+    expect(logs.some((c) => String(c[0]).startsWith('recorded.json unreadable, starting a fresh sidecar:'))).toBe(true);
+    expect(JSON.parse(readFileSync(join(dir, 'recorded.json'), 'utf8'))).toEqual({ 'ack_provider.0': 'With' });
+  });
 });
 
 describe('tags.json', () => {
@@ -81,8 +151,8 @@ describe('tags.json', () => {
     expect([...ids].filter((id) => !(id in tagged))).toEqual([]);
     for (const [id, tag] of Object.entries(tagged)) expect(tag, id).toMatch(/^\[[a-z ,]+\]$/);
     for (const r of recordableClips()) {
-      if (r.note === 'open') expect(tagged[r.id], r.id).toMatch(/no falling intonation\]$/);
-      else expect(tagged[r.id], r.id).not.toMatch(/no falling intonation/);
+      if (r.note === 'open') expect(tagged[r.id], r.id).toMatch(/continuing\]$/);
+      else expect(tagged[r.id], r.id).not.toMatch(/continuing/);
     }
   });
 });

@@ -851,7 +851,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 9 (Jason, not an agent): clips, coverage, and the re-record
 
-1. With `FISH_AUDIO_API_KEY` and `FISH_VOICE=Hanna` in `.env`: `set -a; source .env; set +a; pnpm prompts:generate` writes every missing clip to `assets/audio/` (about eighty short requests). To audition a clip, `pnpm prompts:generate --only greeting.0 --candidates 3 --force` writes three variants under `assets/audio/candidates/`; copy the one you like to `assets/audio/greeting.0.wav`. Per-clip tag overrides go in `src/prompts/tags.json`. `pnpm prompts:check` shows what is left.
+1. With `FISH_AUDIO_API_KEY` and `FISH_VOICE=Hanna` in `.env`: `set -a; source .env; set +a; pnpm prompts:generate` writes every missing clip to `assets/audio/` (about eighty short requests). To audition a clip, `pnpm prompts:generate --only greeting.0 --candidates 3 --force` writes three variants under `assets/audio/candidates/`; copy the one you like to `assets/audio/greeting.0.wav`. Per-clip tag overrides go in `src/prompts/tags.json`. `pnpm prompts:check` shows what is left. Audition one open clip first (`pnpm prompts:generate --only ack_provider.0 --candidates 2 --force`) and listen for the tag being spoken before the full run.
 2. `pnpm regress --client recorded` will list cassette misses on the scenario turns that follow the rewritten window prompt. Record them once:
 
 ```bash
