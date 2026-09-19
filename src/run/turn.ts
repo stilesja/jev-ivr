@@ -4,6 +4,7 @@ import { plan, resolve, type TurnContext, type TurnError, type TurnResult } from
 import type { Session } from '../core/session';
 import type { Thresholds } from '../core/thresholds';
 import { JevClientError, type JevClient, type JevResponse, type JsonValue, type QuestionMap } from '../jev/types';
+import type { RenderContext } from '../prompts/render';
 import { buildTraceRecord, type TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 
@@ -13,6 +14,7 @@ export interface RunOptions {
   todayIso: string;
   trace?: TraceWriter | null;
   now?: () => number;
+  render?: RenderContext | null;
 }
 
 export function nowOf(opts: RunOptions): () => number {
@@ -29,7 +31,7 @@ export interface TurnRun {
 
 export async function runTurn(session: Session, event: InboundFrame, opts: RunOptions): Promise<TurnRun> {
   const now = nowOf(opts);
-  const tc: TurnContext = { nowMs: now(), todayIso: opts.todayIso, thresholds: opts.thresholds };
+  const tc: TurnContext = { nowMs: now(), todayIso: opts.todayIso, thresholds: opts.thresholds, render: opts.render ?? null };
   const t0 = performance.now();
   const p = plan(session, event, tc);
   const t1 = performance.now();
