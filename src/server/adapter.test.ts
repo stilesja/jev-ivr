@@ -79,6 +79,13 @@ function loggingDeps(sendTimeoutMs?: number): AdapterDeps & { dir: string; lines
   return { ...d, log: (line) => lines.push(line), lines, ...(sendTimeoutMs === undefined ? {} : { sendTimeoutMs }) };
 }
 
+/** Same deps, but with a short grace period so the end-close backstop test doesn't wait 30s. */
+function graceDeps(endCloseGraceMs: number): AdapterDeps & { dir: string; lines: string[] } {
+  const d = deps();
+  const lines: string[] = [];
+  return { ...d, log: (line) => lines.push(line), lines, endCloseGraceMs };
+}
+
 const setupMsg = (callSid: string, sessionId = 'VX1') => JSON.stringify({ type: 'setup', sessionId, callSid, from: '+1', to: '+2', customParameters: {} });
 const prompt = (t: string) => JSON.stringify({ type: 'prompt', voicePrompt: t, lang: 'en-US', last: true });
 const texts = (s: Fake) => s.sent.filter((m) => (m as { type: string }).type === 'text').map((m) => (m as { token: string }).token);
@@ -136,13 +143,46 @@ describe('adapter', () => {
     expect(texts(sock).at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
     expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed","completed":["reschedule"]}' });
-    expect(sock.closed?.code).toBe(1000);
+    // Twilio still has the queued clips to play; the server leaves the socket open for it and
+    // only closes it if Twilio never does (see the grace-period test below).
+    expect(sock.closed).toBeNull();
     expect(d.store.get('CA1')?.ended).toBe(true);
     const records = readFileSync(join(d.dir, 'CA1.jsonl'), 'utf8').trim().split('\n');
     expect(records).toHaveLength(5);
     const frames = readFileSync(join(d.dir, 'CA1.frames.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     expect(frames.filter((f) => f.dir === 'in')).toHaveLength(5);
     expect(frames.filter((f) => f.dir === 'out').length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('closes the socket itself if Twilio never closes it within the end-close grace period', async () => {
+    const d = graceDeps(20);
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
+    await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
+    expect(sock.closed).toBeNull();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(sock.closed).toEqual({ code: 1000, reason: 'end grace elapsed' });
+    expect(d.lines.some((l) => l.includes('did not close after end'))).toBe(true);
+  });
+
+  it('cancels the end-close backstop once Twilio actually closes the socket', async () => {
+    const d = graceDeps(20);
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
+    await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
+    // Twilio closing the connection itself, exactly as the ws 'close' handler reports it.
+    await handleSocketClose(d, ctx);
+    await new Promise((r) => setTimeout(r, 100));
+    // The backstop must not have fired a redundant close after the real one.
+    expect(sock.closed).toBeNull();
   });
 
   it('feeds dtmf digits one message at a time and speaks once the slot fills', async () => {

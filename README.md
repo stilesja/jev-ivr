@@ -283,7 +283,9 @@ as quiet as possible.
 7. Keypad ID: on a second call, press the eight digits instead. Expect the
    window question on its own, with no readback — keypad entry is unambiguous,
    so there is nothing to implicitly confirm.
-8. Say "Tuesday". Expect the confirmation and the call ends.
+8. Say "Tuesday". Expect the confirmation and the call ends: the server leaves
+   the socket open after `end` so Twilio can finish the queued clips, and
+   Twilio closes it and hits `/cr-action` with `SessionStatus=ended`.
 9. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
 10. Call again, say "what are your hours" three times. Expect the open
     reprompt, the keypad menu, then the transfer.

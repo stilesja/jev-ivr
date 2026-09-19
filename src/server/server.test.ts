@@ -218,11 +218,40 @@ describe('server end to end', () => {
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
     expect(relay.texts().at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
     expect(relay.texts().at(-1)).toBe('Goodbye.');
-    expect((await relay.closed).code).toBe(1000);
+    // The server leaves the socket open after `end` so Twilio can finish playing the queued
+    // clips; it is Twilio, not the server, that closes the connection once it is done.
+    const stillOpen = Symbol('open');
+    const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(stillOpen), 200))]);
+    expect(settled).toBe(stillOpen);
+    relay.close();
+    await relay.closed;
+    expect(running!.store.get(callSid)?.ended).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
     expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(5);
     relay.assertKnownTypes();
+  });
+
+  it('closes the socket itself if Twilio never does within the grace period after end', async () => {
+    const s = await start(undefined, { endCloseGraceMs: 50 });
+    const token = running!.tokens.mint('CA11');
+    const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
+    relay.setup('CA11');
+    await relay.waitForTexts(1);
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    await relay.waitForTexts(2);
+    relay.prompt('four four seven one eight two nine three');
+    await relay.waitForTexts(3);
+    relay.prompt('yes');
+    await relay.waitForTexts(4);
+    relay.prompt('Tuesday');
+    await relay.waitFor((m) => m.type === 'end');
+    const timedOut = Symbol('timed out');
+    const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(timedOut), 500))]);
+    expect(settled).not.toBe(timedOut);
+    const closed = settled as { code: number; reason: string };
+    expect(closed.code).toBe(1000);
+    expect(closed.reason).toBe('end grace elapsed');
   });
 
   it('handles dtmf and agent handoff', async () => {

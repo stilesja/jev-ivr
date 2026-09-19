@@ -19,6 +19,16 @@ export const SEND_TIMEOUT_MS = 5_000;
 /** Unparsable messages (cumulative, never reset) before the connection is treated as something other than ConversationRelay. */
 export const MALFORMED_LIMIT = 10;
 
+/**
+ * After sending `end`, Twilio still has to play the queued frames before it closes the socket
+ * itself. If it never does (a bug on either side, or a call that never really reached Twilio),
+ * this is the backstop before we close it ourselves so the connection doesn't leak forever.
+ */
+export const END_CLOSE_GRACE_MS = 30_000;
+
+/** Grace timers armed after `end`, keyed by call SID, so the socket's close event can cancel the backstop. */
+const endGraceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 /** Digit runs long enough that TTS would read them as a number ("4471" as "four thousand ..."). */
 // Runs of four or more digits are spelled out for TTS. A four-digit year would be spelled out too; no prompt speaks one today.
 const DIGIT_RUN = /\d{4,}(?: \d{4,})*/g;
@@ -54,6 +64,8 @@ export interface AdapterDeps {
   log: (line: string) => void;
   /** Overridable so a test can prove the timeout fires without waiting five seconds. */
   sendTimeoutMs?: number;
+  /** Overridable so a test can prove the end-close backstop fires without waiting 30 seconds. */
+  endCloseGraceMs?: number;
 }
 
 export function newConnectionContext(token: string | null, socket: SocketLike | null = null): ConnectionContext {
@@ -133,7 +145,21 @@ async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): P
     if (ending) {
       deps.store.end(entry.callSid);
       deps.tokens.revoke(entry.callSid);
-      entry.socket?.close(1000, 'call ended');
+      // Twilio closes the socket after it has played the queued frames and processed `end`;
+      // closing here drops the completion (live call, error 64105).
+      const socket = entry.socket;
+      if (socket) {
+        const graceMs = deps.endCloseGraceMs ?? END_CLOSE_GRACE_MS;
+        const timer = setTimeout(() => {
+          endGraceTimers.delete(entry.callSid);
+          if (entry.socket === socket) {
+            deps.log(`${entry.callSid}: Twilio did not close after end within ${graceMs} ms, closing`);
+            socket.close(1000, 'end grace elapsed');
+          }
+        }, graceMs);
+        timer.unref?.();
+        endGraceTimers.set(entry.callSid, timer);
+      }
     }
   }
 }
@@ -235,6 +261,11 @@ export async function handleSocketClose(deps: AdapterDeps, ctx: ConnectionContex
     // A close from a socket a reconnect already replaced; the live one must stay attached.
     entry.frames.write('log', { staleSocketClosed: true });
     return;
+  }
+  const timer = endGraceTimers.get(ctx.callSid);
+  if (timer) {
+    clearTimeout(timer);
+    endGraceTimers.delete(ctx.callSid);
   }
   entry.frames.write('log', { socketClosed: true, ended: entry.ended });
   deps.store.detach(ctx.callSid);

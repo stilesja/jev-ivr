@@ -32,6 +32,8 @@ export interface ServerOverrides {
   log?: (line: string) => void;
   /** Tests use a short deadline so a connection that never sends setup does not hold the suite open. */
   setupTimeoutMs?: number;
+  /** Tests use a short grace period to prove the end-close backstop fires without waiting 30 seconds. */
+  endCloseGraceMs?: number;
 }
 
 const TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -95,7 +97,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const deps = { config, store, tokens, hints: buildHints(), log };
 
   const server = createServer(createRequestHandler(deps));
-  const wss = attachWebSocketServer(server, { store, tokens, log }, overrides.setupTimeoutMs);
+  const wss = attachWebSocketServer(server, { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs }, overrides.setupTimeoutMs);
   const evictor = setInterval(() => {
     for (const sid of store.evictIdle()) log(`${sid}: evicted idle session`);
     const swept = tokens.evictExpired();
