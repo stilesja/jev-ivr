@@ -229,8 +229,9 @@ provider name) or a vocabulary value (`provider.chen`, `intent.cancel`,
 clause boundary so the voice change is not inside a sentence. The sheet's
 `open` note means the segment precedes a variable: the generator records it
 without a falling intonation by sending it with a trailing comma in the
-request text (`--plain-open` turns that off). Bare punctuation after a
-variable is never recorded.
+request text (`--plain-open` turns that off for the whole run; combine it
+with `--only <id> --force` to drop the comma for one clip at a time). Bare
+punctuation after a variable is never recorded.
 
 Fixed clip ids are positional, so editing a template can make an existing
 clip say the wrong thing. The generator writes `assets/audio/recorded.json`

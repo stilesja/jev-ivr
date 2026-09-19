@@ -19,10 +19,17 @@ export function tagBodies(tag: string): string[] {
   return [...tag.matchAll(/\[([^[\]]+)\]/g)].map((m) => m[1]!);
 }
 
-/** Every tag in `tags` (plus the `--tag` fallback) must use only bodies from FISH_TAGS. Returns error messages, empty when clean. */
+/**
+ * Every tag in `tags` (plus the `--tag` fallback) must be well-formed (`[body]` or `[a][b]`, or
+ * empty for "no tag") and use only bodies from FISH_TAGS. Returns error messages, empty when clean.
+ */
 export function validateTags(tagMap: Record<string, string>, fallbackTag?: string): string[] {
   const errors: string[] = [];
   const check = (id: string, tag: string): void => {
+    if (tag !== '' && tagBodies(tag).length === 0) {
+      errors.push(`malformed tag "${tag}" for ${id}; expected [body] or [a][b]`);
+      return;
+    }
     for (const body of tagBodies(tag)) {
       if (!FISH_TAGS.has(body)) errors.push(`unsupported Fish tag "${body}" for ${id}`);
     }
@@ -170,7 +177,7 @@ async function main(): Promise<void> {
   if (!voice) throw new Error('pass --voice <title or id> or set FISH_VOICE');
   const format = a.format === 'mp3' ? 'mp3' : 'wav';
   const tagErrors = validateTags(tags as Record<string, string>, a.tag);
-  if (tagErrors.length) throw new Error(tagErrors[0]);
+  if (tagErrors.length) throw new Error(tagErrors.join('; '));
   // Dry run never resolves the voice (a network call) even when a key happens to be set: it only
   // ever prints requests, so the id printed is whatever was passed on the command line.
   const voiceId = a['dry-run'] ? voice : await resolveVoice(voice, apiKey ?? '', fetch);

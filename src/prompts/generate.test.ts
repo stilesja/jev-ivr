@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { FISH_TAGS, generateClips, resolveVoice, tagBodies, ttsRequest, validateTags, type GenerateOptions } from './generate';
 import { recordableClips } from './clips';
 import tags from './tags.json';
+import fishTags from './fishTags.json';
 
 const row = { id: 'ack_provider.0', text: 'With', note: 'open' as const };
 
@@ -32,12 +33,15 @@ describe('tagBodies', () => {
     expect(tagBodies('[calm][soft tone]')).toEqual(['calm', 'soft tone']);
     expect(tagBodies('calm')).toEqual([]);
     expect(tagBodies('[a] [b]')).toEqual([]);
+    expect(tagBodies('[]')).toEqual([]);
+    expect(tagBodies('[[a]]')).toEqual([]);
   });
 });
 
 describe('FISH_TAGS', () => {
-  it('has exactly 71 documented tags', () => {
+  it('has exactly 71 documented tags, with no duplicate hiding a missing one', () => {
     expect(FISH_TAGS.size).toBe(71);
+    expect(fishTags.tags.length).toBe(71);
   });
 });
 
@@ -47,6 +51,11 @@ describe('validateTags', () => {
     expect(validateTags({ 'greeting.0': '[warm and welcoming]' })).toEqual(['unsupported Fish tag "warm and welcoming" for greeting.0']);
     expect(validateTags({}, '[warm]')).toEqual(['unsupported Fish tag "warm" for --tag']);
     expect(validateTags({}, '[calm]')).toEqual([]);
+  });
+
+  it('flags a malformed tag (not [body] or [a][b], and not empty) rather than silently skipping it', () => {
+    expect(validateTags({}, 'warm')).toEqual(['malformed tag "warm" for --tag; expected [body] or [a][b]']);
+    expect(validateTags({ 'greeting.0': '[a] [b]' })).toEqual(['malformed tag "[a] [b]" for greeting.0; expected [body] or [a][b]']);
   });
 });
 
