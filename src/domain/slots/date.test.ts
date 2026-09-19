@@ -31,7 +31,8 @@ describe('dateSlot', () => {
   });
 
   it('fills with implicit confirm when the weakest component is in the confirm band', () => {
-    const answers = dateAnswers({ dateMode: ['absolute', 0.9], dateMonth: ['october', 0.9], dateDay: ['5', 0.9] });
+    const answers = dateAnswers({ dateMode: ['absolute', 0.9], dateMonth: ['october', 0.9] });
+    // 0.47 sits inside the implicit-confirm band [SLOT_CHOICE_CONFIRM, SLOT_CHOICE_FILL); mass is split three ways so `none` is not the argmax
     answers.dateDay = choice({ '5': 0.47, none: 0.33, '6': 0.2 });
     const out = dateSlot.fill(answers, ctx);
     expect(out).toMatchObject({ kind: 'filled', value: '2026-10-05', confirm: 'implicit' });

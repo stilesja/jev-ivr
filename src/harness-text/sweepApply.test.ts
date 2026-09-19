@@ -6,7 +6,7 @@ import type { Score } from './sweepScore';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 
 function score(primary: number, secondary = 0): Score {
-  return { primary, secondary, corpusMatch: primary, scenarioPass: 0, cosmeticMatch: secondary, matched: new Set(), misses: [] };
+  return { primary, secondary, corpusMatch: primary, scenarioPass: 0, cosmeticMatch: secondary, matched: new Set(), cosmeticMatched: new Set(), misses: [] };
 }
 
 describe('rewriteThresholds', () => {
@@ -26,25 +26,30 @@ describe('rewriteThresholds', () => {
 });
 
 describe('render', () => {
+  // one point per strip character: skipped, two below best, one below best, best, best,
+  // best decisions with a worse tiebreak, stub-breaking.
   const points: GridPoint[] = [
     { value: 0.05, status: 'skipped', score: null },
     { value: 0.1, status: 'scored', score: score(3) },
     { value: 0.15, status: 'scored', score: score(4) },
-    { value: 0.2, status: 'scored', score: score(5) },
-    { value: 0.25, status: 'scored', score: score(5) },
-    { value: 0.3, status: 'breaks_stub', score: null },
+    { value: 0.2, status: 'scored', score: score(5, 1) },
+    { value: 0.25, status: 'scored', score: score(5, 1) },
+    { value: 0.3, status: 'scored', score: score(5, 0) },
+    { value: 0.35, status: 'breaks_stub', score: null },
   ];
   it('renders the strip with one character per grid point', () => {
-    expect(renderStrip(points)).toBe('x-+##!');
+    expect(renderStrip(points)).toBe('x-~##+!');
   });
   const result: SweepResult = {
     start: { ...DEFAULT_THRESHOLDS }, final: { ...DEFAULT_THRESHOLDS, INTENT_ROUTE: 0.2 },
     before: score(3), after: score(5),
-    moves: [{ name: 'INTENT_ROUTE', from: 0.1, to: 0.2, reason: 'primary', pass: 1, before: score(3), after: score(5), plateau: { from: 0.2, to: 0.25 }, flips: { gained: ['lc-02', 'scenario:s1'], lost: [] } }],
+    moves: [{ name: 'INTENT_ROUTE', from: 0.1, to: 0.2, reason: 'primary', pass: 1, before: score(3), after: score(5), plateau: { from: 0.2, to: 0.25 }, flips: { gained: ['lc-02', 'scenario:s1'], lost: [], cosmeticGained: ['dt-09'], cosmeticLost: ['ns-06'] } }],
     table: {
       INTENT_ROUTE: { current: 0.1, recommended: 0.2, points, cliff: false, insensitive: false, pinned: false, unbounded: false },
       MENU_NUMBER: { current: 0.7, recommended: 0.7, points: points.map((p) => ({ ...p, status: 'scored', score: score(3) })), cliff: false, insensitive: true, pinned: false, unbounded: false },
       CONFIRM_YES: { current: 0.7, recommended: 0.7, points, cliff: false, insensitive: false, pinned: false, unbounded: true },
+      // only reachable via --only, since the default set leaves the excluded thresholds out
+      GATE_WANTS_HUMAN: { current: 0.7, recommended: 0.7, points, cliff: false, insensitive: false, pinned: false, unbounded: false },
     },
     passes: 2,
     converged: true,
@@ -52,14 +57,20 @@ describe('render', () => {
   };
   it('renders the table, moves, and report', () => {
     const table = renderTable(result);
-    expect(table).toMatch(/INTENT_ROUTE\s+0\.10\s+0\.20\s+5\s+x-\+##!/);
+    expect(table).toMatch(/^threshold\s+start\s+recomm\.\s+best\s+grid$/m);
+    expect(table).toMatch(/INTENT_ROUTE\s+0\.10\s+0\.20\s+5\s+x-~##\+!/);
     expect(table).toMatch(/MENU_NUMBER.*insensitive/);
     expect(table).toMatch(/CONFIRM_YES.*unbounded/);
+    expect(table).toMatch(/GATE_WANTS_HUMAN.*excluded/);
     const moves = renderMoves(result);
     expect(moves).toContain('pass 1: INTENT_ROUTE 0.10 -> 0.20 (primary; plateau 0.20..0.25)');
     expect(moves).toContain('gained: lc-02, scenario:s1');
-    const report = renderReport(result, { cassette: 'fixtures/recorded/jev-1.13.0.jsonl', requests: 223, date: '2026-09-19', misses: [{ id: 's9', text: 'four four' }] });
+    expect(moves).toContain('cosmetic gained: dt-09');
+    expect(moves).toContain('cosmetic lost: ns-06');
+    const report = renderReport(result, { cassette: 'fixtures/recorded/jev-1.13.0.jsonl', requests: 223, date: '2026-09-19', corpusCount: 166, scenarioCount: 45, misses: [{ id: 's9', text: 'four four' }] });
     expect(report).toContain('# Threshold sweep 2026-09-19');
+    expect(report).toContain('out of 211 (166 corpus entries + 45 scenarios) / 211');
+    expect(report).toContain('## Excluded by judgment\n\n- `GATE_WANTS_HUMAN`: handoff gate;');
     expect(report).toContain('before 3/0');
     expect(report).toContain('after 5/0');
     expect(report).toContain('passes 2 (converged)');

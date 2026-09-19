@@ -31,6 +31,7 @@ describe('fillSlots', () => {
   it('fills over-answered slots and collects implicit acks', () => {
     const s = setForm(newSession('s', 0), 'reschedule');
     const r = fillSlots(s, {
+      // 0.47 sits inside the implicit-confirm band [SLOT_CHOICE_CONFIRM, SLOT_CHOICE_FILL); mass is split three ways so `none` is not the argmax
       provider: choice({ chen: 0.47, none: 0.43, okafor: 0.1 }),
       dateMode: choice({ window: 0.9, none: 0.1 }),
       dateWindow: choice({ next_week: 0.88, none: 0.12 }),

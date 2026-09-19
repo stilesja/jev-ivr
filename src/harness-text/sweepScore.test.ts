@@ -72,9 +72,18 @@ describe('scoreOutcomes', () => {
     expect(equal(clean, missing)).toBe(false);
   });
 
-  it('reports flips as ids gained and lost', () => {
+  it('reports flips as ids gained and lost, decisions and tiebreaks apart', () => {
     const before = scoreOutcomes(base);
-    const after = scoreOutcomes({ ...base, actualCorpus: { ...base.actualCorpus, a: outcome('a', { form: 'billing' }), c: outcome('c', { form: 'reschedule' }) } });
-    expect(flips(before, after)).toEqual({ gained: ['c'], lost: ['a'] });
+    // a loses its decision, c gains one, and b keeps its decision while dropping the extra ack
+    // that cost it the tiebreak: the cosmetic flip is reported without a decision flip beside it.
+    const after = scoreOutcomes({ ...base, actualCorpus: { a: outcome('a', { form: 'billing' }), b: outcome('b'), c: outcome('c', { form: 'reschedule' }) } });
+    expect(flips(before, after)).toEqual({ gained: ['c'], lost: ['a'], cosmeticGained: ['b', 'c'], cosmeticLost: ['a'] });
+  });
+
+  it('counts a decision match without a cosmetic one in matched only', () => {
+    const s = scoreOutcomes(base);
+    expect([...s.cosmeticMatched].sort()).toEqual(['a']);
+    expect(s.cosmeticMatch).toBe(s.cosmeticMatched.size);
+    expect(s.matched.has('b')).toBe(true);
   });
 });

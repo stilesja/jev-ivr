@@ -140,14 +140,18 @@ the label baseline is only meaningful while the stub reproduces it.
 
 Each threshold is swept over a 0.05 grid with the others held fixed; the
 recommended value is the middle of the widest plateau at the best score, so
-the result sits away from cliffs. Some findings are reported but never
-applied: a best score reached at a single grid point (a cliff); a plateau
-that runs to the edge of the grid (unbounded, meaning the corpus has no
-evidence on that side); a threshold whose whole grid scores the same
-(insensitive); and a threshold with only one legal value under the ordering
-constraints (pinned). Every applied move lists the entries it flipped, and
-the report says whether the descent converged and how many candidates it
-evaluated.
+the result sits away from cliffs. In the grid strip `#` marks the best
+score, `+` the same decisions with a worse tiebreak, `~` one decision below
+best, `-` further below, `x` a value the ordering constraints forbid and `!`
+one that breaks the stub baseline, so a strip of only `#` and `+` means the
+corpus never sees that threshold change an answer. Some findings are
+reported but never applied: a best score reached at a single grid point (a
+cliff); a plateau that runs to the edge of the grid (unbounded, meaning the
+corpus has no evidence on that side); a threshold whose whole grid scores
+the same (insensitive); and a threshold with only one legal value under the
+ordering constraints (pinned). Every applied move lists the entries it
+flipped, decisions and tiebreaks apart, and the report says whether the
+descent converged and how many candidates it evaluated.
 
 A move can push a multi-turn scenario off the recorded path; such scenarios
 are unscored for that candidate and listed as misses. Record them once with

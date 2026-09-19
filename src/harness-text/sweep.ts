@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { loadCorpus } from '../jev/corpus';
 import { CassetteClient, isCassetteMiss, loadCassette } from '../jev/cassette';
 import { FixtureStubClient } from '../jev/fixtureStub';
@@ -38,7 +38,7 @@ export interface SweepRun {
 }
 
 function emptyScore(): Score {
-  return { primary: -1, secondary: -1, corpusMatch: 0, scenarioPass: 0, cosmeticMatch: 0, matched: new Set(), misses: [] };
+  return { primary: -1, secondary: -1, corpusMatch: 0, scenarioPass: 0, cosmeticMatch: 0, matched: new Set(), cosmeticMatched: new Set(), misses: [] };
 }
 
 export async function runSweep(cfg: SweepConfig): Promise<SweepRun> {
@@ -82,13 +82,23 @@ export async function runSweep(cfg: SweepConfig): Promise<SweepRun> {
     const changed: Partial<Record<ThresholdName, number>> = {};
     for (const m of result.moves) changed[m.name] = result.final[m.name];
     if (Object.keys(changed).length > 0) writeFileSync(cfg.thresholdsFile, rewriteThresholds(readFileSync(cfg.thresholdsFile, 'utf8'), changed));
-    const date = new Date().toISOString().slice(0, 10);
+    // The local calendar date, not UTC: a sweep run in the evening west of Greenwich would
+    // otherwise be filed under tomorrow, next to nothing else from that day's work.
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     mkdirSync(cfg.reportDir, { recursive: true });
+    // A second sweep on the same day is a second result, not a correction of the first: it gets
+    // its own file rather than silently replacing the report the earlier values were argued from.
     reportPath = join(cfg.reportDir, `${date}-sweep.md`);
-    writeFileSync(reportPath, renderReport(result, { cassette: cfg.cassette, requests: lines.size, date, misses }));
+    for (let n = 2; existsSync(reportPath); n++) reportPath = join(cfg.reportDir, `${date}-sweep-${n}.md`);
+    writeFileSync(reportPath, renderReport(result, { cassette: cfg.cassette, requests: lines.size, date, corpusCount: corpus.length, scenarioCount: scenarios.length, misses }));
   }
   if (cfg.json) {
-    writeFileSync(cfg.json, JSON.stringify({ before: result.before, after: result.after, moves: result.moves, table: result.table, final: result.final, misses, converged: result.converged, evaluations: result.evaluations }, (k, v) => (k === 'matched' ? undefined : v instanceof Set ? [...v] : v), 2) + '\n');
+    mkdirSync(dirname(cfg.json), { recursive: true });
+    // The per-point id sets are dropped: a full log of them runs to six figures of lines, and the
+    // sets that matter (a move's flips) are spelled out in `moves`.
+    const omitSets = (k: string, v: unknown) => (k === 'matched' || k === 'cosmeticMatched' ? undefined : v instanceof Set ? [...v] : v);
+    writeFileSync(cfg.json, JSON.stringify({ before: result.before, after: result.after, moves: result.moves, table: result.table, final: result.final, misses, converged: result.converged, evaluations: result.evaluations }, omitSets, 2) + '\n');
   }
   return { result, misses, reportPath };
 }
@@ -127,7 +137,7 @@ async function main(): Promise<void> {
 }
 
 // regress.ts runs its main at module scope and cannot be imported; this module can, so it guards.
-if (process.argv[1] && /sweep\.ts$/.test(process.argv[1])) {
+if (process.argv[1] && basename(process.argv[1]) === 'sweep.ts') {
   main().catch((e: unknown) => {
     console.error(e instanceof Error ? e.message : String(e));
     process.exitCode = 1;

@@ -1,5 +1,5 @@
 import type { ThresholdName, Thresholds } from '../core/thresholds';
-import { better, equal, flips, type Score } from './sweepScore';
+import { better, equal, flips, type Flips, type Score } from './sweepScore';
 import { gridFor, violated } from './sweepSpace';
 
 export interface GridPoint {
@@ -22,11 +22,11 @@ export interface Move {
   before: Score;
   after: Score;
   plateau: { from: number; to: number };
-  flips: { gained: string[]; lost: string[] };
+  flips: Flips;
 }
 
 /** What `chooseMove` proposes; only the descent knows which pass it belongs to. */
-export type MoveCandidate = Omit<Move, 'pass'>;
+type MoveCandidate = Omit<Move, 'pass'>;
 
 export interface ThresholdRow {
   current: number;

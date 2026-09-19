@@ -9,6 +9,15 @@ export const SWEEPABLE: readonly ThresholdName[] = [
   'CONFIRM_YES', 'CONFIRM_NO', 'MENU_NUMBER',
 ];
 
+/**
+ * Thresholds the sweep will not touch on its own, each with the judgment that took it out. They
+ * stay in `SWEEPABLE` so `--only` can still sweep one deliberately, and every report lists them
+ * with their reason, so an exclusion is visible rather than a silent gap in the table.
+ */
+export const EXCLUDED: Partial<Record<ThresholdName, string>> = {
+  GATE_WANTS_HUMAN: 'handoff gate; the recording has no wants-human evidence between 0.10 and 0.70 except the word "Agent", so a recommended drop is a safety change, not tuning',
+};
+
 const MARGINS: ReadonlySet<ThresholdName> = new Set(['GATE_INTENT_MARGIN', 'SLOT_CHOICE_MARGIN']);
 
 function range(lo: number, hi: number, step: number): number[] {
@@ -16,8 +25,8 @@ function range(lo: number, hi: number, step: number): number[] {
   return Array.from({ length: n }, (_, i) => Math.round((lo + i * step) * 100) / 100);
 }
 
-export const PROBABILITY_GRID: readonly number[] = range(0.05, 0.95, 0.05);
-export const MARGIN_GRID: readonly number[] = range(0.05, 0.4, 0.05);
+const PROBABILITY_GRID: readonly number[] = range(0.05, 0.95, 0.05);
+const MARGIN_GRID: readonly number[] = range(0.05, 0.4, 0.05);
 
 export function gridFor(name: ThresholdName): readonly number[] {
   return MARGINS.has(name) ? MARGIN_GRID : PROBABILITY_GRID;
@@ -41,14 +50,16 @@ export function violated(t: Thresholds): string | null {
   return null;
 }
 
-export function isSweepable(name: string): name is ThresholdName {
+function isSweepable(name: string): name is ThresholdName {
   return (SWEEPABLE as readonly string[]).includes(name);
 }
 
-/** The --only list, or every sweepable threshold when absent. Repeats are dropped (sweeping one
- * threshold twice in a pass only re-runs cached evaluations); the first occurrence sets the order. */
+/** The --only list, or every sweepable threshold that is not `EXCLUDED` when absent. An explicit
+ * --only may still name an excluded threshold: the exclusion is a default, not a ban. Repeats are
+ * dropped (sweeping one threshold twice in a pass only re-runs cached evaluations); the first
+ * occurrence sets the order. */
 export function parseOnly(spec: string | undefined): ThresholdName[] {
-  if (spec === undefined || spec.trim() === '') return [...SWEEPABLE];
+  if (spec === undefined || spec.trim() === '') return SWEEPABLE.filter((n) => !(n in EXCLUDED));
   const out: ThresholdName[] = [];
   for (const raw of spec.split(',')) {
     const name = raw.trim();

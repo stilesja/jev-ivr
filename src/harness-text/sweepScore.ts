@@ -8,12 +8,12 @@ import type { ScenarioOutcome } from './baseline';
  * decision field (not a cosmetic one): a queued intent is a promise made to the caller and it
  * reaches the handoff data, so dropping or inventing one is a wrong answer, not a tidier one.
  */
-export const DECISION_FIELDS: ReadonlyArray<keyof Outcome> = ['decision', 'promptId', 'reason', 'form', 'slots', 'queued'];
+const DECISION_FIELDS: ReadonlyArray<keyof Outcome> = ['decision', 'promptId', 'reason', 'form', 'slots', 'queued'];
 /** How the decision was reached or dressed; a mismatch here is a tiebreak. */
-export const COSMETIC_FIELDS: ReadonlyArray<keyof Outcome> = ['acks', 'decidedGate', 'verdict'];
+const COSMETIC_FIELDS: ReadonlyArray<keyof Outcome> = ['acks', 'decidedGate', 'verdict'];
 
 /** Scenario ids in `matched` carry this prefix so a scenario cannot collide with a corpus id. */
-export const SCENARIO_PREFIX = 'scenario:';
+const SCENARIO_PREFIX = 'scenario:';
 
 type Row = Pick<TraceRecord, 'error' | 'event' | 'source'>;
 
@@ -33,7 +33,17 @@ export interface Score {
   cosmeticMatch: number;
   /** ids counted in `primary`: corpus entries whose decision fields match (bare id), scenarios that pass (`scenario:<id>`) */
   matched: Set<string>;
+  /** the subset of `matched` counted in `secondary`: the cosmetic fields agree as well */
+  cosmeticMatched: Set<string>;
   misses: Array<{ id: string; text: string }>;
+}
+
+/** Which ids a move won or lost, split by whether the flip was a decision or only a tiebreak. */
+export interface Flips {
+  gained: string[];
+  lost: string[];
+  cosmeticGained: string[];
+  cosmeticLost: string[];
 }
 
 /**
@@ -47,7 +57,7 @@ function same(a: Outcome | undefined, b: Outcome | undefined, fields: ReadonlyAr
 }
 
 /** The utterance of the first turn that missed the cassette, or null. */
-export function missedUtterance(records: Row[]): string | null {
+function missedUtterance(records: Row[]): string | null {
   for (const r of records) {
     if (isCassetteMiss(r)) return r.event.type === 'prompt' ? r.event.voicePrompt : '';
   }
@@ -56,15 +66,15 @@ export function missedUtterance(records: Row[]): string | null {
 
 export function scoreOutcomes(i: ScoreInput): Score {
   const matched = new Set<string>();
+  const cosmeticMatched = new Set<string>();
   let corpusMatch = 0;
-  let cosmeticMatch = 0;
   for (const id of Object.keys(i.expectedCorpus)) {
     const e = i.expectedCorpus[id];
     const a = i.actualCorpus[id];
     if (same(e, a, DECISION_FIELDS)) {
       corpusMatch += 1;
       matched.add(id);
-      if (same(e, a, COSMETIC_FIELDS)) cosmeticMatch += 1;
+      if (same(e, a, COSMETIC_FIELDS)) cosmeticMatched.add(id);
     }
   }
   let scenarioPass = 0;
@@ -76,10 +86,11 @@ export function scoreOutcomes(i: ScoreInput): Score {
     if (a?.pass) {
       scenarioPass += 1;
       matched.add(`${SCENARIO_PREFIX}${id}`);
-      if (same(i.expectedScenarios[id], a, COSMETIC_FIELDS)) cosmeticMatch += 1;
+      if (same(i.expectedScenarios[id], a, COSMETIC_FIELDS)) cosmeticMatched.add(`${SCENARIO_PREFIX}${id}`);
     }
   }
-  return { primary: corpusMatch + scenarioPass, secondary: cosmeticMatch, corpusMatch, scenarioPass, cosmeticMatch, matched, misses };
+  const cosmeticMatch = cosmeticMatched.size;
+  return { primary: corpusMatch + scenarioPass, secondary: cosmeticMatch, corpusMatch, scenarioPass, cosmeticMatch, matched, cosmeticMatched, misses };
 }
 
 /**
@@ -98,9 +109,12 @@ export function equal(a: Score, b: Score): boolean {
   return a.primary === b.primary && a.secondary === b.secondary && a.misses.length === b.misses.length;
 }
 
-export function flips(before: Score, after: Score): { gained: string[]; lost: string[] } {
+export function flips(before: Score, after: Score): Flips {
+  const only = (a: Set<string>, b: Set<string>) => [...a].filter((id) => !b.has(id)).sort();
   return {
-    gained: [...after.matched].filter((id) => !before.matched.has(id)).sort(),
-    lost: [...before.matched].filter((id) => !after.matched.has(id)).sort(),
+    gained: only(after.matched, before.matched),
+    lost: only(before.matched, after.matched),
+    cosmeticGained: only(after.cosmeticMatched, before.cosmeticMatched),
+    cosmeticLost: only(before.cosmeticMatched, after.cosmeticMatched),
   };
 }

@@ -3,8 +3,8 @@ import { bestPlateau, chooseMove, coordinateDescent, type GridPoint } from './sw
 import type { Score } from './sweepScore';
 import { DEFAULT_THRESHOLDS, type Thresholds } from '../core/thresholds';
 
-function score(primary: number, secondary = 0, matched: string[] = []): Score {
-  return { primary, secondary, corpusMatch: primary, scenarioPass: 0, cosmeticMatch: secondary, matched: new Set(matched), misses: [] };
+function score(primary: number, secondary = 0, matched: string[] = [], cosmeticMatched: string[] = []): Score {
+  return { primary, secondary, corpusMatch: primary, scenarioPass: 0, cosmeticMatch: secondary, matched: new Set(matched), cosmeticMatched: new Set(cosmeticMatched), misses: [] };
 }
 /** One point per value: a number is that primary, 'x' a constraint skip, '!' a stub break. */
 function points(values: number[], primaries: Array<number | 'x' | '!'>, secondaries: number[] = [], matched: string[][] = []): GridPoint[] {
@@ -49,7 +49,7 @@ describe('chooseMove', () => {
     const p = points(grid, [1, 1, 3, 3, 3, 1, 1], [], [[], [], ['a', 'c'], ['a', 'c'], ['a', 'c'], [], []]);
     const r = chooseMove('INTENT_ROUTE', 0.7, p, before, true);
     expect(r.move).toMatchObject({ to: 0.4, reason: 'primary', plateau: { from: 0.3, to: 0.5 } });
-    expect(r.move?.flips).toEqual({ gained: ['c'], lost: ['b'] });
+    expect(r.move?.flips).toEqual({ gained: ['c'], lost: ['b'], cosmeticGained: [], cosmeticLost: [] });
   });
   it('moves on a secondary improvement at equal primary', () => {
     const r = chooseMove('INTENT_ROUTE', 0.7, points(grid, [2, 2, 2, 2, 2, 2, 2], [0, 1, 1, 1, 0, 0, 0]), current, true);

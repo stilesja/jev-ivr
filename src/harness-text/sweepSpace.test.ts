@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONSTRAINTS, gridFor, parseOnly, SWEEPABLE, violated } from './sweepSpace';
+import { CONSTRAINTS, EXCLUDED, gridFor, parseOnly, SWEEPABLE, violated } from './sweepSpace';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 
 describe('sweep space', () => {
@@ -26,8 +26,16 @@ describe('sweep space', () => {
     expect(CONSTRAINTS).toHaveLength(4);
   });
 
+  it('leaves the excluded thresholds out of the default set but sweeps them on request', () => {
+    expect(Object.keys(EXCLUDED)).toEqual(['GATE_WANTS_HUMAN']);
+    expect(EXCLUDED.GATE_WANTS_HUMAN).toMatch(/safety change/);
+    expect(parseOnly(undefined)).toHaveLength(19);
+    expect(parseOnly(undefined)).not.toContain('GATE_WANTS_HUMAN');
+    expect(parseOnly('GATE_WANTS_HUMAN')).toEqual(['GATE_WANTS_HUMAN']);
+  });
+
   it('parses --only, dedupes, and rejects unknown or fixed names', () => {
-    expect(parseOnly(undefined)).toEqual(SWEEPABLE);
+    expect(parseOnly(undefined)).toEqual(SWEEPABLE.filter((n) => !(n in EXCLUDED)));
     expect(parseOnly('INTENT_ROUTE, SLOT_CHOICE_FILL')).toEqual(['INTENT_ROUTE', 'SLOT_CHOICE_FILL']);
     expect(parseOnly('INTENT_ROUTE,INTENT_ROUTE,SLOT_CHOICE_FILL')).toEqual(['INTENT_ROUTE', 'SLOT_CHOICE_FILL']);
     expect(() => parseOnly('MAX_ATTEMPTS')).toThrow(/not sweepable/);

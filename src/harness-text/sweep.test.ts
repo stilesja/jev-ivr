@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runSweep } from './sweep';
@@ -58,14 +58,22 @@ describe('runSweep', () => {
   });
 
   it('applies the result to the thresholds file and writes the report', async () => {
-    const r = await runSweep(config({ apply: true, json: join(dir, 'out.json') }));
+    const r = await runSweep(config({ apply: true, json: join(dir, 'logs', 'out.json') }));
     expect(readFileSync(join(dir, 'thresholds.ts'), 'utf8')).toContain('  INTENT_ROUTE: 0.6,');
     const report = readFileSync(r.reportPath!, 'utf8');
     expect(report).toContain(`pass 1: INTENT_ROUTE ${DEFAULT_THRESHOLDS.INTENT_ROUTE.toFixed(2)} -> 0.60`);
     expect(report).toContain(`passes ${r.result.passes} (converged)`);
     expect(report).toContain(`evaluations ${r.result.evaluations}`);
-    const json = JSON.parse(readFileSync(join(dir, 'out.json'), 'utf8'));
+    // --json created its parent directory rather than failing on a path that does not exist yet
+    const json = JSON.parse(readFileSync(join(dir, 'logs', 'out.json'), 'utf8'));
     expect(json.moves).toHaveLength(1);
     expect(json).toMatchObject({ converged: true, evaluations: r.result.evaluations });
+  });
+
+  it('writes a second report beside the first rather than over it', async () => {
+    const first = await runSweep(config({ apply: true }));
+    const second = await runSweep(config({ apply: true }));
+    expect(second.reportPath).toBe(first.reportPath!.replace(/\.md$/, '-2.md'));
+    expect(existsSync(first.reportPath!)).toBe(true);
   });
 });

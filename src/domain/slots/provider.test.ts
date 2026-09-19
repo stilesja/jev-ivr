@@ -20,6 +20,7 @@ describe('providerSlot', () => {
   });
 
   it('fills with implicit confirm in the confirm band', () => {
+    // 0.47 sits inside the implicit-confirm band [SLOT_CHOICE_CONFIRM, SLOT_CHOICE_FILL); mass is split three ways so `none` is not the argmax
     expect(providerSlot.fill({ provider: choice({ patel: 0.47, none: 0.44, okafor: 0.09 }) }, ctx))
       .toMatchObject({ kind: 'filled', value: 'patel', confirm: 'implicit' });
   });
