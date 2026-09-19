@@ -1,17 +1,16 @@
 import { parseArgs } from 'node:util';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { loadCorpus } from '../jev/corpus';
 import { parseOverride, withOverrides } from '../core/thresholds';
 import { buildClient, cassettePath, CLIENT_KINDS, DEFAULT_CORPUS_FILE, isClientKind } from '../run/client';
-import { CASSETTE_MISS } from '../jev/cassette';
+import { isCassetteMiss } from '../jev/cassette';
 import { diff } from './regressDiff';
 import { formatRegressSummary } from './regressSummary';
 import type { TraceRecord } from '../trace/types';
-import { loadScenarios, runCorpusEntry, runScenario, type Outcome, type RunOptions } from './runner';
+import { loadScenarios, type RunOptions } from './runner';
+import { readBaseline, REGRESS_TODAY, writeExpected } from './baseline';
+import { emptyRunAll, runAll } from './runAll';
 
-/** Fixed so recorded outcomes never depend on the wall clock. */
-export const REGRESS_TODAY = '2026-09-18';
-const EXPECTED_DIR = 'fixtures/expected';
 /** Corpus entries between progress lines on a run that talks to a model. */
 const PROGRESS_EVERY = 25;
 
@@ -22,17 +21,6 @@ const { values: args } = parseArgs({
     client: { type: 'string', default: 'stub' },
   },
 });
-
-type ScenarioOutcome = Outcome & { pass: boolean; mismatches: string[] };
-interface Recorded {
-  corpus: Record<string, Outcome>;
-  scenarios: Record<string, ScenarioOutcome>;
-}
-
-function readExpected<T>(file: string): Record<string, T> {
-  const path = `${EXPECTED_DIR}/${file}`;
-  return existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as Record<string, T>) : {};
-}
 
 async function main(): Promise<void> {
   const kind = args.client ?? 'stub';
@@ -66,7 +54,7 @@ async function main(): Promise<void> {
   let firstClientErrorMessage = '';
   function checkClientError(record: TraceRecord): void {
     if (!live) return;
-    const isClientError = record.source === 'error' && record.error !== null && !record.error.message.startsWith(CASSETTE_MISS);
+    const isClientError = record.source === 'error' && record.error !== null && !isCassetteMiss(record);
     if (!isClientError) {
       consecutiveClientErrors = 0;
       return;
@@ -80,42 +68,30 @@ async function main(): Promise<void> {
 
   // Hoisted above the try so a corrupt expected-outcomes file fails before any run state
   // exists, rather than inside the finally where it would mask a real run failure.
-  const expectedCorpus = readExpected<Outcome>('corpus.json');
-  const expectedScenarios = readExpected<ScenarioOutcome>('scenarios.json');
+  const expected = readBaseline();
 
-  const actual: Recorded = { corpus: {}, scenarios: {} };
-  const records: TraceRecord[] = [];
+  const actual = emptyRunAll();
   try {
-    let done = 0;
-    for (const entry of corpus) {
-      const r = await runCorpusEntry(entry, opts);
-      actual.corpus[entry.id] = r.outcome;
-      records.push(r.run.record);
-      checkClientError(r.run.record);
-      done += 1;
-      if (live && done % PROGRESS_EVERY === 0) console.error(`  corpus ${done}/${corpus.length}`);
-    }
-    done = 0;
-    for (const scenario of scenarioDefs) {
-      const r = await runScenario(scenario, opts);
-      actual.scenarios[scenario.id] = { ...r.outcome, pass: r.pass, mismatches: r.mismatches };
-      records.push(...r.runs.map((run) => run.record));
-      for (const run of r.runs) checkClientError(run.record);
-      done += 1;
-      if (live) console.error(`  scenario ${done}/${scenarioDefs.length} ${scenario.id}`);
-    }
+    await runAll(corpus, scenarioDefs, opts, {
+      onCorpus: (done, total, _entry, record) => {
+        checkClientError(record);
+        if (live && done % PROGRESS_EVERY === 0) console.error(`  corpus ${done}/${total}`);
+      },
+      onScenario: (done, total, scenario, records) => {
+        for (const record of records) checkClientError(record);
+        if (live) console.error(`  scenario ${done}/${total} ${scenario.id}`);
+      },
+    }, actual);
 
     if (args.update) {
-      mkdirSync(EXPECTED_DIR, { recursive: true });
-      writeFileSync(`${EXPECTED_DIR}/corpus.json`, JSON.stringify(actual.corpus, null, 2) + '\n');
-      writeFileSync(`${EXPECTED_DIR}/scenarios.json`, JSON.stringify(actual.scenarios, null, 2) + '\n');
+      writeExpected({ corpus: actual.corpus, scenarios: actual.scenarios });
       console.log(`recorded ${Object.keys(actual.corpus).length} corpus outcomes and ${Object.keys(actual.scenarios).length} scenario outcomes`);
       return;
     }
 
     const lines = [
-      ...diff('corpus', expectedCorpus, actual.corpus).lines,
-      ...diff('scenario', expectedScenarios, actual.scenarios).lines,
+      ...diff('corpus', expected.corpus, actual.corpus).lines,
+      ...diff('scenario', expected.scenarios, actual.scenarios).lines,
     ];
     const failing = Object.values(actual.scenarios).filter((s) => !s.pass);
     for (const s of failing) console.log(`FAIL scenario ${s.id}: ${s.mismatches.join('; ')}`);
@@ -127,16 +103,16 @@ async function main(): Promise<void> {
     // ids it never reached simply read as removed. Wrapped so a failure in here (e.g. a
     // formatting bug) surfaces on stderr instead of replacing the real exception from the run.
     try {
-      if (!args.update && records.length > 0) {
+      if (!args.update && actual.records.length > 0) {
         const ran = Object.values(actual.scenarios);
         console.log('');
         console.log(formatRegressSummary({
           corpusTotal: corpus.length,
-          corpusMatching: diff('corpus', expectedCorpus, actual.corpus).matching,
+          corpusMatching: diff('corpus', expected.corpus, actual.corpus).matching,
           scenarioTotal: scenarioDefs.length,
           scenarioPassing: ran.filter((s) => s.pass).length,
-          scenarioMatching: diff('scenario', expectedScenarios, actual.scenarios).matching,
-          records,
+          scenarioMatching: diff('scenario', expected.scenarios, actual.scenarios).matching,
+          records: actual.records,
         }));
       }
     } catch (e) {

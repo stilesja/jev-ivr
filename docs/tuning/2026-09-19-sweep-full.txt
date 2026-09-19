@@ -1,0 +1,34 @@
+
+> jev-ivr@0.1.0 sweep /Users/jasonstiles/Development/JIVR
+> tsx src/harness-text/sweep.ts "--json" "docs/tuning/2026-09-19-sweep-full.json"
+
+before 208/205   after 208/208   passes 2 (converged)   evaluations 473
+
+threshold              current  recomm.  best  grid
+GATE_ADDRESSED            0.70     0.70   208  !!!!!!!!!!---##+--!
+GATE_INTELLIGIBLE         0.50     0.50   208  ##########+++++++-!  unbounded
+GATE_COMPLETE             0.60     0.60   208  !!!!!##############  insensitive
+GATE_WANTS_HUMAN          0.70     0.30   208  -#########++++++++!
+INTENT_ROUTE              0.85     0.70   208  xxxxxxxxxxx#####+xx
+INTENT_IMPLICIT           0.60     0.60   208  xxxxxxx#######xxxxx  insensitive
+INTENT_EXPLICIT           0.40     0.40   208  ############xxxxxxx  insensitive
+INTENT_SWITCH             0.85     0.85   208  xxxxxxxxxxxxx#####!  insensitive
+GATE_INTENT_MARGIN        0.15     0.15   208  ########  insensitive
+GATE_FRUSTRATION_HIGH     0.60     0.60   208  !###############!!!  insensitive
+INTENT_TENTATIVE          0.50     0.50   208  !#################!  insensitive
+INTENT_CHANGE             0.60     0.60   208  ##################!  insensitive
+PROVIDER_UNSURE           0.50     0.45   208  !++++++###++++++++!
+SLOT_DETECT               0.60     0.60   208  #################+!  unbounded
+SLOT_CHOICE_FILL          0.70     0.50   208  xxxxxxxx###+++++++!
+SLOT_CHOICE_CONFIRM       0.45     0.45   208  #########!xxxxxxxxx  insensitive
+SLOT_CHOICE_MARGIN        0.15     0.15   208  ########  insensitive
+CONFIRM_YES               0.70     0.70   208  !!################!  insensitive
+CONFIRM_NO                0.70     0.70   208  !!-###############!
+MENU_NUMBER               0.70     0.70   208  ##################!  insensitive
+
+pass 1: GATE_WANTS_HUMAN 0.70 -> 0.30 (secondary; plateau 0.10..0.50) 208/205 -> 208/206
+pass 1: INTENT_ROUTE 0.85 -> 0.70 (secondary; plateau 0.60..0.80) 208/206 -> 208/207
+pass 1: PROVIDER_UNSURE 0.50 -> 0.45 (center; plateau 0.40..0.50) 208/207 -> 208/207
+pass 1: SLOT_CHOICE_FILL 0.70 -> 0.50 (secondary; plateau 0.45..0.55) 208/207 -> 208/208
+
+no cassette misses for the recommended set

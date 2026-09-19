@@ -1089,12 +1089,12 @@
   },
   "ns-03": {
     "id": "ns-03",
-    "decision": "prompt",
-    "promptId": "nomatch_open",
+    "decision": "ignore",
+    "promptId": null,
     "acks": [],
     "reason": null,
-    "decidedGate": "intelligible",
-    "verdict": "nomatch",
+    "decidedGate": "addressedToSystem",
+    "verdict": "ignore",
     "form": null,
     "slots": {
       "memberId": null,
@@ -1105,12 +1105,12 @@
   },
   "ns-04": {
     "id": "ns-04",
-    "decision": "prompt",
-    "promptId": "nomatch_open",
+    "decision": "ignore",
+    "promptId": null,
     "acks": [],
     "reason": null,
-    "decidedGate": "intelligible",
-    "verdict": "nomatch",
+    "decidedGate": "addressedToSystem",
+    "verdict": "ignore",
     "form": null,
     "slots": {
       "memberId": null,

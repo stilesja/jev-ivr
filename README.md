@@ -123,6 +123,46 @@ cost, and the diff shrinks as the thresholds fit the real distributions. A
 tuned threshold that alters an earlier turn changes later turns' state and
 misses the cassette; run `record` again to fill the gaps.
 
+### Tuning
+
+    pnpm sweep                     # sensitivity table, recommended thresholds, moves, misses
+    pnpm sweep --apply             # also rewrite src/core/thresholds.ts and write docs/tuning/<date>-sweep.md
+    pnpm sweep --only INTENT_ROUTE,SLOT_CHOICE_FILL
+    pnpm sweep --json out.json
+
+The sweep runs offline against the cassette. A candidate threshold set is
+scored by how many corpus entries reproduce the label baseline's decision
+(decision kind, prompt, form, slots, handoff reason, queued intents) plus
+how many scenarios pass their own expectation; acks and the deciding gate
+only break ties, and fewer cassette misses breaks a further tie. A
+candidate that changes the stub's own outcomes is rejected outright, since
+the label baseline is only meaningful while the stub reproduces it.
+
+Each threshold is swept over a 0.05 grid with the others held fixed; the
+recommended value is the middle of the widest plateau at the best score, so
+the result sits away from cliffs. In the grid strip `#` marks the best
+score, `+` the same decisions with a worse tiebreak, `~` one decision below
+best, `-` further below, `x` a value the ordering constraints forbid and `!`
+one that breaks the stub baseline, so a strip of only `#` and `+` means the
+corpus never sees that threshold change an answer. Some findings are
+reported but never applied: a best score reached at a single grid point (a
+cliff); a plateau that runs to the edge of the grid (unbounded, meaning the
+corpus has no evidence on that side); a threshold whose whole grid scores
+the same (insensitive); and a threshold with only one legal value under the
+ordering constraints (pinned). Every applied move lists the entries it
+flipped, decisions and tiebreaks apart, and the report says whether the
+descent converged and how many candidates it evaluated. Thresholds the sweep
+will not move on its own live in `EXCLUDED` in `src/harness-text/sweepSpace.ts`
+with the judgment that took each one out; they are left out of the default
+`--only` set, named with their reason in every report, and still sweepable by
+asking for them explicitly.
+
+A move can push a multi-turn scenario off the recorded path; such scenarios
+are unscored for that candidate and listed as misses. Record them once with
+`pnpm regress --client record`, run `pnpm sweep` again to confirm, and
+commit the thresholds with the report. A cassette miss on a single-turn
+corpus entry means the recording is stale, and the sweep stops.
+
 ## Phone line (Twilio ConversationRelay)
 
 The server puts the same decision core on a Twilio number. Prompts are

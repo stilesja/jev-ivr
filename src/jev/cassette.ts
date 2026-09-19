@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import type { TraceRecord } from '../trace/types';
 import { JevClientError, type AnswerMap, type JevClient, type JevRequest, type JevResponse } from './types';
 
 /** JSON with object keys sorted at every level, arrays in order, no whitespace. Object keys whose value is undefined are dropped; any other value JSON.stringify cannot represent becomes null. Input is expected to be a JsonValue; toJSON methods are not honored. */
@@ -61,6 +62,15 @@ export function appendCassette(path: string, line: CassetteLine): void {
 }
 
 export const CASSETTE_MISS = 'cassette miss:';
+
+/**
+ * Did this turn fail because the cassette had no answer for it? The one place that knows how
+ * a miss looks on a trace record, so the regression abort rule and the sweep's miss list
+ * cannot drift apart.
+ */
+export function isCassetteMiss(record: Pick<TraceRecord, 'source' | 'error'>): boolean {
+  return record.source === 'error' && record.error !== null && record.error.message.startsWith(CASSETTE_MISS);
+}
 
 export type CassetteMode = 'replay' | 'record';
 

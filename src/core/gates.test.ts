@@ -32,7 +32,7 @@ describe('evaluateGates', () => {
   it('ignores side speech', () => {
     const r = run(newSession('s', 0), baseAnswers({ addressedToSystem: noul(0.2) }));
     expect(r.verdict).toEqual({ kind: 'ignore' });
-    expect(r.rows.find((g) => g.gate === 'addressedToSystem')).toMatchObject({ passed: false, decided: true, threshold: 0.7 });
+    expect(r.rows.find((g) => g.gate === 'addressedToSystem')).toMatchObject({ passed: false, decided: true, threshold: DEFAULT_THRESHOLDS.GATE_ADDRESSED });
   });
 
   it('reprompts on unintelligible text', () => {
@@ -61,7 +61,7 @@ describe('evaluateGates', () => {
 
   it('routes silently, with implicit confirm, or with explicit confirm by band', () => {
     expect(run(newSession('s', 0), baseAnswers()).verdict).toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
-    expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.7, none: 0.3 }) })).verdict)
+    expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.65, none: 0.35 }) })).verdict)
       .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'implicit' });
     expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.5, none: 0.5 }) })).verdict)
       .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'explicit' });
@@ -122,7 +122,7 @@ describe('evaluateGates', () => {
     const r = run(newSession('s', 0), baseAnswers({ intent: choice({ cancel: 0.98, none: 0.02 }), intentTentative: noul(0.9) }));
     expect(r.verdict).toEqual({ kind: 'route', intent: 'cancel', confirm: 'explicit' });
     expect(r.rows.find((g) => g.gate === 'intent')?.outcome).toBe('route_tentative:cancel');
-    expect(r.rows.find((g) => g.gate === 'intentTentative')).toMatchObject({ threshold: 0.5, passed: true, outcome: 'tentative' });
+    expect(r.rows.find((g) => g.gate === 'intentTentative')).toMatchObject({ threshold: DEFAULT_THRESHOLDS.INTENT_TENTATIVE, passed: true, outcome: 'tentative' });
   });
 
   it('leaves agent and repeat requests alone when tentative', () => {
@@ -140,7 +140,7 @@ describe('evaluateGates', () => {
     it('treats a confident different intent as answering when intentChange says so', () => {
       const r = run(inForm(), baseAnswers({ intent: choice({ billing: 0.95, none: 0.05 }), intentChange: choice({ answering: 0.9, adding: 0.05, replacing: 0.05 }) }));
       expect(r.verdict).toEqual({ kind: 'proceed' });
-      expect(r.rows.find((g) => g.gate === 'intentChange')).toMatchObject({ outcome: 'answering', threshold: 0.6 });
+      expect(r.rows.find((g) => g.gate === 'intentChange')).toMatchObject({ outcome: 'answering', threshold: DEFAULT_THRESHOLDS.INTENT_CHANGE });
     });
 
     it('queues an added intent', () => {

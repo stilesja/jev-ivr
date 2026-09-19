@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { appendCassette, canonicalJson, CassetteClient, loadCassette, requestKey, type CassetteLine } from './cassette';
+import { appendCassette, canonicalJson, CASSETTE_MISS, CassetteClient, isCassetteMiss, loadCassette, requestKey, type CassetteLine } from './cassette';
 import type { JevRequest, QuestionMap } from './types';
 import { JevClientError, type AnswerMap, type JevClient, type JevResponse } from './types';
 import { choice, noul } from '../testing/answers';
@@ -145,6 +145,16 @@ function fakeInner(answers: AnswerMap): JevClient & { calls: number; last?: JevR
   };
   return inner;
 }
+
+describe('isCassetteMiss', () => {
+  const miss = { source: 'error' as const, error: { name: 'JevClientError', message: `${CASSETTE_MISS} abc hello (fixtures/x.jsonl)` } };
+  it('recognises a replay miss and nothing else', () => {
+    expect(isCassetteMiss(miss)).toBe(true);
+    expect(isCassetteMiss({ ...miss, error: { name: 'JevClientError', message: 'timed out after 1500ms' } })).toBe(false);
+    expect(isCassetteMiss({ ...miss, source: 'recorded' })).toBe(false);
+    expect(isCassetteMiss({ source: 'error', error: null })).toBe(false);
+  });
+});
 
 describe('CassetteClient', () => {
   const state = { asr: { text: 'cancel my appointment', isFinal: true }, activeForm: null };
