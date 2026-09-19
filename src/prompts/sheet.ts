@@ -11,11 +11,24 @@ export interface Coverage { present: number; total: number; missing: string[]; u
 /** The sidecar the generator writes: clip id → the text that was recorded. */
 export const RECORDED_FILE = 'recorded.json';
 
-/** The recorded-text sidecar for `dir`, or null when the generator hasn't written one yet. A malformed file throws. */
+/**
+ * The recorded-text sidecar for `dir`, or null when the generator hasn't written one yet.
+ * A read/parse failure (including a directory at that path) or a valid-JSON-but-wrong-shape
+ * file throws with the path so the error is legible, not a raw stack.
+ */
 export function readRecorded(dir: string): Record<string, string> | null {
   const path = join(dir, RECORDED_FILE);
   if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, 'utf8')) as Record<string, string>;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (e) {
+    throw new Error(`${path}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${path}: expected an object of clip id → text`);
+  }
+  return parsed as Record<string, string>;
 }
 
 /**
@@ -34,6 +47,15 @@ export function coverage(rows: RecordableClip[], clips: Map<string, string>, rec
   return { present: rows.length - missing.length, total: rows.length, missing, unused, stale };
 }
 
+/** The `check` command's report, as lines to print and the exit code to set; split out so both can be tested without capturing stdout. */
+export function checkReport(c: Coverage, dir: string): { lines: string[]; exitCode: number } {
+  const lines: string[] = [`audio: ${c.present} of ${c.total} clips present in ${dir} (${c.missing.length} segments fall back to TTS)`];
+  for (const id of c.missing) lines.push(`  missing ${id}`);
+  for (const id of c.stale) lines.push(`  stale   ${id} (recorded text differs from the sheet; regenerate with pnpm prompts:generate --only ${id} --force)`);
+  for (const id of c.unused) lines.push(`  unused  ${id}`);
+  return { lines, exitCode: c.missing.length || c.stale.length ? 1 : 0 };
+}
+
 function main(): void {
   const mode = process.argv[2];
   const dir = process.env.AUDIO_DIR?.trim() || 'assets/audio';
@@ -44,15 +66,22 @@ function main(): void {
   }
   if (mode === 'check') {
     const c = coverage(rows, discoverClips(dir), readRecorded(dir));
-    console.log(`audio: ${c.present} of ${c.total} clips present in ${dir} (${c.missing.length} segments fall back to TTS)`);
-    for (const id of c.missing) console.log(`  missing ${id}`);
-    for (const id of c.stale) console.log(`  stale   ${id} (recorded text differs from the sheet; regenerate with --force --only ${id})`);
-    for (const id of c.unused) console.log(`  unused  ${id}`);
-    process.exitCode = c.missing.length || c.stale.length ? 1 : 0;
+    const { lines, exitCode } = checkReport(c, dir);
+    for (const line of lines) console.log(line);
+    process.exitCode = exitCode;
     return;
   }
   console.error('usage: sheet | check');
   process.exitCode = 2;
 }
 
-if (process.argv[1] && basename(process.argv[1]) === 'sheet.ts') main();
+// sweep.ts's entry follows the same shape: guard so importing this module (as index.ts does
+// for coverage/readRecorded) never runs the CLI, and a thrown error prints its message, not a stack.
+if (process.argv[1] && basename(process.argv[1]) === 'sheet.ts') {
+  try {
+    main();
+  } catch (e: unknown) {
+    console.error(e instanceof Error ? e.message : String(e));
+    process.exitCode = 1;
+  }
+}
