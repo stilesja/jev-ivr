@@ -1,5 +1,6 @@
 import type { QuestionMap } from '../jev/types';
-import { INTENTS, INTENT_CRITERIA, INTENT_MENU } from '../domain/intents';
+import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU, type FormId } from '../domain/intents';
+import { FORMS, type SlotId } from '../domain/forms';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import type { Session } from './session';
 
@@ -30,6 +31,10 @@ function alwaysOn(): QuestionMap {
     addressedToSystem: {
       type: 'noul',
       instructions: 'Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?',
+      criteria: {
+        true: 'Anything said in reply to the phone system, including a short answer or correction to the question it just asked, such as a name, a day, a number, a yes or no, or a bare correction',
+        false: 'Talking to someone else in the room, to a television, or to themselves, even when what they say is about the call',
+      },
     },
     utteranceComplete: {
       type: 'noul',
@@ -98,6 +103,10 @@ function confirmation(): QuestionMap {
     confirmsNo: {
       type: 'noul',
       instructions: 'Read asr.text and node.promptJustPlayed. Does the caller answer no to the confirmation question?',
+      criteria: {
+        true: 'The caller says no, says something is wrong, or gives a value that replaces or contradicts a detail the system just read back, including a bare correction such as "not Chen, Cheng" or "Thursday, not Tuesday", whether or not the system itself named the value they reject',
+        false: 'The caller agrees, answers something else, or says nothing about the question',
+      },
     },
   };
 }
@@ -121,6 +130,56 @@ function inForm(): QuestionMap {
   };
 }
 
+/**
+ * Spec final-confirm §4: a second task named on the opening utterance. Deliberately asked on
+ * every out-of-form turn -- menu and intent-confirm turns included -- because the gate only
+ * acts on this answer for a plain route; asking it everywhere else keeps the question set stable.
+ */
+function noForm(): QuestionMap {
+  const criteria: Record<string, string> = {};
+  for (const i of FORM_INTENTS) criteria[i] = `A second, separate request on top of the main one: ${INTENT_CRITERIA[i]}`;
+  criteria.none = 'Everything the caller says belongs to one request, even if they describe it twice or add details to it; or they ask for nothing';
+  return {
+    secondIntent: {
+      type: 'choice',
+      instructions: 'Read asr.text. The caller states one main request. Does the same utterance also ask for a second, separate task on top of it, joined by words such as and also, as well, another thing, or while I have you? If so, which is the extra task? Choose none when everything they say is part of one request.',
+      criteria,
+    },
+  };
+}
+
+/**
+ * Fixed presentation order for changeSlot's criteria. The question has a `none`, so a quiet answer
+ * lands there whatever the order -- unlike intentChange, which has no none and so falls to its first
+ * label. The order is pinned only so the wire order, and any option-order bias in the model's answer,
+ * stay stable across runs. Every slot is listed; formConfirmation keeps the ones its form has.
+ */
+export const CHANGE_SLOT_ORDER: readonly SlotId[] = ['provider', 'date', 'memberId'];
+
+const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
+  provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',
+  date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong',
+  memberId: 'They name the member ID or member number as the thing to change, without saying the digits',
+};
+
+/**
+ * Spec final-confirm §6: which detail the caller names when asked what to change. Criteria are
+ * disjoint from value-giving answers (naming a detail, not giving its new value) and limited to
+ * the slots on the current form. Asked only while the summary is pending.
+ */
+function formConfirmation(form: FormId): QuestionMap {
+  const criteria: Record<string, string> = {};
+  for (const id of CHANGE_SLOT_ORDER) if (FORMS[form].slots.includes(id)) criteria[id] = CHANGE_SLOT_TEXT[id];
+  criteria.none = 'They say a new value rather than naming which detail is wrong, such as a weekday, a doctor name, or a string of digits; or they only answer yes or no; or they name nothing';
+  return {
+    changeSlot: {
+      type: 'choice',
+      instructions: 'Read asr.text and node.promptJustPlayed. The caller was read a summary of their appointment and asked to confirm it, or asked what to change. Which detail do they name as wrong or ask to change?',
+      criteria,
+    },
+  };
+}
+
 function menu(): QuestionMap {
   const criteria: Record<string, string | null> = {};
   for (const { digit } of INTENT_MENU) criteria[digit] = null;
@@ -139,7 +198,9 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   const specs = session.form ? slotsFor(session.form) : allSlots();
   for (const spec of specs) Object.assign(q, spec.questions(ctx));
   if (session.form) Object.assign(q, inForm());
+  if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
+  if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation(session.pendingConfirmation.form));
   if (session.menuActive) Object.assign(q, menu());
   return q;
 }

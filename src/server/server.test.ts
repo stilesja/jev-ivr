@@ -209,14 +209,14 @@ describe('server end to end', () => {
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
     expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your member ID?");
     relay.prompt('four four seven one eight two nine three');
-    // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
-    expect((await relay.waitForTexts(3)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
-    relay.prompt('yes');
-    expect((await relay.waitForTexts(4)).at(-1)).toBe('next week. Which day works for you?');
+    expect((await relay.waitForTexts(3)).at(-1)).toBe('next week. Which day works for you?');
     relay.prompt('Tuesday');
+    // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
+    expect((await relay.waitForTexts(4)).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?');
+    relay.prompt('yes');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
-    expect(relay.texts().at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
+    expect(relay.texts().at(-2)).toBe('Your appointment is moved.');
     expect(relay.texts().at(-1)).toBe('Goodbye.');
     // The server leaves the socket open after `end` so Twilio can finish playing the queued
     // clips; it is Twilio, not the server, that closes the connection once it is done.
@@ -242,9 +242,9 @@ describe('server end to end', () => {
     await relay.waitForTexts(2);
     relay.prompt('four four seven one eight two nine three');
     await relay.waitForTexts(3);
-    relay.prompt('yes');
-    await relay.waitForTexts(4);
     relay.prompt('Tuesday');
+    await relay.waitForTexts(4);
+    relay.prompt('yes');
     await relay.waitFor((m) => m.type === 'end');
     const timedOut = Symbol('timed out');
     const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(timedOut), 500))]);
@@ -259,6 +259,9 @@ describe('server end to end', () => {
     relay.prompt('Cancel my appointment with Dr. Kim please');
     await relay.waitForTexts(2);
     relay.dtmf('44718293');
+    // The keypad fills the last slot, so the summary is what the digits get back.
+    await relay.waitForTexts(3);
+    relay.prompt('yes');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["cancel"]}');
     const token2 = running!.tokens.mint('CA5');
@@ -288,13 +291,15 @@ describe('server end to end', () => {
       await relay.waitForTexts(1);
       relay.prompt('Cancel my appointment with Dr. Kim please');
       relay.dtmf('44718293');
+      await relay.waitForTexts(3);
+      relay.prompt('yes');
       const end = await relay.waitFor((m) => m.type === 'end', 4000);
       expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["cancel"]}');
       const records = readFileSync(join(s.traceDir, 'CA7.jsonl'), 'utf8')
         .trim()
         .split('\n')
         .map((l) => JSON.parse(l));
-      expect(records.map((r) => r.event.type)).toEqual(['setup', 'prompt', ...Array(8).fill('dtmf')]);
+      expect(records.map((r) => r.event.type)).toEqual(['setup', 'prompt', ...Array(8).fill('dtmf'), 'prompt']);
       expect(records[1].decision.promptId).toBe('ask_memberId');
     },
     { timeout: 8000 },
@@ -342,9 +347,7 @@ describe('server end to end', () => {
     again.setup(callSid, 'VX-second');
     expect(await again.waitForTexts(1)).toEqual(["What's your member ID?"]);
     again.prompt('four four seven one eight two nine three');
-    expect((await again.waitForTexts(2)).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
-    again.prompt('yes');
-    expect((await again.waitForTexts(3)).at(-1)).toBe('next week. Which day works for you?');
+    expect((await again.waitForTexts(2)).at(-1)).toBe('next week. Which day works for you?');
     const done = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),

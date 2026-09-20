@@ -4,7 +4,9 @@
 export const DEFAULT_THRESHOLDS = {
   // gate ladder
   GATE_ADDRESSED: 0.7,
-  GATE_INTELLIGIBLE: 0.5,
+  // 0.50 → 0.45 on 2026-09-20: "Agent" alone scored 0.49 on jev-1.13.0; the sweep grid is flat from 0.05 to 0.45 (one
+  // outcome better, none worse) and the unbounded-plateau rule declined to move it, so this is a judgment step.
+  GATE_INTELLIGIBLE: 0.45,
   GATE_COMPLETE: 0.6,
   GATE_WANTS_HUMAN: 0.7,
   INTENT_ROUTE: 0.7,
@@ -17,6 +19,9 @@ export const DEFAULT_THRESHOLDS = {
   INTENT_TENTATIVE: 0.5,
   INTENT_CHANGE: 0.6,
   PROVIDER_UNSURE: 0.45,
+  // final confirm (spec 2026-09-19 final-confirm §6)
+  SLOT_CHANGE: 0.6,
+  INTENT_SECOND: 0.6,
   // slots
   SLOT_DETECT: 0.6,
   SLOT_CHOICE_FILL: 0.55,

@@ -20,12 +20,12 @@ export const providerSlot: SlotSpec = {
 
   questions() {
     const criteria: Record<string, string | null> = {};
-    for (const p of PROVIDERS) criteria[p.key] = `Dr. ${p.name}`;
+    for (const p of PROVIDERS) criteria[p.key] = `Dr. ${p.name}, also said as just ${p.name}`;
     criteria.none = 'No provider is named';
     return {
       provider: {
         type: 'choice',
-        instructions: 'Read asr.text. Which provider, if any, does the caller name?',
+        instructions: 'Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I\'m not sure" or "either" is not a correction; name the provider they mention.',
         criteria,
       },
       providerUnsure: {

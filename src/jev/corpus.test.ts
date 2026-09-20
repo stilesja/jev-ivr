@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadCorpus, normalizeText, parseCorpus, type CorpusEntry } from './corpus';
+import { confirmForm, contextForm, loadCorpus, normalizeText, parseCorpus, type CorpusEntry } from './corpus';
 import { candidateSpans } from '../core/spans';
 import { spokenToDigits } from '../core/extract/spokenNumber';
 import { DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS } from '../core/extract/date';
@@ -18,7 +18,8 @@ describe('fixtures/corpus.jsonl', () => {
 
   it('uses valid contexts', () => {
     for (const e of corpus) {
-      expect(['no_form', ...FORM_INTENTS], e.id).toContain(e.context);
+      // no_form, a form, or the confirm_ context of a form that asks a summary -- what the validator takes.
+      expect(e.context === 'no_form' || contextForm(e.context) !== null, `${e.id}: ${e.context}`).toBe(true);
       if (e.prompted) expect(FORM_INTENTS, e.id).toContain(e.context);
     }
   });
@@ -113,5 +114,39 @@ describe('parseCorpus', () => {
     expect(() => parseCorpus('{"id":"f","text":"x","intent":"cancel","context":"no_form","tentative":"true"}\n')).toThrow(/must be a boolean/);
     expect(() => parseCorpus('{"id":"g","text":"x","intent":"none","context":"reschedule","change":"adding"}\n')).toThrow(/needs an intent/);
     expect(() => parseCorpus('{"id":"h","text":"x","intent":"cancel","context":"billing","providerUnsure":true}\n')).toThrow(/not on form billing/);
+  });
+
+  it('accepts confirm contexts with confirm, changeSlot, and slot labels, and secondIntent outside a form', () => {
+    const [a, b, c] = parseCorpus([
+      '{"id":"fc-1","text":"yes","intent":"none","context":"confirm_reschedule","confirm":"yes"}',
+      '{"id":"fc-2","text":"no the day","intent":"none","context":"confirm_reschedule","confirm":"no","changeSlot":"date"}',
+      '{"id":"fc-3","text":"reschedule and also my bill","intent":"reschedule","context":"no_form","secondIntent":"billing"}',
+    ].join('\n'));
+    expect(a?.confirm).toBe('yes');
+    expect(b?.changeSlot).toBe('date');
+    expect(c?.secondIntent).toBe('billing');
+  });
+
+  it('rejects confirm labels off a confirm context, changeSlot for a slot not on the form, and secondIntent in a form', () => {
+    expect(() => parseCorpus('{"id":"x","text":"yes","intent":"none","context":"reschedule","confirm":"yes"}')).toThrow(/confirm needs a confirm_ context/);
+    expect(() => parseCorpus('{"id":"x","text":"the day","intent":"none","context":"confirm_cancel","changeSlot":"date"}')).toThrow(/not on form cancel/);
+    expect(() => parseCorpus('{"id":"x","text":"x","intent":"reschedule","context":"reschedule","secondIntent":"billing"}')).toThrow(/secondIntent needs no_form/);
+    expect(() => parseCorpus('{"id":"x","text":"x","intent":"none","context":"confirm_billing"}')).toThrow(/unknown context/);
+  });
+
+  it('rejects a changeSlot alongside confirm yes, and a secondIntent equal to intent', () => {
+    expect(() => parseCorpus('{"id":"x","text":"yes the day","intent":"none","context":"confirm_reschedule","confirm":"yes","changeSlot":"date"}')).toThrow(/changeSlot needs confirm no or unanswered/);
+    expect(() => parseCorpus('{"id":"x","text":"reschedule and reschedule","intent":"reschedule","context":"no_form","secondIntent":"reschedule"}')).toThrow(/secondIntent must differ from intent/);
+  });
+
+  it('treats confirm_appointment as the confirm_appointment form itself, not a confirm_ context', () => {
+    expect(contextForm('confirm_appointment')).toBe('confirm_appointment');
+    expect(confirmForm('confirm_appointment')).toBeNull();
+    expect(confirmForm('confirm_confirm_appointment')).toBe('confirm_appointment');
+    expect(contextForm('confirm_confirm_appointment')).toBe('confirm_appointment');
+  });
+
+  it('resolves confirm_billing to null: billing hands off and has no summary prompt', () => {
+    expect(contextForm('confirm_billing')).toBeNull();
   });
 });

@@ -7,7 +7,7 @@ import { newSession } from '../core/session';
 import { buildTurnState } from '../core/state';
 import { candidateSpans } from '../core/spans';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
-import { JevClientError, type QuestionMap } from './types';
+import { JevClientError, noulValue, type QuestionMap } from './types';
 
 const entries: CorpusEntry[] = [
   {
@@ -119,5 +119,34 @@ describe('FixtureStubClient', () => {
     expect((await ask('also my bill')).answers.intentTentative).toMatchObject({ noul: 0.05 });
     expect((await ask('maybe cancel it')).answers.intentChange).toMatchObject({ choice: 'answering' });
     expect((await ask('might be kim')).answers.providerUnsure).toMatchObject({ noul: 0.9 });
+  });
+
+  it('answers the confirm questions from confirm, changeSlot, and secondIntent labels', async () => {
+    const corpus = parseCorpus([
+      '{"id":"fc-1","text":"yes","intent":"none","context":"confirm_reschedule","confirm":"yes"}',
+      '{"id":"fc-2","text":"no the day","intent":"none","context":"confirm_reschedule","confirm":"no","changeSlot":"date"}',
+      '{"id":"fc-3","text":"reschedule and also my bill","intent":"reschedule","context":"no_form","secondIntent":"billing"}',
+    ].join('\n'));
+    const stubClient = new FixtureStubClient(corpus, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    const qs = {
+      confirmsYes: { type: 'noul', instructions: '' },
+      confirmsNo: { type: 'noul', instructions: '' },
+      changeSlot: { type: 'choice', instructions: '', criteria: { provider: null, date: null, memberId: null, none: null } },
+      secondIntent: {
+        type: 'choice',
+        instructions: '',
+        criteria: { schedule_new: null, reschedule: null, cancel: null, confirm_appointment: null, billing: null, none: null },
+      },
+    } as const;
+    const ask = async (text: string) => (await stubClient.ask({ state: { asr: { text } }, questions: qs as never })).answers;
+    const a = await ask('yes');
+    expect(noulValue(a, 'confirmsYes')).toBeGreaterThan(0.8);
+    expect(noulValue(a, 'confirmsNo')).toBeLessThan(0.2);
+    const b = await ask('no the day');
+    expect(noulValue(b, 'confirmsNo')).toBeGreaterThan(0.8);
+    expect((b.changeSlot as { choice: string }).choice).toBe('date');
+    const c = await ask('reschedule and also my bill');
+    expect((c.secondIntent as { choice: string }).choice).toBe('billing');
+    expect((a.secondIntent as { choice: string }).choice).toBe('none');
   });
 });

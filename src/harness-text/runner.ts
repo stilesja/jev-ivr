@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { TurnResult } from '../core/turn';
+import { summaryVars, type TurnResult } from '../core/turn';
 import { emptySlot, missingSlots, newSession, setForm, type Session } from '../core/session';
-import type { CorpusEntry } from '../jev/corpus';
+import { confirmForm, contextForm, type CorpusEntry } from '../jev/corpus';
 import { JevClientError, type JevClient } from '../jev/types';
 import { promptText } from '../prompts/render';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
@@ -43,25 +43,42 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
 }
 
 /** Stand-ins for the slots a corpus entry's form has already collected. */
-const PLACEHOLDER_SLOTS: Partial<Record<SlotId, SlotCandidate>> = {
+const PLACEHOLDER_SLOTS: Record<SlotId, SlotCandidate> = {
   memberId: { value: '00000000', display: '0000 0000' },
   provider: { value: 'patel', display: 'Dr. Patel' },
+  date: { value: '2026-09-22', display: 'Tuesday, September 22' },
 };
 
 /** The mid-call state a corpus entry's context implies: its form, the slots already collected, and the prompt being answered. */
-function seedCorpusSession(session: Session, entry: CorpusEntry): Session {
+export function seedCorpusSession(session: Session, entry: CorpusEntry): Session {
   if (entry.context === 'no_form') return session;
-  setForm(session, entry.context);
-  // An entry that targets a later slot starts from a form that already has the earlier ones.
-  if (entry.prompted) {
-    for (const id of FORMS[entry.context].slots) {
-      if (id === entry.prompted) break;
-      const placeholder = PLACEHOLDER_SLOTS[id];
-      if (!placeholder) throw new Error(`corpus ${entry.id}: no placeholder for slot ${id}`);
-      session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: true };
-    }
+  const form = contextForm(entry.context)!;
+  setForm(session, form);
+  const confirming = confirmForm(entry.context) !== null;
+  // An entry that targets a later slot starts from a form that already has the earlier ones; a confirm_
+  // entry starts from a form that has every slot, since the summary is only asked once the form is full.
+  // Computed once, before any slot is filled: recomputing missingSlots(session) per iteration would chase
+  // a moving target as the loop fills earlier slots.
+  const stopAt = entry.prompted ?? missingSlots(session)[0];
+  for (const id of FORMS[form].slots) {
+    if (!confirming && id === stopAt) break;
+    const placeholder = PLACEHOLDER_SLOTS[id];
+    // In a confirm_ context every slot is seeded unconfirmed: the summary is what confirms them, not this
+    // placeholder fill. No slot on a summary form uses the `always` policy, so none of them raises a
+    // readback of its own on the way.
+    session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: !confirming };
   }
-  const slot = entry.prompted ?? missingSlots(session)[0] ?? null;
+  if (confirming) {
+    const promptId = FORMS[form].summaryPromptId;
+    if (!promptId) throw new Error(`corpus ${entry.id}: form ${form} has no summary prompt`);
+    session.pendingConfirmation = { target: 'form', form, attempts: 0 };
+    session.promptedFor = 'confirm';
+    session.lastPromptId = promptId;
+    session.lastPromptText = promptText(promptId, summaryVars(session));
+    session.lastPromptOptions = ['yes', 'no'];
+    return session;
+  }
+  const slot = stopAt ?? null;
   session.promptedFor = slot;
   session.lastPromptId = slot ? `ask_${slot}` : null;
   session.lastPromptText = slot ? promptText(`ask_${slot}`, {}) : '';

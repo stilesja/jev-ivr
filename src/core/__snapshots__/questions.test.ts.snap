@@ -1,9 +1,35 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`question redesign > pins every question the model sees inside a form (a diff here re-keys the cassette) 1`] = `
+exports[`question redesign > pins every question the model sees at the summary (a diff here re-keys the cassette) 1`] = `
 {
   "addressedToSystem": {
+    "criteria": {
+      "false": "Talking to someone else in the room, to a television, or to themselves, even when what they say is about the call",
+      "true": "Anything said in reply to the phone system, including a short answer or correction to the question it just asked, such as a name, a day, a number, a yes or no, or a bare correction",
+    },
     "instructions": "Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?",
+    "type": "noul",
+  },
+  "changeSlot": {
+    "criteria": {
+      "date": "They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong",
+      "memberId": "They name the member ID or member number as the thing to change, without saying the digits",
+      "none": "They say a new value rather than naming which detail is wrong, such as a weekday, a doctor name, or a string of digits; or they only answer yes or no; or they name nothing",
+      "provider": "They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. The caller was read a summary of their appointment and asked to confirm it, or asked what to change. Which detail do they name as wrong or ask to change?",
+    "type": "choice",
+  },
+  "confirmsNo": {
+    "criteria": {
+      "false": "The caller agrees, answers something else, or says nothing about the question",
+      "true": "The caller says no, says something is wrong, or gives a value that replaces or contradicts a detail the system just read back, including a bare correction such as "not Chen, Cheng" or "Thursday, not Tuesday", whether or not the system itself named the value they reject",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. Does the caller answer no to the confirmation question?",
+    "type": "noul",
+  },
+  "confirmsYes": {
+    "instructions": "Read asr.text and node.promptJustPlayed. Does the caller answer yes to the confirmation question?",
     "type": "noul",
   },
   "confusedByPrompt": {
@@ -49,7 +75,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any?",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
     "type": "choice",
   },
   "dateMode": {
@@ -79,7 +105,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any?",
+    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -89,7 +115,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "today": null,
       "tomorrow": null,
     },
-    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow?",
+    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow". A hedge such as "I'm not sure" or "either" is not a correction; name the relative day they mention.",
     "type": "choice",
   },
   "dateWeekday": {
@@ -103,7 +129,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "tuesday": null,
       "wednesday": null,
     },
-    "instructions": "Read asr.text. Which day of the week does the caller name, if any?",
+    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday". A hedge such as "I'm not sure" or "either" is not a correction; name the day they mention.",
     "type": "choice",
   },
   "dateWeekdayQualifier": {
@@ -112,7 +138,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "none": null,
       "this": null,
     },
-    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it?",
+    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday". A hedge such as "I'm not sure" or "either" is not a correction; name the qualifier they mention.",
     "type": "choice",
   },
   "dateWindow": {
@@ -123,7 +149,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "this_month": null,
       "this_week": null,
     },
-    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month?",
+    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week". A hedge such as "I'm not sure" or "either" is not a correction; name the span they mention.",
     "type": "choice",
   },
   "frustration": {
@@ -206,17 +232,289 @@ exports[`question redesign > pins every question the model sees inside a form (a
   },
   "provider": {
     "criteria": {
-      "alvarez": "Dr. Alvarez",
-      "chen": "Dr. Chen",
-      "cheng": "Dr. Cheng",
-      "kim": "Dr. Kim",
-      "nguyen": "Dr. Nguyen",
+      "alvarez": "Dr. Alvarez, also said as just Alvarez",
+      "chen": "Dr. Chen, also said as just Chen",
+      "cheng": "Dr. Cheng, also said as just Cheng",
+      "kim": "Dr. Kim, also said as just Kim",
+      "nguyen": "Dr. Nguyen, also said as just Nguyen",
       "none": "No provider is named",
-      "okafor": "Dr. Okafor",
-      "patel": "Dr. Patel",
-      "rossi": "Dr. Rossi",
+      "okafor": "Dr. Okafor, also said as just Okafor",
+      "patel": "Dr. Patel, also said as just Patel",
+      "rossi": "Dr. Rossi, also said as just Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name?",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I'm not sure" or "either" is not a correction; name the provider they mention.",
+    "type": "choice",
+  },
+  "providerUnsure": {
+    "criteria": {
+      "false": "The caller names a provider plainly, or names none. A caller correcting themselves, as in Dr. Chen, not Dr. Cheng, is sure, and so is a caller who hedges only about what they want done, as in maybe cancel it with Dr. Chen",
+      "true": "The caller hedges about the provider, as in it might be Dr. Kim or Dr. Rossi I think, or offers two names for one provider, as in Dr. Chen or Cheng, I am not sure",
+    },
+    "instructions": "Read asr.text. Is the caller unsure which provider they mean, or unsure of that provider's name?",
+    "type": "noul",
+  },
+  "rephrasingLastTurn": {
+    "instructions": "Read asr.text and history. Is the caller repeating or rewording a request because the previous turn's outcome in history shows the system did not act on it?",
+    "type": "noul",
+  },
+  "spokeAMenuNumber": {
+    "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
+    "type": "noul",
+  },
+  "triedSelfService": {
+    "instructions": "Read asr.text. Does the caller say they already tried the website, the app, or an earlier call?",
+    "type": "noul",
+  },
+  "urgency": {
+    "instructions": "Read asr.text. How urgent is the caller's need?",
+    "levels": [
+      {
+        "description": "No time pressure mentioned",
+        "label": "low",
+      },
+      {
+        "description": "Wants it handled soon",
+        "label": "normal",
+      },
+      {
+        "description": "Says it is urgent, an emergency, or must happen today",
+        "label": "high",
+      },
+    ],
+    "type": "score",
+  },
+  "utteranceComplete": {
+    "instructions": "Read asr.text. Has the caller finished their thought, rather than trailing off or being cut short?",
+    "type": "noul",
+  },
+  "wantsHuman": {
+    "instructions": "Read asr.text. Does the caller explicitly ask to talk to a person, an agent, a representative, or an operator?",
+    "type": "noul",
+  },
+}
+`;
+
+exports[`question redesign > pins every question the model sees inside a form (a diff here re-keys the cassette) 1`] = `
+{
+  "addressedToSystem": {
+    "criteria": {
+      "false": "Talking to someone else in the room, to a television, or to themselves, even when what they say is about the call",
+      "true": "Anything said in reply to the phone system, including a short answer or correction to the question it just asked, such as a name, a day, a number, a yes or no, or a bare correction",
+    },
+    "instructions": "Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?",
+    "type": "noul",
+  },
+  "confusedByPrompt": {
+    "instructions": "Read asr.text and node.promptJustPlayed. Does the caller sound confused by what the system just asked?",
+    "type": "noul",
+  },
+  "containsMemberId": {
+    "instructions": "Read asr.text. Does the caller state a member ID number, either as digits or as spoken number words?",
+    "type": "noul",
+  },
+  "dateDay": {
+    "criteria": {
+      "1": null,
+      "10": null,
+      "11": null,
+      "12": null,
+      "13": null,
+      "14": null,
+      "15": null,
+      "16": null,
+      "17": null,
+      "18": null,
+      "19": null,
+      "2": null,
+      "20": null,
+      "21": null,
+      "22": null,
+      "23": null,
+      "24": null,
+      "25": null,
+      "26": null,
+      "27": null,
+      "28": null,
+      "29": null,
+      "3": null,
+      "30": null,
+      "31": null,
+      "4": null,
+      "5": null,
+      "6": null,
+      "7": null,
+      "8": null,
+      "9": null,
+      "none": null,
+    },
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
+    "type": "choice",
+  },
+  "dateMode": {
+    "criteria": {
+      "absolute": null,
+      "none": null,
+      "relative_day": null,
+      "weekday": null,
+      "window": null,
+    },
+    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned.",
+    "type": "choice",
+  },
+  "dateMonth": {
+    "criteria": {
+      "april": null,
+      "august": null,
+      "december": null,
+      "february": null,
+      "january": null,
+      "july": null,
+      "june": null,
+      "march": null,
+      "may": null,
+      "none": null,
+      "november": null,
+      "october": null,
+      "september": null,
+    },
+    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
+    "type": "choice",
+  },
+  "dateRelativeDay": {
+    "criteria": {
+      "day_after_tomorrow": null,
+      "none": null,
+      "today": null,
+      "tomorrow": null,
+    },
+    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow". A hedge such as "I'm not sure" or "either" is not a correction; name the relative day they mention.",
+    "type": "choice",
+  },
+  "dateWeekday": {
+    "criteria": {
+      "friday": null,
+      "monday": null,
+      "none": null,
+      "saturday": null,
+      "sunday": null,
+      "thursday": null,
+      "tuesday": null,
+      "wednesday": null,
+    },
+    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday". A hedge such as "I'm not sure" or "either" is not a correction; name the day they mention.",
+    "type": "choice",
+  },
+  "dateWeekdayQualifier": {
+    "criteria": {
+      "next": null,
+      "none": null,
+      "this": null,
+    },
+    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday". A hedge such as "I'm not sure" or "either" is not a correction; name the qualifier they mention.",
+    "type": "choice",
+  },
+  "dateWindow": {
+    "criteria": {
+      "next_month": null,
+      "next_week": null,
+      "none": null,
+      "this_month": null,
+      "this_week": null,
+    },
+    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week". A hedge such as "I'm not sure" or "either" is not a correction; name the span they mention.",
+    "type": "choice",
+  },
+  "frustration": {
+    "instructions": "Read asr.text. How frustrated does the caller sound?",
+    "levels": [
+      {
+        "description": "Calm or neutral wording",
+        "label": "none",
+      },
+      {
+        "description": "Complains about waiting, repeats a request with irritation, or says come on or seriously",
+        "label": "mild",
+      },
+      {
+        "description": "Swears, insults the system, says this is ridiculous, or threatens to hang up or complain",
+        "label": "high",
+      },
+    ],
+    "type": "score",
+  },
+  "intelligible": {
+    "criteria": {
+      "false": "Garbled fragments, transcribed noise, or nothing but a filler sound such as um or uh",
+      "true": "Any real utterance, including a single word, a yes or no, a name, a number, or a string of digits",
+    },
+    "instructions": "Read asr.text. Is the text words the caller actually said, rather than garbled fragments or background noise?",
+    "type": "noul",
+  },
+  "intent": {
+    "criteria": {
+      "agent": "Asks to speak with a person, representative, or operator",
+      "billing": "Asks about a bill, charge, payment, or insurance coverage",
+      "cancel": "Wants to cancel an existing appointment",
+      "confirm_appointment": "Wants to check or confirm the details of an existing appointment",
+      "none": "No request is expressed; the caller is only answering a question or saying something incidental",
+      "other": "A request the clinic line does not handle",
+      "repeat_prompt": "Asks the system to repeat what it just said",
+      "reschedule": "Wants to move an existing appointment to a different day",
+      "schedule_new": "Wants to book a new appointment that does not exist yet",
+    },
+    "instructions": "Read asr.text. What is the caller asking the clinic phone line to do? If they are only answering a slot or confirmation question and not asking for anything new, choose none.",
+    "type": "choice",
+  },
+  "intentChange": {
+    "criteria": {
+      "adding": "Asks for an additional task to be handled as well, while keeping the current one, for example with also, as well, and another thing, or after this",
+      "answering": "Answers or reacts to the question that was just asked, restates the current task, or says something incidental; anything that is not a request for a different task",
+      "replacing": "Abandons the current task in favour of a different one, for example with never mind, forget that, instead, or actually I just want",
+    },
+    "instructions": "Read asr.text. The caller is in the middle of the task described by activeFormLabel and was just asked node.promptJustPlayed. Which best describes this utterance?",
+    "type": "choice",
+  },
+  "intentTentative": {
+    "criteria": {
+      "false": "The request is stated plainly, even if the caller hedges about a detail such as a date, a provider name, or a number",
+      "true": "The hedge is about what the caller wants done, as in maybe cancel it or I guess I need to cancel",
+    },
+    "instructions": "Read asr.text. Does the caller express their request tentatively, with words such as maybe, I guess, I think, possibly, or might, rather than stating it plainly?",
+    "type": "noul",
+  },
+  "languageSwitch": {
+    "criteria": {
+      "es": "Spanish",
+      "fr": "French",
+      "none": "English",
+    },
+    "instructions": "Read asr.text. Which language other than English does the caller ask for or speak, if any?",
+    "type": "choice",
+  },
+  "memberIdComplete": {
+    "instructions": "Read asr.text. If the caller states a member ID, do they finish saying the whole number rather than trailing off?",
+    "type": "noul",
+  },
+  "memberIdSpan": {
+    "criteria": {
+      "none": "No span of asr.text is a member ID",
+    },
+    "instructions": "Read asr.text. Which of these spans is the member ID the caller states? Choose the span that covers the whole number as spoken, including number words like forty-four or three hundred fifty-five and modifiers like double or triple. Do not include words that are not part of the number. Choose none if no span is a member ID.",
+    "type": "choice",
+  },
+  "provider": {
+    "criteria": {
+      "alvarez": "Dr. Alvarez, also said as just Alvarez",
+      "chen": "Dr. Chen, also said as just Chen",
+      "cheng": "Dr. Cheng, also said as just Cheng",
+      "kim": "Dr. Kim, also said as just Kim",
+      "nguyen": "Dr. Nguyen, also said as just Nguyen",
+      "none": "No provider is named",
+      "okafor": "Dr. Okafor, also said as just Okafor",
+      "patel": "Dr. Patel, also said as just Patel",
+      "rossi": "Dr. Rossi, also said as just Rossi",
+    },
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I'm not sure" or "either" is not a correction; name the provider they mention.",
     "type": "choice",
   },
   "providerUnsure": {
@@ -271,6 +569,10 @@ exports[`question redesign > pins every question the model sees inside a form (a
 exports[`question redesign > pins every question the model sees outside a form (a diff here re-keys the cassette) 1`] = `
 {
   "addressedToSystem": {
+    "criteria": {
+      "false": "Talking to someone else in the room, to a television, or to themselves, even when what they say is about the call",
+      "true": "Anything said in reply to the phone system, including a short answer or correction to the question it just asked, such as a name, a day, a number, a yes or no, or a bare correction",
+    },
     "instructions": "Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?",
     "type": "noul",
   },
@@ -317,7 +619,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any?",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
     "type": "choice",
   },
   "dateMode": {
@@ -347,7 +649,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any?",
+    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -357,7 +659,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "today": null,
       "tomorrow": null,
     },
-    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow?",
+    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow". A hedge such as "I'm not sure" or "either" is not a correction; name the relative day they mention.",
     "type": "choice",
   },
   "dateWeekday": {
@@ -371,7 +673,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "tuesday": null,
       "wednesday": null,
     },
-    "instructions": "Read asr.text. Which day of the week does the caller name, if any?",
+    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday". A hedge such as "I'm not sure" or "either" is not a correction; name the day they mention.",
     "type": "choice",
   },
   "dateWeekdayQualifier": {
@@ -380,7 +682,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "none": null,
       "this": null,
     },
-    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it?",
+    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday". A hedge such as "I'm not sure" or "either" is not a correction; name the qualifier they mention.",
     "type": "choice",
   },
   "dateWindow": {
@@ -391,7 +693,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "this_month": null,
       "this_week": null,
     },
-    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month?",
+    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week". A hedge such as "I'm not sure" or "either" is not a correction; name the span they mention.",
     "type": "choice",
   },
   "frustration": {
@@ -465,17 +767,17 @@ exports[`question redesign > pins every question the model sees outside a form (
   },
   "provider": {
     "criteria": {
-      "alvarez": "Dr. Alvarez",
-      "chen": "Dr. Chen",
-      "cheng": "Dr. Cheng",
-      "kim": "Dr. Kim",
-      "nguyen": "Dr. Nguyen",
+      "alvarez": "Dr. Alvarez, also said as just Alvarez",
+      "chen": "Dr. Chen, also said as just Chen",
+      "cheng": "Dr. Cheng, also said as just Cheng",
+      "kim": "Dr. Kim, also said as just Kim",
+      "nguyen": "Dr. Nguyen, also said as just Nguyen",
       "none": "No provider is named",
-      "okafor": "Dr. Okafor",
-      "patel": "Dr. Patel",
-      "rossi": "Dr. Rossi",
+      "okafor": "Dr. Okafor, also said as just Okafor",
+      "patel": "Dr. Patel, also said as just Patel",
+      "rossi": "Dr. Rossi, also said as just Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name?",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I'm not sure" or "either" is not a correction; name the provider they mention.",
     "type": "choice",
   },
   "providerUnsure": {
@@ -489,6 +791,18 @@ exports[`question redesign > pins every question the model sees outside a form (
   "rephrasingLastTurn": {
     "instructions": "Read asr.text and history. Is the caller repeating or rewording a request because the previous turn's outcome in history shows the system did not act on it?",
     "type": "noul",
+  },
+  "secondIntent": {
+    "criteria": {
+      "billing": "A second, separate request on top of the main one: Asks about a bill, charge, payment, or insurance coverage",
+      "cancel": "A second, separate request on top of the main one: Wants to cancel an existing appointment",
+      "confirm_appointment": "A second, separate request on top of the main one: Wants to check or confirm the details of an existing appointment",
+      "none": "Everything the caller says belongs to one request, even if they describe it twice or add details to it; or they ask for nothing",
+      "reschedule": "A second, separate request on top of the main one: Wants to move an existing appointment to a different day",
+      "schedule_new": "A second, separate request on top of the main one: Wants to book a new appointment that does not exist yet",
+    },
+    "instructions": "Read asr.text. The caller states one main request. Does the same utterance also ask for a second, separate task on top of it, joined by words such as and also, as well, another thing, or while I have you? If so, which is the extra task? Choose none when everything they say is part of one request.",
+    "type": "choice",
   },
   "spokeAMenuNumber": {
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",

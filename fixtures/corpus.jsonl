@@ -180,3 +180,25 @@
 {"id":"pv-10","text":"either Dr. Chen or Dr. Cheng, I'm not sure which","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"providerUnsure":true,"answers":{"provider":{"probabilities":{"chen":0.48,"cheng":0.46}}},"tags":["provider_unsure","two_providers"]}
 {"id":"lc-13","text":"Maybe cancel it, it's with Dr. Chen","intent":"cancel","context":"no_form","slots":{"provider":"chen"},"tentative":true,"tags":["tentative","over_answer"]}
 {"id":"fr-07","text":"This is ridiculous, I already said Dr. Chen three times","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"answers":{"frustration":{"probabilities":{"high":0.8,"mild":0.15}}},"tags":["frustration_high"]}
+{"id":"fc-02","text":"yes that's right","intent":"none","context":"confirm_cancel","confirm":"yes"}
+{"id":"fc-03","text":"yep book it","intent":"none","context":"confirm_schedule_new","confirm":"yes"}
+{"id":"fc-06","text":"no, Thursday","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"fc-07","text":"no, Thursday with Dr. Alvarez","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"alvarez","date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"fc-08","text":"not Chen, Cheng","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}
+{"id":"fc-09","text":"no, next week","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"date":{"mode":"window","window":"next_week"}}}
+{"id":"fc-10","text":"the day","intent":"none","context":"confirm_reschedule","changeSlot":"date"}
+{"id":"fc-11","text":"the doctor","intent":"none","context":"confirm_cancel","changeSlot":"provider"}
+{"id":"fc-12","text":"my member ID","intent":"none","context":"confirm_reschedule","changeSlot":"memberId"}
+{"id":"fc-13","text":"no, my ID is four four seven one eight two nine four","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"memberId":{"span":"four four seven one eight two nine four","value":"44718294"}}}
+{"id":"fc-15","text":"yes, and can I also ask about my bill","intent":"billing","context":"confirm_reschedule","confirm":"yes","change":"adding"}
+{"id":"fc-16","text":"no, the doctor is wrong","intent":"none","context":"confirm_reschedule","confirm":"no","changeSlot":"provider"}
+{"id":"fc-17","text":"Cheng, not Chen","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}
+{"id":"fc-18","text":"Thursday, not Tuesday","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"fc-19","text":"it's Cheng","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}
+{"id":"fc-20","text":"Dr. Cheng","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}
+{"id":"si-01","text":"I need to reschedule my appointment with Dr. Alvarez for next Thursday, and also I have a question about my bill","intent":"reschedule","context":"no_form","secondIntent":"billing","slots":{"provider":"alvarez","date":{"mode":"weekday","weekday":"thursday","weekdayQualifier":"next"}}}
+{"id":"si-02","text":"Cancel my appointment and then I want to book a new one","intent":"cancel","context":"no_form","secondIntent":"schedule_new"}
+{"id":"si-03","text":"I want to reschedule, just reschedule","intent":"reschedule","context":"no_form"}
+{"id":"si-04","text":"maybe reschedule, and also my bill","intent":"reschedule","context":"no_form","tentative":true,"secondIntent":"billing"}
+{"id":"dt-22","text":"Friday","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"friday"}}}
+{"id":"pv-11","text":"Dr. Kim","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"kim"}}

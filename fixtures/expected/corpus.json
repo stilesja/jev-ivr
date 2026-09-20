@@ -82,7 +82,7 @@
   "sn-06": {
     "id": "sn-06",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -146,7 +146,7 @@
   "sn-10": {
     "id": "sn-10",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "confirm_schedule",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -290,7 +290,7 @@
   "rs-09": {
     "id": "rs-09",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -402,7 +402,7 @@
   "cn-04": {
     "id": "cn-04",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "confirm_cancel",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -482,7 +482,7 @@
   "cn-09": {
     "id": "cn-09",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -594,7 +594,7 @@
   "cf-06": {
     "id": "cf-06",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -721,10 +721,10 @@
   },
   "bl-06": {
     "id": "bl-06",
-    "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": "intent",
     "verdict": "route",
     "form": "billing",
@@ -1363,8 +1363,8 @@
   },
   "lc-12": {
     "id": "lc-12",
-    "decision": "complete",
-    "promptId": "cancel_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_cancel",
     "acks": [
       "ack_provider"
     ],
@@ -1670,7 +1670,7 @@
   "mi-01": {
     "id": "mi-01",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1686,7 +1686,7 @@
   "mi-02": {
     "id": "mi-02",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1701,10 +1701,10 @@
   },
   "mi-03": {
     "id": "mi-03",
-    "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
     "form": "billing",
@@ -1718,7 +1718,7 @@
   "mi-04": {
     "id": "mi-04",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1734,7 +1734,7 @@
   "mi-05": {
     "id": "mi-05",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1750,7 +1750,7 @@
   "mi-06": {
     "id": "mi-06",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1798,7 +1798,7 @@
   "mi-09": {
     "id": "mi-09",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_date",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1814,7 +1814,7 @@
   "mi-10": {
     "id": "mi-10",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1829,10 +1829,10 @@
   },
   "mi-11": {
     "id": "mi-11",
-    "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
     "form": "billing",
@@ -1846,7 +1846,7 @@
   "mi-12": {
     "id": "mi-12",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1877,8 +1877,8 @@
   },
   "pv-02": {
     "id": "pv-02",
-    "decision": "complete",
-    "promptId": "cancel_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_cancel",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1925,8 +1925,8 @@
   },
   "pv-05": {
     "id": "pv-05",
-    "decision": "complete",
-    "promptId": "appointment_details",
+    "decision": "prompt",
+    "promptId": "confirm_appointment_details",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1941,8 +1941,8 @@
   },
   "pv-06": {
     "id": "pv-06",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1973,8 +1973,8 @@
   },
   "pv-08": {
     "id": "pv-08",
-    "decision": "complete",
-    "promptId": "cancel_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_cancel",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -1989,8 +1989,8 @@
   },
   "dt-01": {
     "id": "dt-01",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2005,8 +2005,8 @@
   },
   "dt-02": {
     "id": "dt-02",
-    "decision": "complete",
-    "promptId": "schedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2021,8 +2021,8 @@
   },
   "dt-03": {
     "id": "dt-03",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2037,8 +2037,8 @@
   },
   "dt-04": {
     "id": "dt-04",
-    "decision": "complete",
-    "promptId": "schedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2069,8 +2069,8 @@
   },
   "dt-06": {
     "id": "dt-06",
-    "decision": "complete",
-    "promptId": "schedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2085,8 +2085,8 @@
   },
   "dt-07": {
     "id": "dt-07",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2117,8 +2117,8 @@
   },
   "dt-09": {
     "id": "dt-09",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2133,8 +2133,8 @@
   },
   "dt-10": {
     "id": "dt-10",
-    "decision": "complete",
-    "promptId": "schedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2165,8 +2165,8 @@
   },
   "dt-12": {
     "id": "dt-12",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2181,8 +2181,8 @@
   },
   "dt-13": {
     "id": "dt-13",
-    "decision": "complete",
-    "promptId": "schedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2197,8 +2197,8 @@
   },
   "dt-14": {
     "id": "dt-14",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2213,8 +2213,8 @@
   },
   "dt-15": {
     "id": "dt-15",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2229,8 +2229,8 @@
   },
   "dt-16": {
     "id": "dt-16",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2245,8 +2245,8 @@
   },
   "dt-17": {
     "id": "dt-17",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2429,8 +2429,8 @@
   },
   "dt-20": {
     "id": "dt-20",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2445,8 +2445,8 @@
   },
   "dt-21": {
     "id": "dt-21",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2462,7 +2462,7 @@
   "rs-13": {
     "id": "rs-13",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "confirm_reschedule",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -2478,7 +2478,7 @@
   "mi-13": {
     "id": "mi-13",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2494,7 +2494,7 @@
   "mi-14": {
     "id": "mi-14",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2510,7 +2510,7 @@
   "mi-15": {
     "id": "mi-15",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2526,7 +2526,7 @@
   "mi-16": {
     "id": "mi-16",
     "decision": "prompt",
-    "promptId": "confirm_memberId",
+    "promptId": "ask_provider",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -2599,8 +2599,8 @@
   },
   "sw-12": {
     "id": "sw-12",
-    "decision": "complete",
-    "promptId": "cancel_confirmed",
+    "decision": "prompt",
+    "promptId": "confirm_cancel",
     "acks": [
       "ack_intent"
     ],
@@ -2677,6 +2677,369 @@
     "slots": {
       "memberId": "00000000",
       "provider": "chen",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-02": {
+    "id": "fc-02",
+    "decision": "complete",
+    "promptId": "cancel_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-03": {
+    "id": "fc-03",
+    "decision": "complete",
+    "promptId": "schedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "schedule_new",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-06": {
+    "id": "fc-06",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "fc-07": {
+    "id": "fc-07",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "alvarez",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "fc-08": {
+    "id": "fc-08",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-09": {
+    "id": "fc-09",
+    "decision": "prompt",
+    "promptId": "date_narrow_window",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-10": {
+    "id": "fc-10",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-11": {
+    "id": "fc-11",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "cancel",
+    "slots": {
+      "memberId": "00000000",
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-12": {
+    "id": "fc-12",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-13": {
+    "id": "fc-13",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718294",
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-15": {
+    "id": "fc-15",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
+    "acks": [
+      "reschedule_confirmed",
+      "bridge_next"
+    ],
+    "reason": "billing",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "billing",
+    "slots": {
+      "memberId": "00000000",
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-16": {
+    "id": "fc-16",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": null,
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-17": {
+    "id": "fc-17",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-18": {
+    "id": "fc-18",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "fc-19": {
+    "id": "fc-19",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-20": {
+    "id": "fc-20",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "si-01": {
+    "id": "si-01",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [
+      "ack_queued"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": "alvarez",
+      "date": "2026-09-24"
+    },
+    "queued": [
+      "billing"
+    ]
+  },
+  "si-02": {
+    "id": "si-02",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [
+      "ack_queued"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "cancel",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [
+      "schedule_new"
+    ]
+  },
+  "si-03": {
+    "id": "si-03",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "si-04": {
+    "id": "si-04",
+    "decision": "prompt",
+    "promptId": "confirm_intent_explicit",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "dt-22": {
+    "id": "dt-22",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-25"
+    },
+    "queued": []
+  },
+  "pv-11": {
+    "id": "pv-11",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "kim",
       "date": null
     },
     "queued": []

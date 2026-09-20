@@ -3,10 +3,11 @@ import { FORMS } from '../domain/forms';
 import { renderTemplate, promptText, promptEntry, decisionToFrames, promptFrames, handoffPromptId, spokenText } from './render';
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
+import { allSlots } from '../domain/slots';
 import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
 import { textFrame } from '../channel/frames';
 import { recordableClips } from './clips';
-import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VOCAB_VARS, type Segment } from './segments';
+import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR, VOCAB_VARS, type Segment } from './segments';
 
 describe('renderTemplate', () => {
   it('substitutes variables', () => {
@@ -79,7 +80,7 @@ describe('decisionToFrames', () => {
   });
 
   it('ends the call after a handoff prompt', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [], completed: [], queued: [] });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [], completed: [], queued: [], slots: {} });
     expect(frames[1]).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing"}' });
   });
 
@@ -89,12 +90,27 @@ describe('decisionToFrames', () => {
   });
 });
 
-describe('completion prompts', () => {
-  it('read back every slot of the form they close', () => {
+describe('summary prompts', () => {
+  it('read back every slot of the form they confirm', () => {
     for (const [form, spec] of Object.entries(FORMS)) {
-      if (spec.completion.kind !== 'prompt') continue;
-      const text = promptEntry(spec.completion.promptId).text;
-      for (const slot of spec.slots) expect(text, `${form}: ${spec.completion.promptId}`).toContain(`{${slot}}`);
+      if (spec.summaryPromptId === null) continue;
+      const text = promptEntry(spec.summaryPromptId).text;
+      for (const slot of spec.slots) expect(text, `${form}: ${spec.summaryPromptId}`).toContain(`{${slot}}`);
+    }
+  });
+
+  it('has a readback prompt for any slot whose policy asks for one', () => {
+    // Nothing uses `always` today (the member ID moved to `summary`), so this loop asserts
+    // nothing -- it is here to catch the missing prompt the day a slot opts back in.
+    for (const spec of allSlots()) {
+      if (spec.spokenConfirm === 'always') expect(Object.keys(manifest), spec.id).toContain(`confirm_${spec.id}`);
+    }
+  });
+
+  it('leaves the completion line to say only that it is done', () => {
+    for (const [form, spec] of Object.entries(FORMS)) {
+      if (spec.completion.kind !== 'prompt' || spec.summaryPromptId === null) continue;
+      expect(promptEntry(spec.completion.promptId).text, form).not.toMatch(new RegExp(VAR.source));
     }
   });
 });
@@ -113,13 +129,13 @@ describe('completion and chaining', () => {
   });
 
   it('speaks acks before a handoff and reports completed forms', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [] });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [], slots: { memberId: '4471 8293' } });
     expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's ask about billing.", 'Connecting you to billing now.', 'end']);
-    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"]}' });
+    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"],"slots":{"memberId":"4471 8293"}}' });
   });
 
   it('reports intents the call never started in the handoff data', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent', acks: [], completed: ['cancel'], queued: ['schedule_new'] });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent', acks: [], completed: ['cancel'], queued: ['schedule_new'], slots: {} });
     expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"live-agent","completed":["cancel"],"queued":["schedule_new"]}' });
   });
 });
@@ -129,7 +145,7 @@ describe('decisionToFrames with clips', () => {
   const clips = new Map([
     ['greeting.0', 'greeting.0.wav'],
     ['ack_provider.0', 'ack_provider.0.wav'], ['provider.chen', 'provider.chen.wav'],
-    ['confirm_memberId.0', 'confirm_memberId.0.wav'], ['confirm_memberId.1', 'confirm_memberId.1.mp3'],
+    ['confirm_cancel.0', 'confirm_cancel.0.wav'], ['confirm_cancel.1', 'confirm_cancel.1.mp3'], ['confirm_cancel.2', 'confirm_cancel.2.wav'],
     ['window.next_week', 'window.next_week.wav'],
     ['goodbye.0', 'goodbye.0.wav'],
   ]);
@@ -144,12 +160,13 @@ describe('decisionToFrames with clips', () => {
 
   it('plays vocabulary clips, speaks composed values, and drops bare punctuation after a clip', () => {
     const frames = decisionToFrames({
-      kind: 'prompt', promptId: 'confirm_memberId', vars: { memberId: '4471 8293' }, target: 'memberId', options: ['yes', 'no'],
+      kind: 'prompt', promptId: 'confirm_cancel', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, target: 'confirm', options: ['yes', 'no'],
       acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
     }, ctx);
     expect(frames).toEqual([
       p(`${base}ack_provider.0.wav`, false), p(`${base}provider.chen.wav`, false),
-      p(`${base}confirm_memberId.0.wav`, false), t('4471 8293', false), p(`${base}confirm_memberId.1.mp3`, false),
+      p(`${base}confirm_cancel.0.wav`, true), p(`${base}provider.chen.wav`, true),
+      p(`${base}confirm_cancel.1.mp3`, true), t('4471 8293', true), p(`${base}confirm_cancel.2.wav`, true),
     ]);
   });
 
@@ -173,9 +190,14 @@ describe('decisionToFrames with clips', () => {
   });
 
   it('merges a whole text run around a vocabulary clip and plays the goodbye clip before the end frame', () => {
-    const frames = decisionToFrames({ kind: 'complete', form: 'cancel', promptId: 'cancel_confirmed', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, acks: [], completed: ['cancel'] }, ctx);
+    // No clip for the ack's own words, so its text run has to be spoken around the provider clip.
+    const partial = { clips: new Map([['provider.chen', 'provider.chen.wav'], ['goodbye.0', 'goodbye.0.wav']]), audioBase: base };
+    const frames = decisionToFrames({
+      kind: 'complete', form: 'confirm_appointment', promptId: 'appointment_details', vars: {}, completed: ['confirm_appointment'],
+      acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
+    }, partial);
     expect(frames).toEqual([
-      t('For member ID 4471 8293, your appointment with', false), p(`${base}provider.chen.wav`, false), t('is cancelled.', false),
+      t('With', false), p(`${base}provider.chen.wav`, false), t('That appointment is confirmed.', false),
       p(`${base}goodbye.0.wav`, false),
       expect.objectContaining({ type: 'end' }),
     ]);

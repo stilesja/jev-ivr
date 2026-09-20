@@ -103,7 +103,7 @@ export function decisionToFrames(decision: Decision, ctx?: RenderContext | null)
       return [
         ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
         ...promptFrames(decision.promptId, {}, false, ctx),
-        endFrame(decision.reason, decision.completed, decision.queued),
+        endFrame(decision.reason, decision.completed, decision.queued, decision.slots),
       ];
   }
 }

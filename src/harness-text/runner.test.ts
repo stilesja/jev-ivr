@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  runTurn, runCorpusEntry, runScenario, loadScenarios, checkExpectation, outcomeOf, spokenText,
+  runTurn, runCorpusEntry, runScenario, loadScenarios, checkExpectation, outcomeOf, spokenText, seedCorpusSession,
   type Outcome, type Scenario,
 } from './runner';
 import { summarize } from './metrics';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
-import type { CorpusEntry } from '../jev/corpus';
+import { parseCorpus, type CorpusEntry } from '../jev/corpus';
 import { newSession } from '../core/session';
 import type { TurnResult } from '../core/turn';
 import { promptFrame, setupFrame } from '../channel/frames';
@@ -17,6 +17,9 @@ import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import type { JevClient } from '../jev/types';
 import type { TraceRecord } from '../trace/types';
 import { TraceWriter } from '../trace/writer';
+import { FORM_INTENTS } from '../domain/intents';
+import { FORMS } from '../domain/forms';
+import { PROMPTS } from '../prompts/render';
 
 /** Every record a run wrote, read back from a throwaway trace file. */
 function traceSink(): { trace: TraceWriter; records: () => TraceRecord[] } {
@@ -79,13 +82,15 @@ describe('runCorpusEntry', () => {
 
   it('runs an in-form entry with the form active and the first slot prompted', async () => {
     const { outcome } = await runCorpusEntry(entries[1]!, opts);
-    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'confirm_memberId', form: 'cancel' });
+    // The member ID fills silently now, so the turn goes straight on to the next slot.
+    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'ask_provider', form: 'cancel' });
     expect(outcome.slots.memberId).toBe('44718293');
   });
 
   it('prompts the requested slot for an in-form entry', async () => {
     const { outcome } = await runCorpusEntry(prompted, { ...opts, client: promptedClient });
-    expect(outcome.decision).toBe('complete');
+    // The last slot no longer completes the form: it asks the summary.
+    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'confirm_reschedule' });
     expect(outcome.slots.date).toBe('2026-09-19');
     expect(outcome.slots.memberId).toBe('00000000');
     expect(outcome.slots.provider).toBe('patel');
@@ -101,6 +106,65 @@ describe('runCorpusEntry', () => {
     expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
     // a session that started mid-form is not a whole call to compare against the baseline
     expect(m.completions).toEqual([]);
+  });
+});
+
+describe('summaryPromptId', () => {
+  it('has a summary prompt exactly for forms that complete with a prompt, each id present in the manifest', () => {
+    for (const f of FORM_INTENTS) {
+      expect(FORMS[f].summaryPromptId !== null, f).toBe(FORMS[f].completion.kind === 'prompt');
+      const id = FORMS[f].summaryPromptId;
+      if (id !== null) expect(PROMPTS, `${f}: ${id}`).toHaveProperty(id);
+    }
+  });
+});
+
+describe('seedCorpusSession', () => {
+  it('seeds a confirm context with every slot filled and the summary pending', () => {
+    const entry = parseCorpus('{"id":"fc-1","text":"yes","intent":"none","context":"confirm_reschedule","confirm":"yes"}')[0]!;
+    const s = seedCorpusSession(newSession('fc-1', 0), entry);
+    expect(s.form).toBe('reschedule');
+    expect(s.slots.memberId.value).not.toBeNull();
+    expect(s.slots.provider.value).not.toBeNull();
+    expect(s.slots.date.value).not.toBeNull();
+    expect(s.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+    expect(s.promptedFor).toBe('confirm');
+    expect(s.lastPromptId).toBe('confirm_reschedule');
+    expect(s.lastPromptOptions).toEqual(['yes', 'no']);
+    expect(s.lastPromptText).toContain('Dr. Patel');
+    expect(s.lastPromptText).toContain('Tuesday, September 22');
+  });
+
+  it('seeds a non-confirm context exactly as before: placeholders only up to the prompted slot', () => {
+    const entry = prompted;
+    const s = seedCorpusSession(newSession('d1', 0), entry);
+    expect(s.slots.memberId.value).toBe('00000000');
+    expect(s.slots.provider.value).toBe('patel');
+    expect(s.slots.date.value).toBeNull();
+    expect(s.promptedFor).toBe('date');
+    expect(s.lastPromptId).toBe('ask_date');
+    expect(s.pendingConfirmation).toBeNull();
+  });
+
+  it('leaves a no_form session untouched', () => {
+    const untouched = newSession('c1', 0);
+    expect(seedCorpusSession(untouched, entries[0]!)).toBe(untouched);
+  });
+
+  it('seeds a form context with no prompted at the first missing slot, leaving every slot null', () => {
+    const entry: CorpusEntry = { id: 'sn1', text: 'i need a new appointment', intent: 'schedule_new', context: 'schedule_new' };
+    const s = seedCorpusSession(newSession('sn1', 0), entry);
+    expect(s.slots.memberId.value).toBeNull();
+    expect(s.slots.provider.value).toBeNull();
+    expect(s.slots.date.value).toBeNull();
+    expect(s.promptedFor).toBe('memberId');
+  });
+
+  it('yields the same state when the seed is applied twice to the same session, as runCorpusEntry does', () => {
+    const once = seedCorpusSession(newSession('d1', 0), prompted);
+    const applied = seedCorpusSession(newSession('d1', 0), prompted);
+    const twice = seedCorpusSession(applied, prompted);
+    expect(twice).toEqual(once);
   });
 });
 

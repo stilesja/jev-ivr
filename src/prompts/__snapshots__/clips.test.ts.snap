@@ -103,14 +103,84 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Yes or no.",
   },
   {
-    "id": "confirm_memberId.0",
+    "id": "confirm_schedule.0",
     "note": "open",
-    "text": "Your member ID is",
+    "text": "You'd be booked with",
   },
   {
-    "id": "confirm_memberId.1",
+    "id": "confirm_schedule.1",
+    "note": "open",
+    "text": "on",
+  },
+  {
+    "id": "confirm_schedule.2",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "confirm_schedule.3",
     "note": "closed",
-    "text": "Is that right?",
+    "text": "Shall I book that?",
+  },
+  {
+    "id": "confirm_reschedule.0",
+    "note": "open",
+    "text": "Your appointment with",
+  },
+  {
+    "id": "confirm_reschedule.1",
+    "note": "open",
+    "text": "would move to",
+  },
+  {
+    "id": "confirm_reschedule.2",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "confirm_reschedule.3",
+    "note": "closed",
+    "text": "Shall I make that change?",
+  },
+  {
+    "id": "confirm_cancel.0",
+    "note": "open",
+    "text": "Your appointment with",
+  },
+  {
+    "id": "confirm_cancel.1",
+    "note": "open",
+    "text": "would be cancelled, member ID",
+  },
+  {
+    "id": "confirm_cancel.2",
+    "note": "closed",
+    "text": "Shall I cancel it?",
+  },
+  {
+    "id": "confirm_appointment_details.0",
+    "note": "open",
+    "text": "That's your appointment with",
+  },
+  {
+    "id": "confirm_appointment_details.1",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "confirm_appointment_details.2",
+    "note": "closed",
+    "text": "Is that the one?",
+  },
+  {
+    "id": "ask_change.0",
+    "note": "closed",
+    "text": "What should I change?",
+  },
+  {
+    "id": "confirm_dtmf.0",
+    "note": "closed",
+    "text": "Press 1 to confirm, or 2 to change something.",
   },
   {
     "id": "disambiguate_intent.0",
@@ -134,63 +204,23 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   },
   {
     "id": "schedule_confirmed.0",
-    "note": "open",
-    "text": "You're booked with",
-  },
-  {
-    "id": "schedule_confirmed.1",
-    "note": "open",
-    "text": "on",
-  },
-  {
-    "id": "schedule_confirmed.2",
-    "note": "open",
-    "text": "member ID",
+    "note": "closed",
+    "text": "You're booked.",
   },
   {
     "id": "reschedule_confirmed.0",
-    "note": "open",
-    "text": "For member ID",
-  },
-  {
-    "id": "reschedule_confirmed.1",
-    "note": "open",
-    "text": "your appointment with",
-  },
-  {
-    "id": "reschedule_confirmed.2",
-    "note": "open",
-    "text": "is moved to",
+    "note": "closed",
+    "text": "Your appointment is moved.",
   },
   {
     "id": "cancel_confirmed.0",
-    "note": "open",
-    "text": "For member ID",
-  },
-  {
-    "id": "cancel_confirmed.1",
-    "note": "open",
-    "text": "your appointment with",
-  },
-  {
-    "id": "cancel_confirmed.2",
     "note": "closed",
-    "text": "is cancelled.",
+    "text": "Your appointment is cancelled.",
   },
   {
     "id": "appointment_details.0",
-    "note": "open",
-    "text": "For member ID",
-  },
-  {
-    "id": "appointment_details.1",
-    "note": "open",
-    "text": "your next appointment with",
-  },
-  {
-    "id": "appointment_details.2",
     "note": "closed",
-    "text": "is confirmed.",
+    "text": "That appointment is confirmed.",
   },
   {
     "id": "goodbye.0",

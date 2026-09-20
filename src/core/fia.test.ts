@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf } from './fia';
-import { newSession, setForm } from './session';
+import { newSession, setForm, type Session } from './session';
 import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
-import { slotsFor, type SlotContext } from '../domain/slots';
+import { SLOTS, slotsFor, type SlotContext } from '../domain/slots';
+import { ALL_SLOTS } from '../domain/forms';
 import { choice, noul } from '../testing/answers';
 import { candidateSpans } from './spans';
 
@@ -122,19 +123,25 @@ describe('applyDtmf', () => {
     expect(applyDtmf(s, '0922', ctx())).toEqual({ kind: 'no_target' });
     expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
   });
+
+  it('ignores the confirm target (the confirm keypad is handled in turn.ts)', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    s.promptedFor = 'confirm';
+    expect(applyDtmf(s, '1', ctx())).toEqual({ kind: 'no_target' });
+  });
 });
 
 describe('pendingSlotConfirmation', () => {
-  it('names the first filled, unconfirmed always-confirm slot on the form', () => {
+  it('owes no readback for a filled, unconfirmed slot: no slot uses the always policy now', () => {
     const s = setForm(newSession('s', 0), 'cancel');
     expect(pendingSlotConfirmation(s)).toBeNull();
+    // The member ID is the slot that used to raise one; under the summary policy the final
+    // confirm reads it back instead, so it stays silent however it is filled.
     s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: false, attempts: 0, window: null };
-    expect(pendingSlotConfirmation(s)).toEqual({ target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' });
-    expect(pendingSlotConfirmation(s)?.slot).toBe('memberId');
-    s.slots.memberId.confirmed = true;
     expect(pendingSlotConfirmation(s)).toBeNull();
     s.slots.provider = { value: 'chen', display: 'Dr. Chen', confirmed: false, attempts: 0, window: null };
     expect(pendingSlotConfirmation(s)).toBeNull();
+    for (const id of ALL_SLOTS) expect(SLOTS[id].spokenConfirm, id).not.toBe('always');
   });
 });
 
@@ -145,7 +152,7 @@ describe('fillSlots member id policy', () => {
   };
   const spoken = ctx('four four seven one eight two nine three');
 
-  it('leaves a spoken member id unconfirmed and silent, for the readback to voice', () => {
+  it('leaves a spoken member id unconfirmed and silent, for the summary to voice', () => {
     const s = setForm(newSession('s', 0), 'cancel');
     const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
     expect(r.session.slots.memberId).toMatchObject({ value: '44718293', display: '4471 8293', confirmed: false });
@@ -158,5 +165,50 @@ describe('fillSlots member id policy', () => {
     const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
     expect(r.session.slots.memberId.confirmed).toBe(true);
     expect(r.acks).toEqual([]);
+  });
+
+  it('fills a summary-policy slot silently: no ack, not confirmed, no readback owed', () => {
+    const spec = { ...SLOTS.memberId, spokenConfirm: 'summary' as const };
+    const s = setForm(newSession('s', 0), 'cancel');
+    const r = fillSlots(s, answers, spoken, [spec]);
+    expect(r.acks).toEqual([]);
+    expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
+    expect(pendingSlotConfirmation(s)).toBeNull();
+  });
+
+  // Contrasts with the summary-policy test above: passing a spec whose spokenConfirm differs from
+  // SLOTS.memberId's global 'always' policy must change fillSlots' behavior, proving it reads the
+  // policy off the spec it is given rather than off the global SLOTS registry (the summary-policy
+  // test alone would still pass against code that read SLOTS[spec.id].spokenConfirm instead).
+  it('fills a by-confidence-policy spec with an implicit ack and stays unconfirmed', () => {
+    const spec = { ...SLOTS.memberId, spokenConfirm: 'by-confidence' as const };
+    const s = setForm(newSession('s', 0), 'cancel');
+    const r = fillSlots(s, answers, spoken, [spec]);
+    expect(r.acks).toEqual([{ promptId: 'ack_memberId', vars: { memberId: '4471 8293' } }]);
+    expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
+  });
+});
+
+describe('fillSlots correcting a filled slot', () => {
+  const nextWeek = { dateMode: choice({ window: 0.9, none: 0.1 }), dateWindow: choice({ next_week: 0.9, none: 0.1 }) };
+  const filled = (): Session => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.slots.date = { value: '2026-09-22', display: 'Tuesday, September 22', confirmed: true, attempts: 0, window: null };
+    return s;
+  };
+
+  it('leaves a filled slot alone when a window is named mid-form', () => {
+    const s = filled();
+    const r = fillSlots(s, nextWeek, ctx('next week'), slotsFor('reschedule'));
+    expect(s.slots.date).toMatchObject({ value: '2026-09-22', window: null });
+    expect(r.progress).toBe(false);
+  });
+
+  it('reopens a filled slot for narrowing when the window corrects a summary', () => {
+    const s = filled();
+    const r = fillSlots(s, nextWeek, ctx('next week'), slotsFor('reschedule'), { correcting: true });
+    expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
+    expect(s.slots.date.window?.label).toBe('next_week');
+    expect(r.progress).toBe(true);
   });
 });

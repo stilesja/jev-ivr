@@ -26,8 +26,10 @@ export type SlotOutcome =
 
 export interface SlotSpec {
   id: SlotId;
-  /** always: a spoken fill is read back and must be confirmed before it counts; by-confidence: the fill outcome decides */
-  spokenConfirm: 'always' | 'by-confidence';
+  /** always: a spoken fill is read back and must be confirmed before it counts, which needs a `confirm_<slot>`
+   * entry in the prompt manifest (no slot uses this today, so none is there); by-confidence: the fill outcome
+   * decides; summary: a spoken fill is neither acked nor read back; the final confirm covers it */
+  spokenConfirm: 'always' | 'by-confidence' | 'summary';
   /** Questions this slot adds to the turn schema. */
   questions(ctx: SlotContext): QuestionMap;
   /** Interpret the answers to those questions. */

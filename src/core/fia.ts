@@ -33,7 +33,17 @@ export interface FillResult {
   progress: boolean;
 }
 
-export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext, specs: SlotSpec[]): FillResult {
+export interface FillOptions {
+  /**
+   * A correction to a form the caller has already been read back (spec final-confirm §2.2 case 2):
+   * a window over an already-filled slot reopens it for narrowing, the way a new value replaces it.
+   * Mid-form a window never overwrites a filled slot, so that a value mentioned again in passing
+   * ("next week" alongside an answer already given) cannot unfill it.
+   */
+  correcting?: boolean;
+}
+
+export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext, specs: SlotSpec[], opts: FillOptions = {}): FillResult {
   const events: FillEvent[] = [];
   const acks: Ack[] = [];
   let disambiguate: FillResult['disambiguate'] = null;
@@ -48,20 +58,25 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
       case 'filled': {
         // The slot's own policy, not the fill outcome, decides whether a spoken value is
         // read back: an always-confirm slot lands unconfirmed and silent, and the caller
-        // hears it in a confirm_<slot> prompt. A value already confirmed and spoken again
-        // unchanged stays confirmed, so repeating it does not re-open the readback.
-        const readBack = SLOTS[spec.id].spokenConfirm === 'always';
+        // hears it in a confirm_<slot> prompt. A summary-policy slot also lands unconfirmed
+        // and silent, but its readback is the form's final confirm rather than a confirm_<slot>
+        // prompt of its own. A value already confirmed and spoken again unchanged stays
+        // confirmed, so repeating it does not re-open the readback.
+        const policy = spec.spokenConfirm;
         const keepConfirmed = slot.confirmed && slot.value === outcome.value;
         slot.value = outcome.value;
         slot.display = outcome.display;
-        slot.confirmed = keepConfirmed || (!readBack && outcome.confirm === 'none');
+        slot.confirmed = keepConfirmed || (policy === 'by-confidence' && outcome.confirm === 'none');
         slot.window = null;
-        if (!readBack && outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
+        if (policy === 'by-confidence' && outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
         progress = true;
         break;
       }
       case 'window':
-        if (slot.value === null) {
+        if (slot.value === null || opts.correcting === true) {
+          slot.value = null;
+          slot.display = null;
+          slot.confirmed = false;
           slot.window = outcome.window;
           progress = true;
         }
@@ -107,7 +122,7 @@ export type DtmfResult =
 /** Apply a DTMF digit buffer to the slot that was last prompted. */
 export function applyDtmf(session: Session, buffer: string, ctx: SlotContext): DtmfResult {
   const target = session.promptedFor;
-  if (target === null || target === 'intent') return { kind: 'no_target' };
+  if (target === null || target === 'intent' || target === 'confirm') return { kind: 'no_target' };
   if (!requiredSlots(session).includes(target)) return { kind: 'no_target' };
   const spec = SLOTS[target];
   if (buffer.length < spec.dtmf.length) return { kind: 'collecting' };
