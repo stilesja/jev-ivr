@@ -944,5 +944,349 @@
         "provider": "chen"
       }
     }
+  },
+  {
+    "id": "summary-reschedule-yes",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "text": "Your appointment is moved."
+    }
+  },
+  {
+    "id": "summary-no-then-day",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no"
+      },
+      {
+        "say": "the day"
+      },
+      {
+        "say": "Friday"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "date": "2026-09-25"
+      }
+    }
+  },
+  {
+    "id": "summary-no-with-value",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no, Thursday"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "date": "2026-09-24"
+      }
+    }
+  },
+  {
+    "id": "summary-no-two-values",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no, Thursday with Dr. Alvarez"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "provider": "alvarez",
+        "date": "2026-09-24"
+      }
+    }
+  },
+  {
+    "id": "summary-no-window",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no, next week"
+      },
+      {
+        "say": "Wednesday"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "date": "2026-09-23"
+      }
+    }
+  },
+  {
+    "id": "summary-memberId-corrected",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no, my ID is four four seven one eight two nine four"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "memberId": "44718294"
+      }
+    }
+  },
+  {
+    "id": "summary-unanswered-reask",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "what are your hours"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "summary-unanswered-keypad-1",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "what are your hours"
+      },
+      {
+        "say": "what are your hours"
+      },
+      {
+        "dtmf": "1"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "summary-unanswered-keypad-2",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "what are your hours"
+      },
+      {
+        "say": "what are your hours"
+      },
+      {
+        "dtmf": "2"
+      },
+      {
+        "say": "the doctor"
+      },
+      {
+        "say": "Dr. Kim"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "provider": "kim"
+      }
+    }
+  },
+  {
+    "id": "summary-unanswered-agent",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "what are your hours"
+      },
+      {
+        "say": "what are your hours"
+      },
+      {
+        "say": "what are your hours"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "max-attempts"
+    }
+  },
+  {
+    "id": "summary-yes-adds-billing",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "yes, and can I also ask about my bill"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing"
+    }
+  },
+  {
+    "id": "second-intent-first-utterance",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment with Dr. Alvarez for next Thursday, and also I have a question about my bill"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing"
+    }
+  },
+  {
+    "id": "second-intent-tentative-ignored",
+    "steps": [
+      {
+        "say": "maybe reschedule, and also my bill"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_intent_explicit",
+      "form": null
+    }
   }
 ]

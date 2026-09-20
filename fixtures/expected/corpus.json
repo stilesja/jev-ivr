@@ -2680,5 +2680,288 @@
       "date": null
     },
     "queued": []
+  },
+  "fc-02": {
+    "id": "fc-02",
+    "decision": "complete",
+    "promptId": "cancel_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "cancel",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-03": {
+    "id": "fc-03",
+    "decision": "complete",
+    "promptId": "schedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "schedule_new",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-06": {
+    "id": "fc-06",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "fc-07": {
+    "id": "fc-07",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "alvarez",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "fc-08": {
+    "id": "fc-08",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-09": {
+    "id": "fc-09",
+    "decision": "prompt",
+    "promptId": "date_narrow_window",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-10": {
+    "id": "fc-10",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-11": {
+    "id": "fc-11",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "cancel",
+    "slots": {
+      "memberId": "00000000",
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-12": {
+    "id": "fc-12",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-13": {
+    "id": "fc-13",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718294",
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-15": {
+    "id": "fc-15",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
+    "acks": [
+      "reschedule_confirmed",
+      "bridge_next"
+    ],
+    "reason": "billing",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "billing",
+    "slots": {
+      "memberId": "00000000",
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "si-01": {
+    "id": "si-01",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [
+      "ack_queued"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": "alvarez",
+      "date": "2026-09-24"
+    },
+    "queued": [
+      "billing"
+    ]
+  },
+  "si-02": {
+    "id": "si-02",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [
+      "ack_queued"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "cancel",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [
+      "schedule_new"
+    ]
+  },
+  "si-03": {
+    "id": "si-03",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "si-04": {
+    "id": "si-04",
+    "decision": "prompt",
+    "promptId": "confirm_intent_explicit",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "dt-22": {
+    "id": "dt-22",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-25"
+    },
+    "queued": []
+  },
+  "pv-11": {
+    "id": "pv-11",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "kim",
+      "date": null
+    },
+    "queued": []
   }
 }
