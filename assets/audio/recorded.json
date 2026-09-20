@@ -11,6 +11,7 @@
   "ask_date.0": "What day works for you?",
   "ask_date_dtmf.0": "Please enter the date as four digits, month then day.",
   "ask_date_retry.0": "Sorry, what day would you like? You can say a date, a weekday, or tomorrow.",
+  "ask_intent.0": "How can I help you today?",
   "ask_memberId.0": "What's your member ID?",
   "ask_memberId_dtmf.0": "Please enter your eight digit member ID on the keypad.",
   "ask_memberId_retry.0": "Sorry, I need your eight digit member ID. Please say it one digit at a time.",
