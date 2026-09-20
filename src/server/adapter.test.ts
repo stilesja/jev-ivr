@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -20,6 +20,8 @@ import { loadCorpus } from '../jev/corpus';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
 import type { JevClient } from '../jev/types';
+import { textEstimateMs } from '../prompts/playback';
+import { promptText, type RenderContext } from '../prompts/render';
 import { TraceWriter } from '../trace/writer';
 
 type Fake = SocketLike & { sent: unknown[]; closed: { code?: number; reason?: string } | null };
@@ -60,12 +62,12 @@ function corpusClient(): JevClient {
   return new FixtureStubClient(loadCorpus('fixtures/corpus.jsonl'), { sharpness: 0.9, fallback: new HeuristicStubClient() });
 }
 
-function deps(clientOverride?: JevClient): AdapterDeps & { dir: string } {
+function deps(clientOverride?: JevClient, render?: RenderContext): AdapterDeps & { dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'adapter-'));
   const client = clientOverride ?? corpusClient();
   const store = new SessionStore((callSid) => ({
     session: newSession(callSid, 0),
-    opts: { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', trace: new TraceWriter(join(dir, `${callSid}.jsonl`)), now: () => 0 },
+    opts: { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', trace: new TraceWriter(join(dir, `${callSid}.jsonl`)), now: () => 0, render: render ?? null },
     trace: new TraceWriter(join(dir, `${callSid}.jsonl`)),
     frames: new FrameLog(join(dir, `${callSid}.frames.jsonl`), () => 0),
   }), 60_000, () => 0);
@@ -371,6 +373,186 @@ describe('adapter', () => {
     expect(inbound).toHaveLength(7);
     expect(inbound.at(-2)?.msg.voicePrompt).toBe('hello? are you still there?');
     expect(inbound.at(-1)?.msg.digit).toBe('5');
+  });
+});
+
+describe('no-input timer', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const GREETING = promptText('greeting', {});
+  const NO_INPUT = promptText('no_input', {});
+  const NOMATCH_OPEN = promptText('nomatch_open', {});
+  const DTMF_MENU = promptText('nomatch_dtmf_menu', {});
+  const MAX_ATTEMPTS = promptText('handoff_max_attempts', {});
+  const WAIT = 100;
+  /** When the greeting's timer fires: the wait plus how long the greeting takes to speak. */
+  const GREETING_DEADLINE = textEstimateMs(GREETING) + WAIT;
+
+  /** deps with the no-input wait armed, and one measured clip so a play frame can be estimated. */
+  function noInputDeps(noInputMs = WAIT, render?: RenderContext): AdapterDeps & { dir: string } {
+    return { ...deps(undefined, render), noInputMs, clipDurations: new Map([['greeting.0.wav', 2000]]) };
+  }
+
+  /** A connected call that has just heard the greeting, with its no-input timer armed. */
+  async function greeted(d: AdapterDeps): Promise<{ sock: Fake; ctx: ReturnType<typeof newConnectionContext> }> {
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    return { sock, ctx };
+  }
+
+  const silenceLines = (dir: string) => frameLines(dir).filter((f) => f.dir === 'in' && f.msg.type === 'silence');
+
+  it('arms after a prompt with the playback estimate added and fires a silence turn', async () => {
+    const d = noInputDeps();
+    const { sock } = await greeted(d);
+    expect(texts(sock)).toEqual([GREETING]);
+    expect(vi.getTimerCount()).toBe(1);
+    const armed = frameLines(d.dir).find((f) => f.dir === 'log' && f.msg.noInputArmedMs !== undefined);
+    expect(armed?.msg.noInputArmedMs).toBe(GREETING_DEADLINE);
+
+    await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 1);
+    expect(texts(sock)).toEqual([GREETING]);
+    await vi.advanceTimersByTimeAsync(1);
+    // The ack goes out as its own frame, ahead of the question the ladder re-asks.
+    expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+    expect(d.store.get('CA1')?.session.intentAttempts).toBe(1);
+    expect(silenceLines(d.dir)).toHaveLength(1);
+  });
+
+  it('uses the clip duration for a play frame', async () => {
+    const render: RenderContext = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
+    const d = noInputDeps(WAIT, render);
+    const { sock } = await greeted(d);
+    // The whole greeting is one recorded clip, so the estimate is the wav's own 2000 ms.
+    expect(sock.sent).toEqual([{ type: 'play', source: 'https://h/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true }]);
+    await vi.advanceTimersByTimeAsync(2000 + WAIT - 1);
+    expect(texts(sock)).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(texts(sock)).toEqual([NO_INPUT, NOMATCH_OPEN]);
+  });
+
+  const clearing: Array<[string, string]> = [
+    ['a final prompt', prompt('I need to reschedule my appointment')],
+    ['a partial prompt', JSON.stringify({ type: 'prompt', voicePrompt: 'I need to', lang: 'en-US', last: false })],
+    ['a digit', JSON.stringify({ type: 'dtmf', digit: '2' })],
+    ['an interrupt', JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'Thanks for', durationUntilInterruptMs: 400 })],
+  ];
+  for (const [label, message] of clearing) {
+    it(`is cleared by ${label}`, async () => {
+      const d = noInputDeps();
+      const { sock, ctx } = await greeted(d);
+      // The caller reacts with a moment of the wait left, so the deadline passes below.
+      await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 50);
+      await handleSocketMessage(d, sock, ctx, message);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(texts(sock)).not.toContain(NO_INPUT);
+      expect(silenceLines(d.dir)).toHaveLength(0);
+      // A silence turn would have spent an attempt on the intent ladder; nothing did.
+      expect(d.store.get('CA1')?.session.intentAttempts).toBe(0);
+    });
+  }
+
+  it('stops the wait the moment a final prompt arrives, not when its turn answers', async () => {
+    const base = corpusClient();
+    const slow: JevClient = {
+      ask: async (req) => {
+        await new Promise((r) => setTimeout(r, 500));
+        return base.ask(req);
+      },
+    };
+    const d: AdapterDeps & { dir: string } = { ...deps(slow), noInputMs: WAIT, clipDurations: new Map() };
+    const { sock, ctx } = await greeted(d);
+    expect(vi.getTimerCount()).toBe(1);
+    const running = handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
+    // The frame has been logged and the wait dropped, but the turn itself has not started yet:
+    // the caller is audibly there, so nothing should still be counting down while the model thinks.
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(500);
+    await running;
+    expect(texts(sock)).toEqual([GREETING, "What's your member ID?"]);
+    expect(silenceLines(d.dir)).toHaveLength(0);
+  });
+
+  it('is a no-op when the caller spoke just as it fired', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    // Synchronous on purpose: the timer's callback queues the silence turn, and nothing has
+    // drained the per-call queue yet.
+    vi.advanceTimersByTime(GREETING_DEADLINE);
+    // handleSocketMessage clears the timer before its first await, so the queued closure finds
+    // the generation already moved on and does nothing.
+    await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
+    expect(texts(sock)).toEqual([GREETING, "What's your member ID?"]);
+    expect(silenceLines(d.dir)).toHaveLength(0);
+    expect(d.store.get('CA1')?.session.intentAttempts).toBe(0);
+  });
+
+  it('never arms after a completion', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday', 'yes']) {
+      await handleSocketMessage(d, sock, ctx, prompt(t));
+    }
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end' });
+    // Only the end-close backstop is left; the no-input timer is gone.
+    expect(vi.getTimerCount()).toBe(1);
+    await handleSocketClose(d, ctx);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(texts(sock)).not.toContain(NO_INPUT);
+  });
+
+  it('never arms after a handoff', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    await handleSocketMessage(d, sock, ctx, prompt('I want to talk to a person'));
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end', handoffData: '{"reasonCode":"live-agent"}' });
+    expect(vi.getTimerCount()).toBe(1);
+    await handleSocketClose(d, ctx);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('re-arms after its own re-ask and walks the ladder to the keypad menu and the handoff', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    await vi.advanceTimersByTimeAsync(GREETING_DEADLINE);
+    expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+
+    await vi.advanceTimersByTimeAsync(textEstimateMs(NO_INPUT) + textEstimateMs(NOMATCH_OPEN) + WAIT);
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, DTMF_MENU]);
+
+    await vi.advanceTimersByTimeAsync(textEstimateMs(NO_INPUT) + textEstimateMs(DTMF_MENU) + WAIT);
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, MAX_ATTEMPTS]);
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end', handoffData: '{"reasonCode":"max-attempts"}' });
+    expect(d.store.get('CA1')?.ended).toBe(true);
+    expect(silenceLines(d.dir)).toHaveLength(3);
+    // The handoff stops the ladder: what is left is the end-close backstop, not another wait.
+    expect(vi.getTimerCount()).toBe(1);
+    await handleSocketClose(d, ctx);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('is cleared by a socket close', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    expect(vi.getTimerCount()).toBe(1);
+    await handleSocketClose(d, ctx);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(texts(sock)).toEqual([GREETING]);
+    expect(silenceLines(d.dir)).toHaveLength(0);
+  });
+
+  it('never arms when the wait is zero', async () => {
+    const d = noInputDeps(0);
+    const { sock } = await greeted(d);
+    expect(texts(sock)).toEqual([GREETING]);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(texts(sock)).toEqual([GREETING]);
+    expect(frameLines(d.dir).some((f) => f.dir === 'log' && f.msg.noInputArmedMs !== undefined)).toBe(false);
   });
 });
 

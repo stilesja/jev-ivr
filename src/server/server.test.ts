@@ -254,6 +254,26 @@ describe('server end to end', () => {
     expect(closed.reason).toBe('end grace elapsed');
   });
 
+  it(
+    're-asks on its own when the caller says nothing after the greeting',
+    async () => {
+      // Real timers and an empty audio dir: the greeting is spoken text, so the wait is the
+      // configured 50 ms plus the estimate of how long that text takes to play.
+      const s = await start(undefined, { noInputMs: 50 });
+      const token = running!.tokens.mint('CA12');
+      const relay = await FakeRelay.connect(`${s.ws}?token=${token}`);
+      relay.setup('CA12');
+      expect(await relay.waitForTexts(1)).toEqual(['Thanks for calling the clinic. How can I help you today?']);
+      // Nothing is sent from here on: the next frames are the server's own doing.
+      const texts = await relay.waitForTexts(3, 8000);
+      expect(texts[1]).toBe("I didn't hear anything.");
+      expect(texts[2]).toContain("Sorry, I didn't catch that.");
+      expect(running!.store.get('CA12')?.session.intentAttempts).toBe(1);
+      relay.assertKnownTypes();
+    },
+    { timeout: 12_000 },
+  );
+
   it('handles dtmf and agent handoff', async () => {
     const { relay } = await connected();
     relay.prompt('Cancel my appointment with Dr. Kim please');

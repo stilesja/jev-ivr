@@ -1,6 +1,7 @@
 import type { InboundFrame, OutboundFrame } from '../channel/frames';
-import { endFrame, textFrame } from '../channel/frames';
+import { endFrame, silenceFrame, textFrame } from '../channel/frames';
 import { parseInbound, serializeOutbound } from '../channel/wire';
+import { playbackEstimateMs } from '../prompts/playback';
 import { runTurn } from '../run/turn';
 import type { CallEntry, SessionStore, SocketLike } from './sessions';
 import type { CallTokens } from './tokens';
@@ -28,6 +29,70 @@ export const END_CLOSE_GRACE_MS = 30_000;
 
 /** Grace timers armed after `end`, keyed by call SID, so the socket's close event can cancel the backstop. */
 const endGraceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
+ * The armed no-input timer for a call, with the generation it was armed under.
+ *
+ * Both this and the generation counter live here rather than on `CallEntry`, the way
+ * `endGraceTimers` does: the timer is the adapter's business, so `sessions.ts` stays a store.
+ */
+interface NoInput {
+  timer: ReturnType<typeof setTimeout>;
+  generation: number;
+}
+const noInputTimers = new Map<string, NoInput>();
+/**
+ * Bumped every time a call's no-input timer is cleared or re-armed. A fired timer's queued
+ * closure carries the generation it was armed with, so a turn that got in first (the caller
+ * answered at the last second) turns the queued silence turn into a no-op.
+ */
+const noInputGeneration = new Map<string, number>();
+
+/** Cancel any armed no-input timer for a call and invalidate whatever it already queued. */
+function clearNoInput(callSid: string): void {
+  const armed = noInputTimers.get(callSid);
+  if (armed) {
+    clearTimeout(armed.timer);
+    noInputTimers.delete(callSid);
+  }
+  noInputGeneration.set(callSid, (noInputGeneration.get(callSid) ?? 0) + 1);
+}
+
+/** Drop a gone call's no-input bookkeeping entirely, so neither map outlives the call. */
+function forgetNoInput(callSid: string): void {
+  const armed = noInputTimers.get(callSid);
+  if (armed) clearTimeout(armed.timer);
+  noInputTimers.delete(callSid);
+  noInputGeneration.delete(callSid);
+}
+
+/**
+ * Arm the no-input timer after a prompt: `noInputMs` after the frames have (approximately)
+ * played. When it fires the silence turn goes through the same per-call queue as a socket
+ * message, so it can never interleave with a real turn.
+ */
+function armNoInput(deps: AdapterDeps, entry: CallEntry, frames: readonly OutboundFrame[]): void {
+  const wait = deps.noInputMs ?? 0;
+  if (wait <= 0) return;
+  clearNoInput(entry.callSid);
+  const generation = noInputGeneration.get(entry.callSid) ?? 0;
+  const delay = wait + playbackEstimateMs(frames, deps.clipDurations ?? new Map());
+  const timer = setTimeout(() => {
+    noInputTimers.delete(entry.callSid);
+    void deps.store
+      .enqueue(entry.callSid, async (e) => {
+        // A real turn ran between the arm and now (it bumped the generation), or the call is
+        // over: either way the caller is not silent and this turn has nothing to say.
+        if (e.ended || (noInputGeneration.get(e.callSid) ?? 0) !== generation) return;
+        e.frames.write('in', silenceFrame());
+        await turn(deps, e, silenceFrame());
+      })
+      .catch((err: unknown) => deps.log(`${entry.callSid}: silence turn failed: ${describe(err).message}`));
+  }, delay);
+  timer.unref?.();
+  noInputTimers.set(entry.callSid, { timer, generation });
+  entry.frames.write('log', { noInputArmedMs: delay });
+}
 
 /** Digit runs long enough that TTS would read them as a number ("4471" as "four thousand ..."). */
 // Runs of four or more digits are spelled out for TTS. A four-digit year would be spelled out too; no prompt speaks one today.
@@ -66,6 +131,10 @@ export interface AdapterDeps {
   sendTimeoutMs?: number;
   /** Overridable so a test can prove the end-close backstop fires without waiting 30 seconds. */
   endCloseGraceMs?: number;
+  /** Silence after a prompt's estimated playback before a silence turn runs; 0 (the default) disables. */
+  noInputMs?: number;
+  /** wav filename -> ms, from clipDurations(audioDir); how long a `play` frame is assumed to take. */
+  clipDurations?: ReadonlyMap<string, number>;
 }
 
 export function newConnectionContext(token: string | null, socket: SocketLike | null = null): ConnectionContext {
@@ -134,7 +203,11 @@ async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): P
     entry.session = run.result.session;
     const kind = run.result.decision.kind;
     ending = kind === 'complete' || kind === 'handoff';
+    // The ladder is over: nothing more to wait for, so the timer goes before the frames do.
+    if (ending) clearNoInput(entry.callSid);
     await sendFrames(deps, entry, run.result.frames);
+    // Including the silence turn's own re-ask, which is how the ladder walks itself.
+    if (kind === 'prompt') armNoInput(deps, entry, run.result.frames);
   } catch (err) {
     const info = describe(err);
     deps.log(`${entry.callSid}: turn failed: ${info.name}: ${info.message}`);
@@ -197,6 +270,9 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
         socket.close(1000, 'call ended');
         return;
       }
+      // A reconnect is caller activity of a sort, and the prompt it replays below is not a turn,
+      // so the wait the old connection was counting down no longer means anything.
+      clearNoInput(frame.callSid);
       const previous = existing.socket;
       if (previous && previous !== socket) {
         // Twilio reconnected before the old socket's close reached us; retire it explicitly so
@@ -234,6 +310,9 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
     deps.log(`${ctx.callSid}: ${frame.type} after end, ignored`);
     return;
   }
+  // The caller is audibly there, so the no-input wait is over - before any of the early returns
+  // below, because a partial prompt or a bare `#` is still a caller who is not silent.
+  if (frame.type === 'prompt' || frame.type === 'dtmf' || frame.type === 'interrupt') clearNoInput(ctx.callSid);
   // The slots have fixed digit lengths, so the keypad terminators carry no meaning yet.
   if (frame.type === 'dtmf' && (frame.digit === '#' || frame.digit === '*')) {
     entry.frames.write('log', { ignoredDigit: frame.digit });
@@ -256,7 +335,11 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
 export async function handleSocketClose(deps: AdapterDeps, ctx: ConnectionContext): Promise<void> {
   if (!ctx.callSid) return;
   const entry = deps.store.get(ctx.callSid);
-  if (!entry) return;
+  if (!entry) {
+    // The call is gone from the store, so nothing will ever consult its no-input bookkeeping again.
+    forgetNoInput(ctx.callSid);
+    return;
+  }
   if (ctx.socket && entry.socket !== ctx.socket) {
     // A close from a socket a reconnect already replaced; the live one must stay attached.
     entry.frames.write('log', { staleSocketClosed: true });
@@ -267,6 +350,8 @@ export async function handleSocketClose(deps: AdapterDeps, ctx: ConnectionContex
     clearTimeout(timer);
     endGraceTimers.delete(ctx.callSid);
   }
+  // Nobody is listening on the other end; a re-ask would be played to a closed socket.
+  clearNoInput(ctx.callSid);
   entry.frames.write('log', { socketClosed: true, ended: entry.ended });
   deps.store.detach(ctx.callSid);
 }
