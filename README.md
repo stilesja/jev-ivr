@@ -217,8 +217,12 @@ The wait is `NO_INPUT_MS` (default 7 seconds) after the prompt's estimated
 playback time — from the clip's WAV header for a recorded clip, or 2.5 words
 per second for TTS text — and is approximate by design, so a wrong estimate
 moves the wait by a second or two, not by the length of the prompt. Any
-speech, a partial result, a keypad digit, or a barge-in cancels the wait;
-`NO_INPUT_MS=0` disables it.
+speech, a partial result, a keypad digit, or a barge-in cancels the wait and
+starts a fresh one, so a caller who is audibly there is never cut off
+mid-thought; `NO_INPUT_MS=0` disables it. The TwiML carries
+`partialPrompts="true"` for this and only this: a partial tells the server the
+caller has started speaking so the wait stops at the first syllable, but a
+turn still runs only on the final transcript.
 
 ### Confirmation and multi-intent
 
@@ -332,7 +336,10 @@ as quiet as possible.
 5. Call again and stay quiet after the greeting: expect "I didn't hear
    anything." then the open reprompt, then the keypad menu, then the
    transfer to `HANDOFF_NUMBER` — the same ladder step 13 walks by saying
-   something unrecognized instead.
+   something unrecognized instead. Partial results are on: watch the server
+   log for the one-per-connection "dropped a non-final prompt" line while you
+   speak, and confirm that starting to talk during a long pause stops the
+   re-ask rather than racing it.
 6. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
    week." Expect: "What's your member ID?"
 7. Spoken ID: say the eight digits. Expect the window question on its own,
@@ -373,7 +380,7 @@ as quiet as possible.
     and compare its decisions with `traces/<CallSid>.jsonl`.
 
 Things to note on the first real call, per the spec's open questions: whether
-`speechModel="flux"` is accepted with partial prompts off, how long Deepgram
+`speechModel="flux"` is accepted alongside partial prompts, how long Deepgram
 takes to finalize a turn, whether an interrupted prompt also arrives as a
 `prompt`, and how TTS reads the member ID and provider names.
 
@@ -394,8 +401,10 @@ takes to finalize a turn, whether an interrupted prompt also arrives as a
   URLs; there is one live token per call, replaced on every re-mint, and it expires in ten minutes, but treat those
   logs accordingly.
 - Ten unparsable inbound messages close the socket with 1007. A prompt message
-  with `last: false` is logged and dropped rather than run as a turn, since the
-  TwiML has partial prompts off.
+  with `last: false` is logged and dropped rather than run as a turn: partial
+  prompts are on so they can cancel the no-input wait, not so they can be
+  scored. The operator log says so once per connection; the frame log records
+  every one.
 - Ten consecutive unrecognized outbound messages close the socket (Twilio
   error 64105). The adapter sends only the five documented message types.
 - Signature validation needs `PUBLIC_HOST` to match the ngrok domain exactly.

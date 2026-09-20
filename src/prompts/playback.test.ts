@@ -28,6 +28,15 @@ describe('wavDurationMs', () => {
     expect(wavDurationMs(wav(44100))).toBe(1000);
     expect(wavDurationMs(wav(22050, 44100, 2))).toBe(500);
   });
+  it('finds the format chunk when the samples come first', () => {
+    // RIFF does not fix the chunk order; a data-then-fmt file is still a WAV we can measure.
+    const src = wav(44100);
+    const fmt = src.subarray(12, 12 + 8 + 16);
+    const data = src.subarray(36);
+    const out = Buffer.concat([src.subarray(0, 12), data, fmt]);
+    expect(wavDurationMs(out)).toBe(1000);
+  });
+
   it('returns null for a non-wav or truncated buffer', () => {
     expect(wavDurationMs(Buffer.from('ID3xxxxxx'))).toBeNull();
     expect(wavDurationMs(wav(100).subarray(0, 20))).toBeNull();

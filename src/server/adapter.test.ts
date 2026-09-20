@@ -3,6 +3,7 @@ import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  forgetNoInput,
   handleSocketClose,
   handleSocketMessage,
   MALFORMED_LIMIT,
@@ -433,26 +434,133 @@ describe('no-input timer', () => {
     expect(texts(sock)).toEqual([NO_INPUT, NOMATCH_OPEN]);
   });
 
+  const partial = (t: string) => JSON.stringify({ type: 'prompt', voicePrompt: t, lang: 'en-US', last: false });
+  const digit = (d: string) => JSON.stringify({ type: 'dtmf', digit: d });
+  const interrupt = JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'Thanks for', durationUntilInterruptMs: 400 });
+
   const clearing: Array<[string, string]> = [
     ['a final prompt', prompt('I need to reschedule my appointment')],
-    ['a partial prompt', JSON.stringify({ type: 'prompt', voicePrompt: 'I need to', lang: 'en-US', last: false })],
-    ['a digit', JSON.stringify({ type: 'dtmf', digit: '2' })],
-    ['an interrupt', JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'Thanks for', durationUntilInterruptMs: 400 })],
+    ['a partial prompt', partial('I need to')],
+    ['a digit', digit('2')],
+    ['a keypad terminator', digit('#')],
+    ['an interrupt', interrupt],
   ];
   for (const [label, message] of clearing) {
     it(`is cleared by ${label}`, async () => {
       const d = noInputDeps();
       const { sock, ctx } = await greeted(d);
-      // The caller reacts with a moment of the wait left, so the deadline passes below.
+      // The caller reacts with a moment of the wait left, so the greeting's deadline passes below.
       await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 50);
       await handleSocketMessage(d, sock, ctx, message);
-      await vi.advanceTimersByTimeAsync(100);
+      // Far enough to be past the greeting's own deadline, one ms short of the shortest wait
+      // any of these could have restarted.
+      await vi.advanceTimersByTimeAsync(WAIT - 1);
       expect(texts(sock)).not.toContain(NO_INPUT);
       expect(silenceLines(d.dir)).toHaveLength(0);
       // A silence turn would have spent an attempt on the intent ladder; nothing did.
       expect(d.store.get('CA1')?.session.intentAttempts).toBe(0);
     });
   }
+
+  // Clearing without re-arming would strand the caller: these are the frames that cancel the
+  // wait without a prompt decision of their own to restart it.
+  const restarting: Array<[string, string[]]> = [
+    ['a partial prompt', [partial('I need to')]],
+    ['a keypad terminator', [digit('#')]],
+    ['an interrupt', [interrupt]],
+  ];
+  for (const [label, messages] of restarting) {
+    it(`restarts the wait after ${label}`, async () => {
+      const d = noInputDeps();
+      const { sock, ctx } = await greeted(d);
+      for (const m of messages) await handleSocketMessage(d, sock, ctx, m);
+      // Nothing was spoken, so the restarted wait is the bare configured one.
+      await vi.advanceTimersByTimeAsync(WAIT - 1);
+      expect(texts(sock)).toEqual([GREETING]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+      expect(d.store.get('CA1')?.session.intentAttempts).toBe(1);
+    });
+  }
+
+  it('restarts the wait after digits that only fill the keypad buffer', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
+    expect(texts(sock).at(-1)).toBe(promptText('ask_memberId', {}));
+    // Two digits of an eight digit ID: the turn runs but decides nothing, so only this re-arm
+    // keeps the caller from being left with a half-typed buffer and an open line.
+    for (const n of ['4', '4']) await handleSocketMessage(d, sock, ctx, digit(n));
+    expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('44');
+    await vi.advanceTimersByTimeAsync(WAIT - 1);
+    expect(texts(sock)).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_memberId_retry', {})]);
+    // Silence abandons the half-typed ID rather than carrying it into the retry.
+    expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('');
+  });
+
+  it('arms after the apology a failed turn speaks', async () => {
+    const base = corpusClient();
+    let fail = true;
+    const client: JevClient = {
+      ask: async (req) => {
+        if (fail) {
+          fail = false;
+          throw new Error('boom');
+        }
+        return base.ask(req);
+      },
+    };
+    const d: AdapterDeps & { dir: string } = { ...deps(client), noInputMs: WAIT, clipDurations: new Map() };
+    const { sock, ctx } = await greeted(d);
+    await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
+    expect(texts(sock).at(-1)).toBe(TURN_ERROR_TEXT);
+    await vi.advanceTimersByTimeAsync(textEstimateMs(TURN_ERROR_TEXT) + WAIT);
+    // "Please say that again" is a question; a caller who says nothing after it walks the ladder.
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, NOMATCH_OPEN]);
+  });
+
+  it('estimates on the frames as they went out, digit spacing included', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday']) {
+      await handleSocketMessage(d, sock, ctx, prompt(t));
+    }
+    const spoken = texts(sock).at(-1)!;
+    expect(spoken).toContain('4 4 7 1, 8 2 9 3');
+    const armed = frameLines(d.dir).filter((f) => f.dir === 'log' && f.msg.noInputArmedMs !== undefined).at(-1);
+    expect(armed?.msg.noInputArmedMs).toBe(textEstimateMs(spoken) + WAIT);
+    // Twilio reads eight separate digits, which takes longer than the readable form the session
+    // keeps; estimating on the unrewritten text would have cut the wait short.
+    const readable = d.store.get('CA1')!.session.lastPromptText;
+    expect(textEstimateMs(readable)).toBeLessThan(textEstimateMs(spoken));
+  });
+
+  it('is cleared by a reconnect setup', async () => {
+    const d = noInputDeps();
+    await greeted(d);
+    const sock2 = fakeSocket();
+    const ctx2 = newConnectionContext(d.tokens.mint('CA1'), sock2);
+    await handleSocketMessage(d, sock2, ctx2, setupMsg('CA1', 'VX2'));
+    // The reconnect replays the last prompt without running a turn, so nothing re-arms.
+    expect(texts(sock2)).toEqual([GREETING]);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(texts(sock2)).toEqual([GREETING]);
+    expect(silenceLines(d.dir)).toHaveLength(0);
+  });
+
+  it('forgetting a call cancels its wait', async () => {
+    const d = noInputDeps();
+    const { sock } = await greeted(d);
+    expect(vi.getTimerCount()).toBe(1);
+    forgetNoInput('CA1');
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(texts(sock)).toEqual([GREETING]);
+    expect(silenceLines(d.dir)).toHaveLength(0);
+  });
 
   it('stops the wait the moment a final prompt arrives, not when its turn answers', async () => {
     const base = corpusClient();

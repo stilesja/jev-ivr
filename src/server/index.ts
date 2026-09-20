@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describeConfig, loadConfig, type ServerConfig } from './config';
 import { createRequestHandler } from './http';
 import { attachWebSocketServer } from './ws';
+import { forgetNoInput } from './adapter';
 import { SessionStore } from './sessions';
 import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
@@ -109,7 +110,12 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     overrides.setupTimeoutMs,
   );
   const evictor = setInterval(() => {
-    for (const sid of store.evictIdle()) log(`${sid}: evicted idle session`);
+    for (const sid of store.evictIdle()) {
+      // An evicted call with a socket gets here again through the socket's own close, but one
+      // whose socket had already gone would otherwise leave its no-input bookkeeping behind.
+      forgetNoInput(sid);
+      log(`${sid}: evicted idle session`);
+    }
     const swept = tokens.evictExpired();
     if (swept) log(`swept ${swept} expired call tokens`);
   }, EVICT_EVERY_MS);

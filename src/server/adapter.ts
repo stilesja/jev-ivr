@@ -45,6 +45,9 @@ const noInputTimers = new Map<string, NoInput>();
  * Bumped every time a call's no-input timer is cleared or re-armed. A fired timer's queued
  * closure carries the generation it was armed with, so a turn that got in first (the caller
  * answered at the last second) turns the queued silence turn into a no-op.
+ *
+ * It outlives a socket close on purpose, so a reconnect cannot hand an already-queued closure a
+ * generation it would match again. Only `forgetNoInput` drops it, once the call itself is gone.
  */
 const noInputGeneration = new Map<string, number>();
 
@@ -58,8 +61,12 @@ function clearNoInput(callSid: string): void {
   noInputGeneration.set(callSid, (noInputGeneration.get(callSid) ?? 0) + 1);
 }
 
-/** Drop a gone call's no-input bookkeeping entirely, so neither map outlives the call. */
-function forgetNoInput(callSid: string): void {
+/**
+ * Drop a gone call's no-input bookkeeping entirely, so neither map outlives the call. Called from
+ * the socket close of a call the store no longer has, and from the idle sweep for one whose socket
+ * had already gone; both maps would otherwise grow by an entry per call for the process's life.
+ */
+export function forgetNoInput(callSid: string): void {
   const armed = noInputTimers.get(callSid);
   if (armed) clearTimeout(armed.timer);
   noInputTimers.delete(callSid);
@@ -166,13 +173,19 @@ function sendOne(socket: SocketLike, frame: OutboundFrame, timeoutMs: number): P
 }
 
 /**
- * Send a decision's frames in order. A frame is logged `out` only once it is actually on the
- * wire; a frame with no socket is logged as dropped. A send failure detaches the socket and the
- * remaining frames of the decision are dropped, but the caller still runs its end-of-call work.
+ * Send a decision's frames in order, and return the ones that actually reached the wire, rewritten
+ * exactly as they were sent. A frame is logged `out` only once it is actually on the wire; a frame
+ * with no socket is logged as dropped. A send failure detaches the socket and the remaining frames
+ * of the decision are dropped, but the caller still runs its end-of-call work.
+ *
+ * The return value is what the no-input estimate is measured on: only frames Twilio received are
+ * frames Twilio will spend time playing, and the digit spacing changes how long a member ID takes
+ * to read out loud.
  */
-async function sendFrames(deps: AdapterDeps, entry: CallEntry, frames: OutboundFrame[]): Promise<void> {
+async function sendFrames(deps: AdapterDeps, entry: CallEntry, frames: OutboundFrame[]): Promise<OutboundFrame[]> {
   const log = deps.log;
   const timeoutMs = deps.sendTimeoutMs ?? SEND_TIMEOUT_MS;
+  const sent: OutboundFrame[] = [];
   for (const original of frames) {
     // The frame log records what actually went out, digit spacing and all.
     const frame: OutboundFrame = original.type === 'text' ? { ...original, token: spokenDigits(original.token) } : original;
@@ -185,6 +198,7 @@ async function sendFrames(deps: AdapterDeps, entry: CallEntry, frames: OutboundF
     try {
       await sendOne(socket, frame, timeoutMs);
       entry.frames.write('out', frame);
+      sent.push(frame);
     } catch (err) {
       const info = describe(err);
       log(`${entry.callSid}: send failed for ${frame.type}: ${info.name}: ${info.message}`);
@@ -194,6 +208,7 @@ async function sendFrames(deps: AdapterDeps, entry: CallEntry, frames: OutboundF
       if (entry.socket === socket) entry.socket = null;
     }
   }
+  return sent;
 }
 
 async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): Promise<void> {
@@ -203,16 +218,23 @@ async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): P
     entry.session = run.result.session;
     const kind = run.result.decision.kind;
     ending = kind === 'complete' || kind === 'handoff';
-    // The ladder is over: nothing more to wait for, so the timer goes before the frames do.
+    // Defensive: nothing can be armed here today, because whatever drove this turn cleared the
+    // timer on its way in. Kept so a future path that arms and then ends cannot strand a timer.
     if (ending) clearNoInput(entry.callSid);
-    await sendFrames(deps, entry, run.result.frames);
-    // Including the silence turn's own re-ask, which is how the ladder walks itself.
-    if (kind === 'prompt') armNoInput(deps, entry, run.result.frames);
+    const sent = await sendFrames(deps, entry, run.result.frames);
+    // A prompt restarts the wait - including the silence turn's own re-ask, which is how the
+    // ladder walks itself. So does anything that left the caller still owing an answer: an
+    // ignored digit mid-slot, a barge-in, a relay error frame. Those produce no frames of their
+    // own, so the wait is the bare `noInputMs` from the moment the frame arrived.
+    if (!ending && (kind === 'prompt' || entry.session.promptedFor !== null)) armNoInput(deps, entry, sent);
   } catch (err) {
     const info = describe(err);
     deps.log(`${entry.callSid}: turn failed: ${info.name}: ${info.message}`);
     entry.frames.write('log', { turnFailed: info });
-    await sendFrames(deps, entry, [textFrame(TURN_ERROR_TEXT, true)]);
+    const sent = await sendFrames(deps, entry, [textFrame(TURN_ERROR_TEXT, true)]);
+    // "Please say that again" is a question like any other: a caller who then says nothing must
+    // not be left listening to an open line.
+    if (entry.session.promptedFor !== null) armNoInput(deps, entry, sent);
   } finally {
     // Runs even when sending the decision failed: the call is over either way.
     if (ending) {
@@ -316,17 +338,21 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
   // The slots have fixed digit lengths, so the keypad terminators carry no meaning yet.
   if (frame.type === 'dtmf' && (frame.digit === '#' || frame.digit === '*')) {
     entry.frames.write('log', { ignoredDigit: frame.digit });
+    // No turn runs, so nothing downstream would restart the wait the digit just cancelled.
+    armNoInput(deps, entry, []);
     return;
   }
-  // TwiML has partialPrompts off, so a non-final prompt is not something the core was built to
-  // score: treating one as the complete utterance would run a turn on half a sentence and then
-  // run another on the whole of it. Record it and wait for the final.
+  // Partial prompts are on in the TwiML so the no-input wait can be cancelled at the caller's
+  // first syllable, but a non-final prompt is not something the core was built to score: treating
+  // one as the complete utterance would run a turn on half a sentence and then run another on the
+  // whole of it. Record it, restart the wait, and hold out for the final.
   if (frame.type === 'prompt' && !frame.last) {
     entry.frames.write('log', { droppedPartial: frame.voicePrompt.slice(0, 80) });
     if (!ctx.partialLogged) {
       ctx.partialLogged = true;
-      deps.log(`${ctx.callSid}: dropped a non-final prompt; partial prompts are off in the TwiML`);
+      deps.log(`${ctx.callSid}: dropped a non-final prompt; partials only cancel the no-input wait`);
     }
+    armNoInput(deps, entry, []);
     return;
   }
   await deps.store.enqueue(ctx.callSid, (e) => turn(deps, e, frame));
