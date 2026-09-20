@@ -134,13 +134,15 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
     expect(texts(sock).at(-1)).toBe("What's your member ID?");
     await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
-    // The wire gets the digits spaced out; the session and the trace keep the readable form.
-    expect(texts(sock).at(-1)).toBe('Your member ID is 4 4 7 1, 8 2 9 3. Is that right?');
-    expect(d.store.get('CA1')?.session.lastPromptText).toBe('Your member ID is 4471 8293. Is that right?');
-    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    // The member ID fills silently: the next question follows it straight away.
     expect(texts(sock).at(-1)).toBe('next week. Which day works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
-    expect(texts(sock).at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Chen is moved to Tuesday, September 22.');
+    // The summary reads the whole form back. The wire gets the digits spaced out; the session
+    // and the trace keep the readable form.
+    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?');
+    expect(d.store.get('CA1')?.session.lastPromptText).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, member ID 4471 8293. Shall I make that change?');
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    expect(texts(sock).at(-2)).toBe('Your appointment is moved.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
     expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed","completed":["reschedule"]}' });
     // Twilio still has the queued clips to play; the server leaves the socket open for it and
@@ -161,8 +163,8 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
     await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
-    await handleSocketMessage(d, sock, ctx, prompt('yes'));
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
     expect(sock.closed).toBeNull();
     await new Promise((r) => setTimeout(r, 100));
     expect(sock.closed).toEqual({ code: 1000, reason: 'end grace elapsed' });
@@ -176,8 +178,8 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
     await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
-    await handleSocketMessage(d, sock, ctx, prompt('yes'));
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
     // Twilio closing the connection itself, exactly as the ws 'close' handler reports it.
     await handleSocketClose(d, ctx);
     await new Promise((r) => setTimeout(r, 100));
@@ -197,7 +199,9 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
     expect(sock.sent.length).toBe(before);
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '3' }));
-    expect(texts(sock).at(-2)).toBe('For member ID 4 4 7 1, 8 2 9 3, your appointment with Dr. Kim is cancelled.');
+    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim would be cancelled, member ID 4 4 7 1, 8 2 9 3. Shall I cancel it?');
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    expect(texts(sock).at(-2)).toBe('Your appointment is cancelled.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
   });
 
@@ -316,7 +320,7 @@ describe('adapter', () => {
     const ctx = newConnectionContext(tok, sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     expect(d.store.get('CA1')?.socket).toBeNull();
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'yes', 'Tuesday']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday', 'yes']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(d.store.get('CA1')?.ended).toBe(true);
@@ -355,7 +359,7 @@ describe('adapter', () => {
     const sock = fakeSocket();
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'yes', 'Tuesday']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday', 'yes']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(d.store.get('CA1')?.ended).toBe(true);

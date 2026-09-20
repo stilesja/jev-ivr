@@ -9,10 +9,10 @@
         "say": "four four seven one eight two nine three"
       },
       {
-        "say": "yes"
+        "say": "Tuesday"
       },
       {
-        "say": "Tuesday"
+        "say": "yes"
       }
     ],
     "expect": {
@@ -37,6 +37,9 @@
       },
       {
         "say": "next Tuesday"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -104,9 +107,6 @@
       },
       {
         "say": "my member ID is eight one two zero four four five seven"
-      },
-      {
-        "say": "yes"
       }
     ],
     "expect": {
@@ -168,10 +168,10 @@
         "say": "four four seven one eight two nine three"
       },
       {
-        "say": "yes"
+        "say": "how about Wednesday"
       },
       {
-        "say": "how about Wednesday"
+        "say": "yes"
       }
     ],
     "expect": {
@@ -183,7 +183,7 @@
       },
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
-      "text": "moved to Wednesday, September 23"
+      "text": "Your appointment is moved."
     }
   },
   {
@@ -194,9 +194,6 @@
       },
       {
         "say": "four four seven one eight two nine three"
-      },
-      {
-        "say": "yes"
       }
     ],
     "expect": {
@@ -461,9 +458,6 @@
         "say": "four four seven one eight two nine three"
       },
       {
-        "say": "yes"
-      },
-      {
         "say": "Dr. Chen"
       },
       {
@@ -493,6 +487,9 @@
       },
       {
         "dtmf": "4"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -525,6 +522,9 @@
       },
       {
         "dtmf": "0922"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -624,13 +624,13 @@
         "say": "four four seven one eight two nine three"
       },
       {
-        "say": "yes"
-      },
-      {
         "say": "Dr. Chen"
       },
       {
         "say": "Wednesday"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -659,20 +659,23 @@
     }
   },
   {
-    "id": "implicit-ack-spoken",
+    "id": "summary-reads-back-spoken-id",
     "steps": [
       {
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
         "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
       }
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_memberId",
+      "promptId": "confirm_reschedule",
       "form": "reschedule",
-      "text": "Your member ID is 4471 8293"
+      "text": "member ID 4471 8293"
     }
   },
   {
@@ -683,9 +686,6 @@
       },
       {
         "say": "four four seven one eight two nine three"
-      },
-      {
-        "say": "yes"
       },
       {
         "say": "Dr. Chen"
@@ -735,13 +735,13 @@
         "say": "four four seven one eight two nine three"
       },
       {
-        "say": "yes"
-      },
-      {
         "say": "and can I also ask about my bill"
       },
       {
         "say": "Tuesday"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -778,6 +778,9 @@
       },
       {
         "say": "actually forget the reschedule, just cancel it"
+      },
+      {
+        "say": "yes"
       }
     ],
     "expect": {
@@ -791,29 +794,33 @@
     }
   },
   {
-    "id": "memberId-confirm-yes",
+    "id": "summary-yes",
     "steps": [
       {
         "say": "Cancel my appointment"
       },
       {
         "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "It's with Patel"
       },
       {
         "say": "yes"
       }
     ],
     "expect": {
-      "decision": "prompt",
-      "promptId": "ask_provider",
+      "decision": "complete",
+      "promptId": "cancel_confirmed",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293"
+        "memberId": "44718293",
+        "provider": "patel"
       }
     }
   },
   {
-    "id": "memberId-confirm-no-to-keypad",
+    "id": "summary-no-asks-what-to-change",
     "steps": [
       {
         "say": "Cancel my appointment"
@@ -822,18 +829,19 @@
         "say": "four four seven one eight two nine three"
       },
       {
-        "say": "no"
+        "say": "It's with Patel"
       },
       {
-        "dtmf": "44718293"
+        "say": "no"
       }
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_provider",
+      "promptId": "ask_change",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293"
+        "memberId": "44718293",
+        "provider": "patel"
       }
     }
   },
@@ -849,12 +857,11 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_memberId",
+      "promptId": "ask_provider",
       "form": "cancel",
       "slots": {
         "memberId": "44187355"
-      },
-      "text": "4418 7355"
+      }
     }
   },
   {
@@ -869,7 +876,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_memberId",
+      "promptId": "ask_provider",
       "form": "cancel",
       "slots": {
         "memberId": "81793314"
@@ -890,8 +897,8 @@
       }
     ],
     "expect": {
-      "decision": "complete",
-      "promptId": "cancel_confirmed",
+      "decision": "prompt",
+      "promptId": "confirm_cancel",
       "form": "cancel",
       "slots": {
         "memberId": "44718293",

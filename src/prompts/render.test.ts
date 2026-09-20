@@ -6,7 +6,7 @@ import { PROVIDERS } from '../domain/slots/provider';
 import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
 import { textFrame } from '../channel/frames';
 import { recordableClips } from './clips';
-import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VOCAB_VARS, type Segment } from './segments';
+import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR, VOCAB_VARS, type Segment } from './segments';
 
 describe('renderTemplate', () => {
   it('substitutes variables', () => {
@@ -89,12 +89,21 @@ describe('decisionToFrames', () => {
   });
 });
 
-describe('completion prompts', () => {
-  it('read back every slot of the form they close', () => {
+describe('summary prompts', () => {
+  it('read back every slot of the form they confirm', () => {
     for (const [form, spec] of Object.entries(FORMS)) {
-      if (spec.completion.kind !== 'prompt') continue;
-      const text = promptEntry(spec.completion.promptId).text;
-      for (const slot of spec.slots) expect(text, `${form}: ${spec.completion.promptId}`).toContain(`{${slot}}`);
+      if (spec.summaryPromptId === null) continue;
+      const text = promptEntry(spec.summaryPromptId).text;
+      for (const slot of spec.slots) expect(text, `${form}: ${spec.summaryPromptId}`).toContain(`{${slot}}`);
+    }
+  });
+
+  it('leaves the completion line to say only that it is done', () => {
+    for (const [form, spec] of Object.entries(FORMS)) {
+      if (spec.completion.kind !== 'prompt' || spec.summaryPromptId === null) continue;
+      // appointment_details answers the caller's question, so it keeps its details.
+      if (spec.completion.promptId === 'appointment_details') continue;
+      expect(promptEntry(spec.completion.promptId).text, form).not.toMatch(new RegExp(VAR.source));
     }
   });
 });
@@ -129,7 +138,7 @@ describe('decisionToFrames with clips', () => {
   const clips = new Map([
     ['greeting.0', 'greeting.0.wav'],
     ['ack_provider.0', 'ack_provider.0.wav'], ['provider.chen', 'provider.chen.wav'],
-    ['confirm_memberId.0', 'confirm_memberId.0.wav'], ['confirm_memberId.1', 'confirm_memberId.1.mp3'],
+    ['confirm_cancel.0', 'confirm_cancel.0.wav'], ['confirm_cancel.1', 'confirm_cancel.1.mp3'], ['confirm_cancel.2', 'confirm_cancel.2.wav'],
     ['window.next_week', 'window.next_week.wav'],
     ['goodbye.0', 'goodbye.0.wav'],
   ]);
@@ -144,12 +153,13 @@ describe('decisionToFrames with clips', () => {
 
   it('plays vocabulary clips, speaks composed values, and drops bare punctuation after a clip', () => {
     const frames = decisionToFrames({
-      kind: 'prompt', promptId: 'confirm_memberId', vars: { memberId: '4471 8293' }, target: 'memberId', options: ['yes', 'no'],
+      kind: 'prompt', promptId: 'confirm_cancel', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, target: 'confirm', options: ['yes', 'no'],
       acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
     }, ctx);
     expect(frames).toEqual([
       p(`${base}ack_provider.0.wav`, false), p(`${base}provider.chen.wav`, false),
-      p(`${base}confirm_memberId.0.wav`, false), t('4471 8293', false), p(`${base}confirm_memberId.1.mp3`, false),
+      p(`${base}confirm_cancel.0.wav`, true), p(`${base}provider.chen.wav`, true),
+      p(`${base}confirm_cancel.1.mp3`, true), t('4471 8293', true), p(`${base}confirm_cancel.2.wav`, true),
     ]);
   });
 
@@ -173,9 +183,9 @@ describe('decisionToFrames with clips', () => {
   });
 
   it('merges a whole text run around a vocabulary clip and plays the goodbye clip before the end frame', () => {
-    const frames = decisionToFrames({ kind: 'complete', form: 'cancel', promptId: 'cancel_confirmed', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, acks: [], completed: ['cancel'] }, ctx);
+    const frames = decisionToFrames({ kind: 'complete', form: 'confirm_appointment', promptId: 'appointment_details', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, acks: [], completed: ['confirm_appointment'] }, ctx);
     expect(frames).toEqual([
-      t('For member ID 4471 8293, your appointment with', false), p(`${base}provider.chen.wav`, false), t('is cancelled.', false),
+      t('For member ID 4471 8293, your next appointment with', false), p(`${base}provider.chen.wav`, false), t('is confirmed.', false),
       p(`${base}goodbye.0.wav`, false),
       expect.objectContaining({ type: 'end' }),
     ]);

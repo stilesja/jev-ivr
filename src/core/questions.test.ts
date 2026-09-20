@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildQuestions, ALWAYS_ON_IDS } from './questions';
+import { buildQuestions, ALWAYS_ON_IDS, CHANGE_SLOT_ORDER } from './questions';
 import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import { FORM_INTENTS } from '../domain/intents';
+import { ALL_SLOTS } from '../domain/forms';
 import type { SlotContext } from '../domain/slots';
 
 const ctx: SlotContext = { text: 'hi', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
@@ -89,6 +90,10 @@ describe('question redesign', () => {
     expect(q.confirmsYes).toBeDefined();
     expect(q.provider).toBeDefined();
     expect(q.dateMode).toBeDefined();
+  });
+
+  it('orders every slot a form can have, so no form loses one from the question', () => {
+    expect([...CHANGE_SLOT_ORDER].sort()).toEqual([...ALL_SLOTS].sort());
   });
 
   it('limits changeSlot to the slots on the pending form (cancel has no date)', () => {

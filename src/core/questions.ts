@@ -141,11 +141,12 @@ function noForm(): QuestionMap {
 }
 
 /**
- * Fixed presentation order for changeSlot's criteria: this question has no "none" bias toward
- * any one slot, so quiet answers pick none regardless of order. The order is pinned anyway so the
- * wire order, and any option-order bias in the model's answer, stay stable across runs.
+ * Fixed presentation order for changeSlot's criteria. The question has a `none`, so a quiet answer
+ * lands there whatever the order -- unlike intentChange, which has no none and so falls to its first
+ * label. The order is pinned only so the wire order, and any option-order bias in the model's answer,
+ * stay stable across runs. Every slot is listed; formConfirmation keeps the ones its form has.
  */
-const CHANGE_SLOT_ORDER: readonly SlotId[] = ['provider', 'date', 'memberId'];
+export const CHANGE_SLOT_ORDER: readonly SlotId[] = ['provider', 'date', 'memberId'];
 
 const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
   provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',

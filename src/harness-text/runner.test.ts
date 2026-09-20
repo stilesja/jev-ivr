@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   runTurn, runCorpusEntry, runScenario, loadScenarios, checkExpectation, outcomeOf, spokenText, seedCorpusSession,
-  SUMMARY_PROMPT, type Outcome, type Scenario,
+  type Outcome, type Scenario,
 } from './runner';
 import { summarize } from './metrics';
 import { FixtureStubClient } from '../jev/fixtureStub';
@@ -82,13 +82,15 @@ describe('runCorpusEntry', () => {
 
   it('runs an in-form entry with the form active and the first slot prompted', async () => {
     const { outcome } = await runCorpusEntry(entries[1]!, opts);
-    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'confirm_memberId', form: 'cancel' });
+    // The member ID fills silently now, so the turn goes straight on to the next slot.
+    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'ask_provider', form: 'cancel' });
     expect(outcome.slots.memberId).toBe('44718293');
   });
 
   it('prompts the requested slot for an in-form entry', async () => {
     const { outcome } = await runCorpusEntry(prompted, { ...opts, client: promptedClient });
-    expect(outcome.decision).toBe('complete');
+    // The last slot no longer completes the form: it asks the summary.
+    expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'confirm_reschedule' });
     expect(outcome.slots.date).toBe('2026-09-19');
     expect(outcome.slots.memberId).toBe('00000000');
     expect(outcome.slots.provider).toBe('patel');
@@ -107,11 +109,11 @@ describe('runCorpusEntry', () => {
   });
 });
 
-describe('SUMMARY_PROMPT', () => {
+describe('summaryPromptId', () => {
   it('has a summary prompt exactly for forms that complete with a prompt, each id present in the manifest', () => {
     for (const f of FORM_INTENTS) {
-      expect(SUMMARY_PROMPT[f] !== null, f).toBe(FORMS[f].completion.kind === 'prompt');
-      const id = SUMMARY_PROMPT[f];
+      expect(FORMS[f].summaryPromptId !== null, f).toBe(FORMS[f].completion.kind === 'prompt');
+      const id = FORMS[f].summaryPromptId;
       if (id !== null) expect(PROMPTS, `${f}: ${id}`).toHaveProperty(id);
     }
   });

@@ -103,16 +103,6 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Yes or no.",
   },
   {
-    "id": "confirm_memberId.0",
-    "note": "open",
-    "text": "Your member ID is",
-  },
-  {
-    "id": "confirm_memberId.1",
-    "note": "closed",
-    "text": "Is that right?",
-  },
-  {
     "id": "confirm_schedule.0",
     "note": "open",
     "text": "You'd be booked with",
@@ -214,48 +204,18 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   },
   {
     "id": "schedule_confirmed.0",
-    "note": "open",
-    "text": "You're booked with",
-  },
-  {
-    "id": "schedule_confirmed.1",
-    "note": "open",
-    "text": "on",
-  },
-  {
-    "id": "schedule_confirmed.2",
-    "note": "open",
-    "text": "member ID",
+    "note": "closed",
+    "text": "You're booked.",
   },
   {
     "id": "reschedule_confirmed.0",
-    "note": "open",
-    "text": "For member ID",
-  },
-  {
-    "id": "reschedule_confirmed.1",
-    "note": "open",
-    "text": "your appointment with",
-  },
-  {
-    "id": "reschedule_confirmed.2",
-    "note": "open",
-    "text": "is moved to",
+    "note": "closed",
+    "text": "Your appointment is moved.",
   },
   {
     "id": "cancel_confirmed.0",
-    "note": "open",
-    "text": "For member ID",
-  },
-  {
-    "id": "cancel_confirmed.1",
-    "note": "open",
-    "text": "your appointment with",
-  },
-  {
-    "id": "cancel_confirmed.2",
     "note": "closed",
-    "text": "is cancelled.",
+    "text": "Your appointment is cancelled.",
   },
   {
     "id": "appointment_details.0",

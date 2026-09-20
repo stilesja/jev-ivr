@@ -9,7 +9,7 @@ export interface PromptDecision {
   /** implicit-confirm phrases spoken before the prompt */
   acks: Ack[];
   /** what the prompt asks for; drives DTMF and attempt accounting */
-  target: 'intent' | SlotId | null;
+  target: 'intent' | 'confirm' | SlotId | null;
   /** spoken options, for disambiguation and menus */
   options: string[];
   /** this prompt played the DTMF intent menu, so the next digit picks an option */

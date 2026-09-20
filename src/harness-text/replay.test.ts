@@ -37,6 +37,7 @@ describe('replayFrameLog', () => {
     await handleSocketMessage(deps, sock, ctx, JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'x', durationUntilInterruptMs: 10 }));
     for (const d of '44718293') await handleSocketMessage(deps, sock, ctx, JSON.stringify({ type: 'dtmf', digit: d }));
     await say('Tuesday');
+    await say('yes');
 
     const live = readFileSync(join(dir, 'CA1.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     const replay = await replayFrameLog(join(dir, 'CA1.frames.jsonl'), { ...opts, trace: null });
@@ -68,8 +69,8 @@ describe('replayFrameLog', () => {
     const opts = { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', now: () => 0, trace: null };
 
     // Drive the same events straight through runTurn (bypassing the adapter) to build up a log
-    // that completes in three user turns: a billing question, the member ID, then the yes that
-    // confirms it, which the billing form's handoff worked example resolves in a `handoff` decision.
+    // that completes in two user turns: a billing question and the member ID. Billing hands off
+    // instead of asking a summary, so the member ID's turn is the one that ends the call.
     let session = newSession('CA1', 0);
     const setup = { type: 'setup' as const, sessionId: 'VX1', callSid: 'CA1', from: '+1', to: '+2', customParameters: {} };
     log.write('in', setup);
@@ -79,10 +80,7 @@ describe('replayFrameLog', () => {
     session = (await runTurn(session, prompt1, opts)).result.session;
     const prompt2 = { type: 'prompt' as const, voicePrompt: 'my member ID is eight one two zero four four five seven', lang: 'en-US', last: true };
     log.write('in', prompt2);
-    session = (await runTurn(session, prompt2, opts)).result.session;
-    const prompt3 = { type: 'prompt' as const, voicePrompt: 'yes', lang: 'en-US', last: true };
-    log.write('in', prompt3);
-    const finalRun = await runTurn(session, prompt3, opts);
+    const finalRun = await runTurn(session, prompt2, opts);
     session = finalRun.result.session;
     expect(finalRun.result.decision.kind).toBe('handoff');
     expect(session.ended).toBe(true);
@@ -92,9 +90,9 @@ describe('replayFrameLog', () => {
     log.write('in', { type: 'prompt', voicePrompt: 'hello?', lang: 'en-US', last: true });
 
     const replay = await replayFrameLog(path, opts);
-    expect(replay.records).toHaveLength(4);
+    expect(replay.records).toHaveLength(3);
     expect(replay.records.at(-1)!.decision.kind).toBe('handoff');
-    expect(replay.skipped).toEqual(['line 5: prompt after the call ended']);
+    expect(replay.skipped).toEqual(['line 4: prompt after the call ended']);
   });
 
   it('uses the frame log clock and date', async () => {

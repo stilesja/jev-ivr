@@ -52,11 +52,11 @@ export interface CorpusEntry {
 }
 
 // Not a prefix test: confirm_appointment is itself a form (FORM_INTENTS), not the confirm_ context for a
-// form named "appointment". A confirm_ context is exact membership: confirm_<FormId> for every form whose
-// completion is a prompt (billing hands off, so it has none). This makes confirm_confirm_appointment the
-// (unusual but valid) summary context for the confirm_appointment form.
+// form named "appointment". A confirm_ context is exact membership: confirm_<FormId> for every form that
+// asks a summary question (billing hands off instead, so it has none). This makes confirm_confirm_appointment
+// the (unusual but valid) summary context for the confirm_appointment form.
 const CONFIRM_CONTEXTS: ReadonlyMap<string, FormId> = new Map(
-  FORM_INTENTS.filter((f) => FORMS[f].completion.kind === 'prompt').map((f) => [`confirm_${f}`, f] as const),
+  FORM_INTENTS.filter((f) => FORMS[f].summaryPromptId !== null).map((f) => [`confirm_${f}`, f] as const),
 );
 
 /** confirm_ contexts only: the form behind the confirm, else null */
