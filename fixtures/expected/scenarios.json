@@ -1095,5 +1095,141 @@
     "queued": [],
     "pass": true,
     "mismatches": []
+  },
+  "silence-greeting-reask": {
+    "id": "silence-greeting-reask",
+    "decision": "prompt",
+    "promptId": "nomatch_open",
+    "acks": [
+      "no_input"
+    ],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "silence-greeting-menu": {
+    "id": "silence-greeting-menu",
+    "decision": "prompt",
+    "promptId": "nomatch_dtmf_menu",
+    "acks": [
+      "no_input"
+    ],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "silence-greeting-agent": {
+    "id": "silence-greeting-agent",
+    "decision": "handoff",
+    "promptId": "handoff_max_attempts",
+    "acks": [
+      "no_input"
+    ],
+    "reason": "max-attempts",
+    "decidedGate": null,
+    "verdict": null,
+    "form": null,
+    "slots": {
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "silence-then-answer": {
+    "id": "silence-then-answer",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "silence-summary-reask": {
+    "id": "silence-summary-reask",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [
+      "no_input"
+    ],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "silence-summary-agent": {
+    "id": "silence-summary-agent",
+    "decision": "handoff",
+    "promptId": "handoff_max_attempts",
+    "acks": [
+      "no_input"
+    ],
+    "reason": "max-attempts",
+    "decidedGate": null,
+    "verdict": null,
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "silence-confirm-dtmf-then-1": {
+    "id": "silence-confirm-dtmf-then-1",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
   }
 }

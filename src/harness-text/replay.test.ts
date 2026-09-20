@@ -131,6 +131,24 @@ describe('replayFrameLog', () => {
     expect(replay.records[1]!.event.type).toBe('prompt');
   });
 
+  it('replays a recorded silence frame even though parseInbound rejects it live', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'replay-silence-'));
+    const path = join(dir, 'CA1.frames.jsonl');
+    const log = new FrameLog(path, () => 0);
+    log.write('in', { type: 'setup', sessionId: 'VX1', callSid: 'CA1', from: '+1', to: '+2', customParameters: {} });
+    // The adapter logs the silence frame it synthesized just like any other inbound message;
+    // parseInbound would reject this shape live (silence is server-generated, never on the wire).
+    log.write('in', { type: 'silence' });
+
+    const client = new HeuristicStubClient();
+    const opts = { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', now: () => 0, trace: null };
+    const replay = await replayFrameLog(path, opts);
+    expect(replay.skipped).toEqual([]);
+    expect(replay.records).toHaveLength(2);
+    expect(replay.records[1]!.event.type).toBe('silence');
+    expect(replay.records[1]!.decision.kind).toBe('prompt');
+  });
+
   it('continues after a turn throws', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'replay-throws-'));
     const path = join(dir, 'CA1.frames.jsonl');
