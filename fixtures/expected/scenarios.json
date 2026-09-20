@@ -856,6 +856,24 @@
     "pass": true,
     "mismatches": []
   },
+  "summary-no-names-doctor": {
+    "id": "summary-no-names-doctor",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "kim",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
   "summary-repeated-no-hands-off": {
     "id": "summary-repeated-no-hands-off",
     "decision": "handoff",

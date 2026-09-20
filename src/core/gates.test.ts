@@ -211,6 +211,27 @@ describe('evaluateGates', () => {
       })).verdict).toEqual({ kind: 'rejected', queue: 'billing' });
     });
 
+    it('reopens the named detail when the no says which one is wrong', () => {
+      const r = run(pending(), baseAnswers({ confirmsNo: noul(0.9), changeSlot: choice({ provider: 0.9, date: 0.05, memberId: 0.05 }) }));
+      expect(r.verdict).toEqual({ kind: 'change_slot', slot: 'provider' });
+      expect(r.rows.find((x) => x.gate === 'changeSlot')).toMatchObject({ outcome: 'change:provider', decided: true });
+      expect(r.rows.find((x) => x.gate === 'confirmation')?.decided).toBe(false);
+      // The queue still rides along.
+      expect(run(pending(), baseAnswers({
+        confirmsNo: noul(0.9), changeSlot: choice({ provider: 0.9, date: 0.05, memberId: 0.05 }),
+        intent: choice({ billing: 0.9, none: 0.1 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }),
+      })).verdict).toEqual({ kind: 'change_slot', slot: 'provider', queue: 'billing' });
+    });
+
+    it('stays a plain no when the answer names no detail', () => {
+      const r = run(pending(), baseAnswers({ confirmsNo: noul(0.9), changeSlot: choice({ none: 0.9, provider: 0.05, date: 0.05 }) }));
+      expect(r.verdict).toEqual({ kind: 'rejected' });
+      expect(r.rows.find((x) => x.gate === 'changeSlot')).toMatchObject({ outcome: 'none', passed: false, decided: false });
+      expect(r.rows.find((x) => x.gate === 'confirmation')?.decided).toBe(true);
+      // Below the threshold it is a no as well: turn.ts reads the utterance for a value instead.
+      expect(run(pending(), baseAnswers({ confirmsNo: noul(0.9), changeSlot: choice({ provider: 0.5, none: 0.5 }) })).verdict).toEqual({ kind: 'rejected' });
+    });
+
     it('names the slot to change when asked what to change', () => {
       const v = run(pending(), baseAnswers({ changeSlot: choice({ date: 0.9, provider: 0.05, memberId: 0.05 }) })).verdict;
       expect(v).toEqual({ kind: 'change_slot', slot: 'date' });

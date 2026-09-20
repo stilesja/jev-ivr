@@ -630,6 +630,23 @@ describe('final confirm', () => {
     expect(varsOf(both.decision)).toMatchObject({ provider: 'Dr. Alvarez' });
   });
 
+  it('reopens the detail a no names, instead of asking what to change', () => {
+    const r = afterTurns([...HAPPY, 'no, the doctor is wrong']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', target: 'provider' });
+    expect(r.session.slots.provider).toMatchObject({ value: null, display: null });
+    expect(r.session.slots.date.value).toBe('2026-09-22');
+    expect(r.session.pendingConfirmation).toBeNull();
+    const answered = afterTurns([...HAPPY, 'no, the doctor is wrong', 'Dr. Kim']);
+    expect(answered.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(varsOf(answered.decision)).toMatchObject({ provider: 'Dr. Kim', date: 'Tuesday, September 22' });
+  });
+
+  it('still corrects, rather than reopens, when the no carries a value instead of a name', () => {
+    const r = afterTurns([...HAPPY, 'no, Thursday']);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(varsOf(r.decision)).toMatchObject({ provider: 'Dr. Chen', date: 'Thursday, September 24' });
+  });
+
   it('reopens the named detail when the caller repeats the value it already holds', () => {
     // "The doctor, Dr. Chen" at a Dr. Chen summary answers nothing: taking it as a correction
     // would re-arm the summary at attempts 0 and let the caller loop there forever.

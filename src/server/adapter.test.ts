@@ -398,6 +398,8 @@ describe('spokenDigits', () => {
 
   it('handles more than two groups and does not join across other words', () => {
     expect(spokenDigits('1234 5678 9012')).toBe('1 2 3 4, 5 6 7 8, 9 0 1 2');
+    // The summary's member ID arrives as a text frame of its own, between recorded clips.
+    expect(spokenDigits('4471 8293')).toBe('4 4 7 1, 8 2 9 3');
     expect(spokenDigits('1234 and 5678')).toBe('1 2 3 4 and 5 6 7 8');
   });
 });

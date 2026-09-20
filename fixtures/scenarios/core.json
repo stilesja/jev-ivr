@@ -1003,6 +1003,37 @@
     }
   },
   {
+    "id": "summary-no-names-doctor",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no, the doctor is wrong"
+      },
+      {
+        "say": "Dr. Kim"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "provider": "kim"
+      }
+    }
+  },
+  {
     "id": "summary-repeated-no-hands-off",
     "steps": [
       {

@@ -213,13 +213,17 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     const queue = routeVerdict.kind === 'queue' ? routeVerdict.intent : undefined;
     const withQueue = (v: Extract<Verdict, { kind: 'confirmed' | 'rejected' | 'confirm_unanswered' | 'change_slot' }>): Verdict => (queue ? { ...v, queue } : v);
     if (formConfirm === 'confirmed') routeVerdict = withQueue({ kind: 'confirmed' });
-    else if (formConfirm === 'rejected') routeVerdict = withQueue({ kind: 'rejected' });
     else {
+      // A no that names the detail ("no, the doctor is wrong") says which slot to reopen, so the
+      // name is read before the no is settled for. A no that carries a value instead answers the
+      // question's `none`, and turn.ts fills it on the rejected path.
       const [changeTop] = isChoice(answers.changeSlot) ? rankProbabilities(answers.changeSlot.probabilities) : [];
       const named = changeTop && changeTop.label !== 'none' && changeTop.p >= t.SLOT_CHANGE && FORMS[pending.form].slots.includes(changeTop.label as SlotId) ? (changeTop.label as SlotId) : null;
       changeSlotRow = { gate: 'changeSlot', value: changeTop?.p ?? null, threshold: t.SLOT_CHANGE, passed: named !== null, outcome: named ? `change:${named}` : 'none', decided: false };
       rows.push(changeSlotRow);
-      routeVerdict = named ? withQueue({ kind: 'change_slot', slot: named }) : withQueue({ kind: 'confirm_unanswered' });
+      if (named) routeVerdict = withQueue({ kind: 'change_slot', slot: named });
+      else if (formConfirm === 'rejected') routeVerdict = withQueue({ kind: 'rejected' });
+      else routeVerdict = withQueue({ kind: 'confirm_unanswered' });
     }
     outcome = `summary_${routeVerdict.kind}`;
     summaryDecidedRow = routeVerdict.kind === 'change_slot' ? changeSlotRow : confirmationRow;

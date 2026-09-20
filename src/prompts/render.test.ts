@@ -3,6 +3,7 @@ import { FORMS } from '../domain/forms';
 import { renderTemplate, promptText, promptEntry, decisionToFrames, promptFrames, handoffPromptId, spokenText } from './render';
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
+import { allSlots } from '../domain/slots';
 import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
 import { textFrame } from '../channel/frames';
 import { recordableClips } from './clips';
@@ -95,6 +96,14 @@ describe('summary prompts', () => {
       if (spec.summaryPromptId === null) continue;
       const text = promptEntry(spec.summaryPromptId).text;
       for (const slot of spec.slots) expect(text, `${form}: ${spec.summaryPromptId}`).toContain(`{${slot}}`);
+    }
+  });
+
+  it('has a readback prompt for any slot whose policy asks for one', () => {
+    // Nothing uses `always` today (the member ID moved to `summary`), so this loop asserts
+    // nothing -- it is here to catch the missing prompt the day a slot opts back in.
+    for (const spec of allSlots()) {
+      if (spec.spokenConfirm === 'always') expect(Object.keys(manifest), spec.id).toContain(`confirm_${spec.id}`);
     }
   });
 

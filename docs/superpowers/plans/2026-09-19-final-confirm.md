@@ -939,10 +939,14 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
   "That appointment is confirmed." even though spec §5 says to keep its details (it is the answer to
   the caller's question); the confirm-first flow already reads the details back in
   `confirm_appointment_details` before the caller says yes, so repeating them a second time in the
-  completion line felt redundant, but this is a deviation from what the spec says. "Not that doctor,
-  Thursday" at `change_slot` moves the date and still leaves the doctor open to ask for — only a new
-  value for the *named* slot answers the question; anything else it carries is kept and acked on the
-  way into the reopened slot's own question. Baseline re-record: 44 corpus outcomes changed (a
+  completion line felt redundant, but this is a deviation from what the spec says. A summary answer
+  that names a detail reopens it, whether or not it is phrased as a no: the confirmation gate reads
+  `changeSlot` before it settles for a plain `rejected`, so "no, the doctor is wrong" clears the
+  provider and asks `ask_provider` rather than "What should I change?". Only a new value for the
+  *named* slot answers the question outright — "the doctor, Thursday" moves the date and still leaves
+  the doctor to ask for, and re-speaking the value the summary just read back reopens the slot rather
+  than re-arming the summary. A no that carries a value and names nothing ("no, Thursday") is a plain
+  correction as before: the date moves and the summary is re-asked. Baseline re-record: 44 corpus outcomes changed (a
   `confirm_memberId` readback became either the next question, a summary, or a billing handoff, and
   every `complete` outcome for a form with a summary became a `prompt confirm_<form>`); only the
   `decision`/`promptId`/`reason` fields moved.
