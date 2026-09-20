@@ -65,4 +65,13 @@ describe('HeuristicStubClient', () => {
     const res = await ask('just let me talk to a person');
     expect((res.answers.wantsHuman as { noul: number }).noul).toBeGreaterThan(0.8);
   });
+
+  it('names a detail for changeSlot from keywords', async () => {
+    const q = { changeSlot: { type: 'choice', instructions: '', criteria: { provider: null, date: null, memberId: null, none: null } } } as const;
+    const pick = async (text: string) => ((await new HeuristicStubClient().ask({ state: { asr: { text } }, questions: q as never })).answers.changeSlot as { choice: string }).choice;
+    expect(await pick('the day')).toBe('date');
+    expect(await pick('the doctor')).toBe('provider');
+    expect(await pick('my member id')).toBe('memberId');
+    expect(await pick('Thursday')).toBe('none');
+  });
 });

@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  runTurn, runCorpusEntry, runScenario, loadScenarios, checkExpectation, outcomeOf, spokenText,
+  runTurn, runCorpusEntry, runScenario, loadScenarios, checkExpectation, outcomeOf, spokenText, seedCorpusSession,
   type Outcome, type Scenario,
 } from './runner';
 import { summarize } from './metrics';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
-import type { CorpusEntry } from '../jev/corpus';
+import { parseCorpus, type CorpusEntry } from '../jev/corpus';
 import { newSession } from '../core/session';
 import type { TurnResult } from '../core/turn';
 import { promptFrame, setupFrame } from '../channel/frames';
@@ -101,6 +101,39 @@ describe('runCorpusEntry', () => {
     expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
     // a session that started mid-form is not a whole call to compare against the baseline
     expect(m.completions).toEqual([]);
+  });
+});
+
+describe('seedCorpusSession', () => {
+  it('seeds a confirm context with every slot filled and the summary pending', () => {
+    const entry = parseCorpus('{"id":"fc-1","text":"yes","intent":"none","context":"confirm_reschedule","confirm":"yes"}')[0]!;
+    const s = seedCorpusSession(newSession('fc-1', 0), entry);
+    expect(s.form).toBe('reschedule');
+    expect(s.slots.memberId.value).not.toBeNull();
+    expect(s.slots.provider.value).not.toBeNull();
+    expect(s.slots.date.value).not.toBeNull();
+    expect(s.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+    expect(s.promptedFor).toBe('confirm');
+    expect(s.lastPromptId).toBe('confirm_reschedule');
+    expect(s.lastPromptOptions).toEqual(['yes', 'no']);
+    expect(s.lastPromptText).toContain('Dr. Patel');
+    expect(s.lastPromptText).toContain('Tuesday, September 22');
+  });
+
+  it('seeds a non-confirm context exactly as before: placeholders only up to the prompted slot', () => {
+    const entry = prompted;
+    const s = seedCorpusSession(newSession('d1', 0), entry);
+    expect(s.slots.memberId.value).toBe('00000000');
+    expect(s.slots.provider.value).toBe('patel');
+    expect(s.slots.date.value).toBeNull();
+    expect(s.promptedFor).toBe('date');
+    expect(s.lastPromptId).toBe('ask_date');
+    expect(s.pendingConfirmation).toBeNull();
+  });
+
+  it('leaves a no_form session untouched', () => {
+    const untouched = newSession('c1', 0);
+    expect(seedCorpusSession(untouched, entries[0]!)).toBe(untouched);
   });
 });
 

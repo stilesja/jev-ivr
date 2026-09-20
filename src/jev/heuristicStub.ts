@@ -108,6 +108,11 @@ export function answerHeuristically(id: string, q: Question, text: string): Answ
       case 'intent': return intentAnswer(text, labels);
       case 'provider': return providerAnswer(text, labels);
       case 'memberIdSpan': return spanAnswer(labels);
+      case 'changeSlot': {
+        const winner = /\b(day|date|when)\b/.test(text) ? 'date' : /\b(doctor|dr|provider|who)\b/.test(text) ? 'provider'
+          : /\b(member|id|number)\b/.test(text) ? 'memberId' : 'none';
+        return choiceAnswer(sharp(labels, labels.includes(winner) ? winner : 'none', 0.9));
+      }
       case 'menuNumberSaid': {
         const tok = text.trim().split(/\s+/)[0] ?? '';
         const digit = /^\d$/.test(tok) ? tok : NUMBER_WORD_DIGIT[tok];

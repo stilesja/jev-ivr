@@ -2,10 +2,11 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { TurnResult } from '../core/turn';
 import { emptySlot, missingSlots, newSession, setForm, type Session } from '../core/session';
-import type { CorpusEntry } from '../jev/corpus';
+import { confirmForm, contextForm, type CorpusEntry } from '../jev/corpus';
 import { JevClientError, type JevClient } from '../jev/types';
 import { promptText } from '../prompts/render';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
+import type { FormId } from '../domain/intents';
 import type { SlotCandidate } from '../domain/slots';
 import { promptFrame, setupFrame, dtmfFrames } from '../channel/frames';
 export { runTurn, nowOf, type RunOptions, type TurnRun } from '../run/turn';
@@ -43,23 +44,53 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
 }
 
 /** Stand-ins for the slots a corpus entry's form has already collected. */
-const PLACEHOLDER_SLOTS: Partial<Record<SlotId, SlotCandidate>> = {
+const PLACEHOLDER_SLOTS: Record<SlotId, SlotCandidate> = {
   memberId: { value: '00000000', display: '0000 0000' },
   provider: { value: 'patel', display: 'Dr. Patel' },
+  date: { value: '2026-09-22', display: 'Tuesday, September 22' },
 };
 
+/**
+ * The manifest's summary prompt id for each form's final confirm; null where the form hands off
+ * instead of asking one (billing). Task 6 moves this map into `src/domain/forms.ts` alongside `FormSpec`.
+ */
+export const SUMMARY_PROMPT: Record<FormId, string | null> = {
+  schedule_new: 'confirm_schedule',
+  reschedule: 'confirm_reschedule',
+  cancel: 'confirm_cancel',
+  confirm_appointment: 'confirm_appointment_details',
+  billing: null,
+};
+
+/** The summary's variables: every slot's display, empty when unfilled. Task 6 exports the real one from `src/core/turn.ts`. */
+function summaryVars(session: Session): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const id of ALL_SLOTS) vars[id] = session.slots[id].display ?? '';
+  return vars;
+}
+
 /** The mid-call state a corpus entry's context implies: its form, the slots already collected, and the prompt being answered. */
-function seedCorpusSession(session: Session, entry: CorpusEntry): Session {
+export function seedCorpusSession(session: Session, entry: CorpusEntry): Session {
   if (entry.context === 'no_form') return session;
-  setForm(session, entry.context);
-  // An entry that targets a later slot starts from a form that already has the earlier ones.
-  if (entry.prompted) {
-    for (const id of FORMS[entry.context].slots) {
-      if (id === entry.prompted) break;
-      const placeholder = PLACEHOLDER_SLOTS[id];
-      if (!placeholder) throw new Error(`corpus ${entry.id}: no placeholder for slot ${id}`);
-      session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: true };
-    }
+  const form = contextForm(entry.context)!;
+  setForm(session, form);
+  const confirming = confirmForm(entry.context) !== null;
+  // An entry that targets a later slot starts from a form that already has the earlier ones; a confirm_
+  // entry starts from a form that has every slot, since the summary is only asked once the form is full.
+  for (const id of FORMS[form].slots) {
+    if (!confirming && id === (entry.prompted ?? missingSlots(session)[0])) break;
+    const placeholder = PLACEHOLDER_SLOTS[id];
+    session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: !confirming };
+  }
+  if (confirming) {
+    const promptId = SUMMARY_PROMPT[form];
+    if (!promptId) throw new Error(`corpus ${entry.id}: form ${form} has no summary prompt`);
+    session.pendingConfirmation = { target: 'form', form, attempts: 0 };
+    session.promptedFor = 'confirm';
+    session.lastPromptId = promptId;
+    session.lastPromptText = promptText(promptId, summaryVars(session));
+    session.lastPromptOptions = ['yes', 'no'];
+    return session;
   }
   const slot = entry.prompted ?? missingSlots(session)[0] ?? null;
   session.promptedFor = slot;
