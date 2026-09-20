@@ -267,6 +267,9 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       }
       return { decision: reaskConfirmation(s, t, acks, verdict.queue === undefined), events: [] };
     }
+    case 'change_slot':
+      // The named-detail reopen is wired in Task 6; nothing produces this variant yet.
+      throw new Error('not implemented until Task 6');
     case 'route':
       if (verdict.confirm === 'explicit') {
         s.pendingConfirmation = { target: 'intent', intent: verdict.intent, answers, text: ctx.text };

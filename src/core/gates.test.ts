@@ -190,4 +190,71 @@ describe('evaluateGates', () => {
       })).verdict).toEqual({ kind: 'confirm_unanswered', queue: 'billing' });
     });
   });
+
+  describe('form confirmation', () => {
+    const pending = (): Session => {
+      const s = setForm(newSession('s', 0), 'reschedule');
+      s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
+      s.promptedFor = 'confirm';
+      return s;
+    };
+
+    it('confirms on yes and carries an added intent', () => {
+      const a = baseAnswers({ confirmsYes: noul(0.9), intent: choice({ billing: 0.9, none: 0.1 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }) });
+      expect(run(pending(), a).verdict).toEqual({ kind: 'confirmed', queue: 'billing' });
+    });
+
+    it('rejects on no, with the queue when one was added', () => {
+      expect(run(pending(), baseAnswers({ confirmsNo: noul(0.9) })).verdict).toEqual({ kind: 'rejected' });
+      expect(run(pending(), baseAnswers({
+        confirmsNo: noul(0.9), intent: choice({ billing: 0.9, none: 0.1 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }),
+      })).verdict).toEqual({ kind: 'rejected', queue: 'billing' });
+    });
+
+    it('names the slot to change when asked what to change', () => {
+      const v = run(pending(), baseAnswers({ changeSlot: choice({ date: 0.9, provider: 0.05, memberId: 0.05 }) })).verdict;
+      expect(v).toEqual({ kind: 'change_slot', slot: 'date' });
+      expect(run(pending(), baseAnswers({ changeSlot: choice({ date: 0.5, none: 0.5 }) })).verdict).toEqual({ kind: 'confirm_unanswered' });
+    });
+
+    it('does not honor a changeSlot naming a slot the form does not have', () => {
+      const s = setForm(newSession('s', 0), 'cancel');
+      s.pendingConfirmation = { target: 'form', form: 'cancel', attempts: 0 };
+      s.promptedFor = 'confirm';
+      // 'cancel' has no date slot, so a named 'date' must not be honored as a change target.
+      expect(run(s, baseAnswers({ changeSlot: choice({ date: 0.9, none: 0.1 }) })).verdict).toEqual({ kind: 'confirm_unanswered' });
+    });
+
+    it('lets a replace, an agent request, or a replay win over the summary', () => {
+      expect(run(pending(), baseAnswers({ confirmsYes: noul(0.9), wantsHuman: noul(0.95) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
+      expect(run(pending(), baseAnswers({
+        intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }),
+      })).verdict).toMatchObject({ kind: 'route', intent: 'cancel' });
+    });
+
+    it('still decides slot and intent confirmations at the confirm gate', () => {
+      const s = setForm(newSession('s', 0), 'cancel');
+      s.pendingConfirmation = { target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' };
+      const r = run(s, baseAnswers({ confirmsYes: noul(0.9) }));
+      expect(r.verdict).toEqual({ kind: 'confirmed' });
+      expect(r.rows.find((x) => x.gate === 'confirmation')?.decided).toBe(true);
+    });
+  });
+
+  describe('second intent on the first utterance', () => {
+    it('queues a second form intent on a plain route', () => {
+      const v = run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.95, none: 0.05 }), secondIntent: choice({ billing: 0.8, none: 0.2 }) })).verdict;
+      expect(v).toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none', queue: 'billing' });
+    });
+
+    it('ignores it below threshold, when it repeats the main intent, and on a tentative or explicit route', () => {
+      expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.95, none: 0.05 }), secondIntent: choice({ billing: 0.5, none: 0.5 }) })).verdict)
+        .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
+      expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.95, none: 0.05 }), secondIntent: choice({ reschedule: 0.9, none: 0.1 }) })).verdict)
+        .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
+      expect(run(newSession('s', 0), baseAnswers({
+        intent: choice({ reschedule: 0.95, none: 0.05 }), intentTentative: noul(0.9), secondIntent: choice({ billing: 0.9, none: 0.1 }),
+      })).verdict).toEqual({ kind: 'route', intent: 'reschedule', confirm: 'explicit' });
+    });
+  });
 });
