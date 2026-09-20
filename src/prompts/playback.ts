@@ -27,13 +27,9 @@ export function wavDurationMs(b: Buffer): number | null {
   return Math.round((dataSize / byteRate) * 1000);
 }
 
-/**
- * Estimated speaking time at 2.5 words per second, at least 500ms.
- * "Word" is a run of 2+ non-whitespace characters: a lone single-character
- * token (e.g. "I", "a") reads fast enough that it doesn't earn its own slot.
- */
+/** Estimated speaking time at 2.5 words per second, at least 500ms. */
 export function textEstimateMs(text: string): number {
-  const words = (text.match(/\S{2,}/g) ?? []).length;
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(MIN_TEXT_MS, Math.round((words / WORDS_PER_SECOND) * 1000));
 }
 
