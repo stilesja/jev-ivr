@@ -17,6 +17,7 @@
   "ack_memberId": { "text": "Member ID {memberId}.", "interruptible": false },
   "ack_date": { "text": "On {date}.", "interruptible": false },
   "ack_declined": { "text": "Sorry about that.", "interruptible": false },
+  "no_input": { "text": "I didn't hear anything.", "interruptible": false },
   "confirm_intent_explicit": { "text": "Just to check, do you want to {intentLabel}? Yes or no.", "interruptible": false },
   "confirm_schedule": { "text": "You'd be booked with {provider} on {date}, member ID {memberId}. Shall I book that?", "interruptible": true },
   "confirm_reschedule": { "text": "Your appointment with {provider} would move to {date}, member ID {memberId}. Shall I make that change?", "interruptible": true },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { promptFrame, dtmfFrames, endFrame, type OutboundFrame } from './frames';
+import { promptFrame, dtmfFrames, endFrame, silenceFrame, type OutboundFrame } from './frames';
 
 describe('frame constructors', () => {
   it('builds a final prompt frame', () => {
@@ -9,6 +9,10 @@ describe('frame constructors', () => {
       lang: 'en-US',
       last: true,
     });
+  });
+
+  it('builds a silence frame', () => {
+    expect(silenceFrame()).toEqual({ type: 'silence' });
   });
 
   it('builds one dtmf frame per digit', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { plan, resolve, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
-import { promptFrame, dtmfFrames, setupFrame, type InterruptFrame } from '../channel/frames';
+import { promptFrame, dtmfFrames, setupFrame, silenceFrame, type InterruptFrame } from '../channel/frames';
 import { choice, noul, score } from '../testing/answers';
 import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
@@ -776,5 +776,59 @@ describe('final confirm', () => {
     expect(r.session.promptedFor).toBe('confirm');
     // The failure is not a dodged summary: the ladder keeps its place.
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+});
+
+/**
+ * Spec no-input §3: a silence event is an unanswered turn on whatever was prompted, resolved
+ * without a model call, walking the same ladders as an unintelligible answer with the
+ * `no_input` ack in front. `started()` is this file's "after the greeting" helper.
+ */
+describe('silence', () => {
+  it('re-asks the intent prompt with the no_input ack, then the keypad menu, then hands off', () => {
+    const one = resolve(started(), silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'nomatch_open', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.intentAttempts).toBe(1);
+    expect(one.session.history.at(-1)).toMatchObject({ intent: 'silence' });
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ promptId: 'nomatch_dtmf_menu', menu: true, acks: [{ promptId: 'no_input', vars: {} }] });
+    const three = resolve(two.session, silenceFrame(), null, tc);
+    expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  it('re-asks a slot prompt and clears a half-typed keypad buffer', () => {
+    const s = afterTurns(['I need to reschedule my appointment']).session; // at ask_memberId
+    s.dtmfBuffer = '4471';
+    const r = resolve(s, silenceFrame(), null, tc);
+    expect(r.decision).toMatchObject({ promptId: 'ask_memberId_retry', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(r.session.dtmfBuffer).toBe('');
+    expect(r.session.slots.memberId.attempts).toBe(1);
+  });
+
+  it('walks the summary ladder', () => {
+    const s = afterTurns(HAPPY).session; // at confirm_reschedule
+    const one = resolve(s, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ promptId: 'confirm_reschedule', target: 'confirm', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ promptId: 'confirm_dtmf' });
+    const three = resolve(two.session, silenceFrame(), null, tc);
+    expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('is ignored after the call ended and clears a barge-in marker', () => {
+    const done = afterTurns([...HAPPY, 'yes']).session;
+    expect(resolve(done, silenceFrame(), null, tc).decision).toEqual({ kind: 'ignore' });
+    const s = afterTurns(HAPPY).session;
+    s.lastInterrupt = { utteranceUntilInterrupt: 'x', durationUntilInterruptMs: 10 };
+    expect(resolve(s, silenceFrame(), null, tc).session.lastInterrupt).toBeNull();
+  });
+
+  it('is ignored before anything has been prompted', () => {
+    expect(resolve(newSession('s', 0), silenceFrame(), null, tc).decision).toEqual({ kind: 'ignore' });
+  });
+
+  it('needs no model', () => {
+    expect(plan(started(), silenceFrame(), tc).needsModel).toBe(false);
   });
 });

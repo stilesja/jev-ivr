@@ -53,6 +53,7 @@
   "intent.confirm_appointment": "[calm]",
   "intent.reschedule": "[calm]",
   "intent.schedule_new": "[calm]",
+  "no_input.0": "[calm]",
   "nomatch_dtmf_menu.0": "[calm]",
   "nomatch_open.0": "[calm]",
   "provider.alvarez": "[calm]",

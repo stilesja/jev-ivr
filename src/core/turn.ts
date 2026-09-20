@@ -76,6 +76,8 @@ function dtmfRow(slot: SlotId): GateRow {
   return { gate: `slot:${slot}`, value: null, threshold: null, passed: true, outcome: 'dtmf', decided: false };
 }
 
+// Only a 'prompt' event ever needs the model: 'setup', 'dtmf', 'interrupt', 'error', and the
+// server-generated 'silence' event are all resolved from the session alone.
 export function plan(session: Session, event: InboundFrame, tc: TurnContext): Plan {
   if (event.type !== 'prompt' || session.ended) return { needsModel: false, turnState: null, questions: null };
   const turnState = buildTurnState(session, { text: event.voicePrompt, isFinal: event.last, dtmf: session.dtmfBuffer || null }, tc.nowMs);
@@ -190,26 +192,26 @@ function promptedTarget(s: Session): 'intent' | 'confirm' | SlotId {
   return s.promptedFor ?? 'intent';
 }
 
-function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thresholds): Decision {
+function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thresholds, acks: Ack[] = []): Decision {
   // A guard, not a path anything takes today: `nomatch` re-asks a pending confirmation before it
   // gets here and `proceed` maps a confirm target to a slot. Should a confirm turn reach it, the
   // summary's own ladder owns the attempt rather than the intent's.
   if (target === 'confirm') {
-    if (s.pendingConfirmation?.target === 'form') return reaskConfirmation(s, t);
+    if (s.pendingConfirmation?.target === 'form') return reaskConfirmation(s, t, acks);
     target = 'intent';
   }
   const attempts = target === 'intent' ? ++s.intentAttempts : ++s.slots[target].attempts;
   const step = retryStep(attempts, t);
-  if (step === 'agent') return handoff(s, 'max-attempts');
+  if (step === 'agent') return handoff(s, 'max-attempts', acks);
   if (target === 'intent') {
-    if (step === 'dtmf') return { ...prompt('nomatch_dtmf_menu', 'intent', {}, [], INTENT_MENU.map((m) => m.digit)), menu: true };
-    return prompt('nomatch_open', 'intent');
+    if (step === 'dtmf') return { ...prompt('nomatch_dtmf_menu', 'intent', {}, acks, INTENT_MENU.map((m) => m.digit)), menu: true };
+    return prompt('nomatch_open', 'intent', {}, acks);
   }
   // A slot narrowed to a window re-asks the window question, not the generic retry:
   // "next week. Which day works for you?" is what the caller failed to answer.
   const window = s.slots[target].window;
-  if (step === 'open' && window) return askSlot(target, window, []);
-  return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target);
+  if (step === 'open' && window) return askSlot(target, window, acks);
+  return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
 }
 
 /**
@@ -250,6 +252,17 @@ function reaskConfirmation(s: Session, t: Thresholds, acks: Ack[] = [], count = 
     return handoff(s, 'max-attempts', acks);
   }
   return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[pc.intent] }, acks, ['yes', 'no']);
+}
+
+const NO_INPUT_ACK: Ack = { promptId: 'no_input', vars: {} };
+
+/** Spec no-input §3: silence is an unanswered turn on whatever was prompted; no model is asked. */
+function handleSilence(s: Session, t: Thresholds): Decision {
+  if (s.promptedFor === null) return { kind: 'ignore' };
+  s.dtmfBuffer = '';
+  if (s.pendingConfirmation) return reaskConfirmation(s, t, [NO_INPUT_ACK]);
+  // `promptedFor === 'confirm'` without a pending confirmation cannot happen; the fallback is defensive.
+  return failAttempt(s, s.promptedFor === 'confirm' ? 'intent' : s.promptedFor, t, [NO_INPUT_ACK]);
 }
 
 /** After slots changed: disambiguate, ask the next slot, or complete. */
@@ -518,6 +531,14 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       return { ...base, decision: { kind: 'ignore' }, frames: [] };
     case 'error':
       return { ...base, decision: { kind: 'ignore' }, frames: [] };
+    case 'silence': {
+      const decision = handleSilence(s, tc.thresholds);
+      bookkeep(s, decision, 'silence');
+      // Silence resolves whatever was prompted; a stale barge-in marker does not carry into
+      // the next turn, same as a real one.
+      s.lastInterrupt = null;
+      return { ...base, decision, frames: decisionToFrames(decision, tc.render) };
+    }
     case 'prompt': {
       const turnState = buildTurnState(s, { text: event.voicePrompt, isFinal: event.last, dtmf: s.dtmfBuffer || null }, tc.nowMs);
       if (error || answers === null) {

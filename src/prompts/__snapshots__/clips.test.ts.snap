@@ -93,6 +93,11 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Sorry about that.",
   },
   {
+    "id": "no_input.0",
+    "note": "closed",
+    "text": "I didn't hear anything.",
+  },
+  {
     "id": "confirm_intent_explicit.0",
     "note": "open",
     "text": "Just to check, do you want to",

@@ -28,7 +28,7 @@ export interface TraceInput {
 
 export function buildTraceRecord(input: TraceInput): TraceRecord {
   const { result, event, questions, response, error, timing, ts, pricePerMtok } = input;
-  const source = error ? 'error' : response ? response.source : event.type === 'dtmf' ? 'dtmf' : 'none';
+  const source = error ? 'error' : response ? response.source : event.type === 'dtmf' ? 'dtmf' : event.type === 'silence' ? 'silence' : 'none';
   const inputTokens = response?.usage.inputTokens ?? 0;
   return {
     v: 1,
