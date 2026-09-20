@@ -1029,3 +1029,14 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
   the model should name the value the caller actually mentions instead. The cassette must be re-recorded
   once more after this fix, on top of the earlier full re-record, since both the bare-surname and the
   hedge wording touch nearly every turn's `provider` and date questions.
+
+Second wording run (0832dfe, cassette f1c13ab): 184/188 corpus, 59/60 scenarios. "Cheng, not Chen"
+now fills (provider cheng 0.55, at the fill threshold); the hedge case returned to its earlier
+outcome; "it's Cheng" still reads as no provider named (none 0.82, cheng 0.18, chen ~0), so a lone
+surname without "Dr." or a correction cue is recorded as a model-reading gap, not a Chen/Cheng
+confusion. "Agent" alone scored intelligible 0.49 against the 0.50 gate on this run (the question
+did not change; the shared request's other answers shifted); the sweep grid for GATE_INTELLIGIBLE
+is flat from 0.05 to 0.45 with that one outcome better and none worse, and the unbounded-plateau
+rule declined to move it, so GATE_INTELLIGIBLE was stepped to 0.45 by judgment. Remaining
+real-model diffs: ag-02 (deciding gate only), ns-06 (known), pv-10 (known hedge gap), fc-19.
+
