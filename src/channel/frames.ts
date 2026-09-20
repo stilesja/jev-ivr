@@ -103,13 +103,19 @@ export function textFrame(token: string, interruptible: boolean): TextFrame {
   return { type: 'text', token, last: true, lang: DEFAULT_LANG, interruptible, preemptible: false };
 }
 
-export function endFrame(reasonCode: string, completed: readonly string[] = [], queued: readonly string[] = []): EndFrame {
+export function endFrame(
+  reasonCode: string,
+  completed: readonly string[] = [],
+  queued: readonly string[] = [],
+  slots: Record<string, string> = {},
+): EndFrame {
   return {
     type: 'end',
     handoffData: JSON.stringify({
       reasonCode,
       ...(completed.length ? { completed } : {}),
       ...(queued.length ? { queued } : {}),
+      ...(Object.keys(slots).length ? { slots } : {}),
     }),
   };
 }

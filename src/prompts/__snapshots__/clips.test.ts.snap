@@ -219,18 +219,8 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   },
   {
     "id": "appointment_details.0",
-    "note": "open",
-    "text": "For member ID",
-  },
-  {
-    "id": "appointment_details.1",
-    "note": "open",
-    "text": "your next appointment with",
-  },
-  {
-    "id": "appointment_details.2",
     "note": "closed",
-    "text": "is confirmed.",
+    "text": "That appointment is confirmed.",
   },
   {
     "id": "goodbye.0",

@@ -35,6 +35,8 @@ export interface HandoffDecision {
   completed: FormId[];
   /** intents the caller added that the call never started */
   queued: FormId[];
+  /** what the call collected, as the caller heard it: filled slots only, display values */
+  slots: Record<string, string>;
 }
 
 export type Decision =

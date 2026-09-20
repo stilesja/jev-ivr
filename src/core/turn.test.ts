@@ -468,13 +468,15 @@ function heuristicAnswers(session: Session, text: string, over: AnswerMap): Answ
   return { ...out, ...over };
 }
 
+function heuristicTurn(session: Session, text: string, over: AnswerMap = {}): TurnResult {
+  return resolve(session, promptFrame(text), heuristicAnswers(session, text, over), tc);
+}
+
 function runTurns(steps: Turn[]): TurnResult[] {
   const out: TurnResult[] = [];
   let session = started();
   for (const step of steps) {
-    const say = typeof step === 'string' ? step : step.say;
-    const over = typeof step === 'string' ? {} : step.over;
-    const r = resolve(session, promptFrame(say), heuristicAnswers(session, say, over), tc);
+    const r = typeof step === 'string' ? heuristicTurn(session, step) : heuristicTurn(session, step.say, step.over);
     out.push(r);
     session = r.session;
   }
@@ -550,6 +552,39 @@ describe('final confirm', () => {
     expect(afterTurns([...HAPPY, 'no', 'the day', 'Friday']).decision).toMatchObject({ promptId: 'confirm_reschedule' });
   });
 
+  it('reads a correction with no "no" in it', () => {
+    const r = afterTurns([...HAPPY, 'Thursday']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(r.session.slots.date.display).toBe('Thursday, September 24');
+    expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+
+  it('takes a value in answer to ask_change, rather than a slot name', () => {
+    const r = afterTurns([...HAPPY, 'no', 'Thursday']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(varsOf(r.decision)).toMatchObject({ date: 'Thursday, September 24' });
+    const done = afterTurns([...HAPPY, 'no', 'Thursday', 'yes']);
+    expect(done.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
+    expect(done.session.slots.date.value).toBe('2026-09-24');
+  });
+
+  it('fills the new value when the caller names a detail and replaces it in one breath', () => {
+    const r = afterTurns([...HAPPY, 'not that doctor, make it Dr. Alvarez']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(varsOf(r.decision)).toMatchObject({ provider: 'Dr. Alvarez', date: 'Tuesday, September 22' });
+    expect(r.session.slots.provider.value).toBe('alvarez');
+  });
+
+  it('counts every bare no after the free ask_change, up to the keypad and an agent', () => {
+    const no = (n: number): Turn[] => [...HAPPY, ...Array.from({ length: n }, () => 'no')];
+    expect(afterTurns(no(1)).decision).toMatchObject({ promptId: 'ask_change' });
+    expect(afterTurns(no(1)).session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+    expect(afterTurns(no(2)).decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(afterTurns(no(2)).session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
+    expect(afterTurns(no(3)).decision).toMatchObject({ promptId: 'confirm_dtmf' });
+    expect(afterTurns(no(4)).decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
   it('corrects the member ID at the summary', () => {
     const r = afterTurns([...HAPPY, 'no, my ID is four four seven one eight two nine four']);
     expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
@@ -574,6 +609,17 @@ describe('final confirm', () => {
     expect(two.session.pendingConfirmation).toMatchObject({ target: 'form', form: 'reschedule' });
     // A key that answers neither is a missed turn, and the third one hands off.
     expect(afterTurnsAndDtmf(asked, '5').decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('ignores the keypad where no keys were offered', () => {
+    const atAskChange = afterTurns([...HAPPY, 'no']);
+    expect(atAskChange.decision).toMatchObject({ promptId: 'ask_change' });
+    const digit = resolve(atAskChange.session, dtmfFrames('1')[0]!, null, tc);
+    expect(digit.decision).toEqual({ kind: 'ignore' });
+    expect(digit.session.pendingConfirmation).toEqual(atAskChange.session.pendingConfirmation);
+    expect(digit.session.lastPromptId).toBe('ask_change');
+    expect(digit.session.dtmfBuffer).toBe('');
+    expect(digit.session.ended).toBe(false);
   });
 
   it('queues an added intent on yes and bridges after the completion', () => {
@@ -601,6 +647,35 @@ describe('final confirm', () => {
     expect(no.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
     expect(no.session.form).toBe('reschedule');
     expect(no.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+
+  it('hands the agent what the call collected', () => {
+    const r = afterTurns([...HAPPY, 'get me a person']);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'live-agent' });
+    expect(r.decision).toMatchObject({ slots: { memberId: '4471 8293', provider: 'Dr. Chen', date: 'Tuesday, September 22' } });
+    const end = r.frames.at(-1)!;
+    expect(end.type === 'end' && end.handoffData).toContain('"slots":{"memberId":"4471 8293"');
+  });
+
+  it('confirms only the slots the completed form asked for', () => {
+    // The date is left over from the reschedule the caller abandoned; cancel never read it back.
+    const switching: Turn = {
+      say: 'actually cancel it instead',
+      over: {
+        intent: choice({ cancel: 0.95, none: 0.05 }),
+        intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }),
+      },
+    };
+    const switched = afterTurns([...HAPPY, switching]);
+    expect(switched.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel' });
+    // A hedged fill lands unconfirmed; this one was confirmed by the reschedule's own fill, so
+    // unset it to stand for that case. Either way the cancel summary never read the date back.
+    switched.session.slots.date.confirmed = false;
+    const r = heuristicTurn(switched.session, 'yes');
+    expect(r.decision).toMatchObject({ kind: 'complete', form: 'cancel' });
+    expect(r.session.slots.memberId.confirmed).toBe(true);
+    expect(r.session.slots.provider.confirmed).toBe(true);
+    expect(r.session.slots.date).toMatchObject({ value: '2026-09-22', confirmed: false });
   });
 
   it('keeps the summary as the prompt target when the model call fails', () => {

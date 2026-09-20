@@ -89,8 +89,14 @@ function prompt(promptId: string, target: PromptDecision['target'], vars: Record
 
 function handoff(s: Session, reason: string, acks: Ack[] = []): HandoffDecision {
   // Whatever the caller added and the call never got to is the agent's problem now,
-  // so it rides along in the handoff data.
-  return { kind: 'handoff', reason, promptId: handoffPromptId(reason), acks, completed: [...s.completed], queued: [...s.queued] };
+  // so it rides along in the handoff data -- together with what the call did collect,
+  // which is the only record of it for a form that hands off without a summary.
+  const slots: Record<string, string> = {};
+  for (const id of ALL_SLOTS) {
+    const slot = s.slots[id];
+    if (slot.value !== null) slots[id] = slot.display ?? slot.value;
+  }
+  return { kind: 'handoff', reason, promptId: handoffPromptId(reason), acks, completed: [...s.completed], queued: [...s.queued], slots };
 }
 
 function askSlot(slot: SlotId, window: DateWindow | null, acks: Ack[]): PromptDecision {
@@ -132,8 +138,9 @@ function completeForm(s: Session, form: FormId, acks: Ack[]): Decision {
   const completion = FORMS[form].completion;
   if (completion.kind === 'handoff') return handoff(s, completion.reason, acks);
   const vars = summaryVars(s);
-  // The caller has just confirmed the summary, which read every filled slot back to them.
-  for (const id of ALL_SLOTS) if (s.slots[id].value !== null) s.slots[id].confirmed = true;
+  // The caller has just confirmed the summary, which read this form's filled slots back to
+  // them. A slot left over from an abandoned form was not in it and stays unconfirmed.
+  for (const id of FORMS[form].slots) if (s.slots[id].value !== null) s.slots[id].confirmed = true;
   s.completed.push(form);
   // A form that ends in a handoff ends the call, so anything this line can finish itself
   // goes first; only when nothing else is left does the queue hand the caller over.
@@ -156,7 +163,9 @@ function promptedTarget(s: Session): 'intent' | 'confirm' | SlotId {
 }
 
 function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thresholds): Decision {
-  // A failed answer to the summary walks the confirm ladder, not the intent one.
+  // A guard, not a path anything takes today: `nomatch` re-asks a pending confirmation before it
+  // gets here and `proceed` maps a confirm target to a slot. Should a confirm turn reach it, the
+  // summary's own ladder owns the attempt rather than the intent's.
   if (target === 'confirm') {
     if (s.pendingConfirmation?.target === 'form') return reaskConfirmation(s, t);
     target = 'intent';
@@ -232,13 +241,14 @@ function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: 
   return askSlot(next.slot, next.window, acks);
 }
 
-function enterForm(s: Session, form: FormId, confirm: 'none' | 'implicit', answers: AnswerMap, ctx: SlotContext, extraAcks: Ack[] = []): { decision: Decision; events: FillEvent[] } {
+function enterForm(s: Session, form: FormId, confirm: 'none' | 'implicit', answers: AnswerMap, ctx: SlotContext, queue?: FormId): { decision: Decision; events: FillEvent[] } {
   // Leaving a form the caller was already in is always said out loud, however sure the
   // intent was: silently swapping the task underneath them is the confusing case.
   const switching = s.form !== null && s.form !== form;
   setForm(s, form);
+  // Queued after setForm, so the queue is read against the form actually being entered.
   // A task added on this same utterance is promised before the one being started is named.
-  const acks: Ack[] = [...extraAcks, ...(confirm === 'implicit' || switching ? [{ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } }] : [])];
+  const acks: Ack[] = [...enqueue(s, queue), ...(confirm === 'implicit' || switching ? [{ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } }] : [])];
   const fill = fillSlots(s, answers, ctx, slotsFor(form));
   return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
 }
@@ -286,8 +296,12 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // fresh attempt count once the corrected slot -- or the narrowing it needs -- is settled.
         const fill = fillSlots(s, answers, ctx, slotsFor(pc.form), { correcting: true });
         if (fill.progress) return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
-        // Nothing usable came with the no: ask what to change and keep the summary pending.
+        // Nothing usable came with the no: ask what to change and keep the summary pending. That
+        // question is free once per summary; a caller who answers it with another bare no has
+        // spent a turn on the confirmation, so the ladder counts it (keypad, then an agent).
         s.pendingConfirmation = pc;
+        const firstNo = pc.attempts === 0 && s.lastPromptId !== 'ask_change';
+        if (!firstNo) return { decision: reaskConfirmation(s, t, acks), events: fill.events };
         return { decision: prompt('ask_change', 'confirm', {}, acks), events: fill.events };
       }
       if (pc.target === 'slot') {
@@ -308,25 +322,42 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       // The confirmation still owns the turn, but an added request is not lost on the way:
       // it joins the queue and is acked in front of the re-asked confirmation.
       const acks = enqueue(s, verdict.queue);
+      const pc = s.pendingConfirmation;
+      if (pc?.target === 'form') {
+        // A correction is a correction whether or not the caller prefixed it with "no", and an
+        // answer to ask_change is read for a value before it is read for a slot name (spec
+        // final-confirm §2.2 cases 2 and 3).
+        const fill = fillSlots(s, answers, ctx, slotsFor(pc.form), { correcting: true });
+        if (fill.progress) {
+          s.pendingConfirmation = null;
+          return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+        }
+        return { decision: reaskConfirmation(s, t, acks, verdict.queue === undefined), events: fill.events };
+      }
       return { decision: reaskConfirmation(s, t, acks, verdict.queue === undefined), events: [] };
     }
     case 'change_slot': {
       const acks = enqueue(s, verdict.queue);
+      const form = s.pendingConfirmation?.target === 'form' ? s.pendingConfirmation.form : s.form;
       s.pendingConfirmation = null;
+      // "Not that doctor, make it Alvarez" names a detail and replaces it in one breath: the value
+      // it carries is worth more than the question we would otherwise ask (spec §2.2 case 2).
+      const fill = form ? fillSlots(s, answers, ctx, slotsFor(form), { correcting: true }) : null;
+      if (fill?.progress) return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
       // The named slot is asked from scratch, but the attempts it already cost stand: a caller
       // who could not say it the first time should not start the ladder over.
       const st = s.slots[verdict.slot];
       Object.assign(st, emptySlot(), { attempts: st.attempts });
-      return { decision: askSlot(verdict.slot, null, acks), events: [] };
+      return { decision: askSlot(verdict.slot, null, acks), events: fill?.events ?? [] };
     }
     case 'route':
       if (verdict.confirm === 'explicit') {
         s.pendingConfirmation = { target: 'intent', intent: verdict.intent, answers, text: ctx.text };
         return { decision: prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[verdict.intent] }, [], ['yes', 'no']), events: [] };
       }
-      // A second task named on the same breath as the first is queued before the form opens;
+      // A second task named on the same breath as the first is queued as the form opens;
       // on an explicit-confirm route it is dropped (spec final-confirm §4) and the caller can re-add it.
-      return enterForm(s, verdict.intent, verdict.confirm, answers, ctx, enqueue(s, verdict.queue));
+      return enterForm(s, verdict.intent, verdict.confirm, answers, ctx, verdict.queue);
     case 'disambiguate_intent':
       return { decision: prompt('disambiguate_intent', 'intent', { a: INTENT_LABELS[verdict.a], b: INTENT_LABELS[verdict.b] }, [], [INTENT_LABELS[verdict.a], INTENT_LABELS[verdict.b]]), events: [] };
     case 'intent_failed':
@@ -370,6 +401,10 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
   if (s.promptedFor === 'confirm' && s.pendingConfirmation?.target === 'form') {
     const pc = s.pendingConfirmation;
     s.dtmfBuffer = '';
+    // Only where the keys mean something: the summary itself ("yes or no") and the keypad prompt
+    // that names them. At ask_change a digit answers nothing, so it is not a missed turn either.
+    const advertised = s.lastPromptId === 'confirm_dtmf' || s.lastPromptId === FORMS[pc.form].summaryPromptId;
+    if (!advertised) return { decision: { kind: 'ignore' }, rows: [] };
     if (digit === '1') {
       s.pendingConfirmation = null;
       return { decision: completeForm(s, pc.form, []), rows: [] };

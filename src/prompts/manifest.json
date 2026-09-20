@@ -29,7 +29,7 @@
   "schedule_confirmed": { "text": "You're booked.", "interruptible": false },
   "reschedule_confirmed": { "text": "Your appointment is moved.", "interruptible": false },
   "cancel_confirmed": { "text": "Your appointment is cancelled.", "interruptible": false },
-  "appointment_details": { "text": "For member ID {memberId}, your next appointment with {provider} is confirmed.", "interruptible": false },
+  "appointment_details": { "text": "That appointment is confirmed.", "interruptible": false },
   "goodbye": { "text": "Goodbye.", "interruptible": false },
   "ack_queued": { "text": "Sure, we'll {intentLabel} after this.", "interruptible": false },
   "bridge_next": { "text": "Now, let's {intentLabel}.", "interruptible": false },

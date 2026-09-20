@@ -7,8 +7,6 @@
   "ack_queued.0": "[happy]",
   "ack_queued.1": "[happy]",
   "appointment_details.0": "[relaxed]",
-  "appointment_details.1": "[relaxed]",
-  "appointment_details.2": "[relaxed]",
   "ask_change.0": "[calm]",
   "ask_date.0": "[calm]",
   "ask_date_dtmf.0": "[calm]",

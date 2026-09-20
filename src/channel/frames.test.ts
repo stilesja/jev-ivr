@@ -26,4 +26,10 @@ describe('frame constructors', () => {
       handoffData: '{"reasonCode":"live-agent"}',
     });
   });
+
+  it('reports what the call collected, and leaves out what it has nothing to say about', () => {
+    expect(endFrame('billing', ['reschedule'], [], { memberId: '4471 8293' }).handoffData)
+      .toBe('{"reasonCode":"billing","completed":["reschedule"],"slots":{"memberId":"4471 8293"}}');
+    expect(endFrame('live-agent', [], [], {}).handoffData).toBe('{"reasonCode":"live-agent"}');
+  });
 });

@@ -177,6 +177,16 @@ describe('decideActionTwiml', () => {
     expect(decideActionTwiml(d, { CallSid: 'CA3', HandoffData: 'not json' }).twiml).toContain('<Dial>');
   });
 
+  it('decides on the reason code alone, whatever else the handoff data carries', () => {
+    const d = deps();
+    // The end frame also reports completed forms, the unstarted queue and the slots the call
+    // collected; those ride through to Twilio untouched and must not change the decision here.
+    const data = '{"reasonCode":"billing","completed":["reschedule"],"queued":["cancel"],"slots":{"memberId":"4471 8293"}}';
+    const r = decideActionTwiml(d, { CallSid: 'CA1', HandoffData: data });
+    expect(r.twiml).toContain('<Dial>+15551234567</Dial>');
+    expect(r.note).toBe('dial:billing');
+  });
+
   it('reconnects a live call up to the limit, then apologizes and dials', () => {
     const d = deps();
     d.store.create('CA1', { send: () => {}, close: () => {} });

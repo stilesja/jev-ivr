@@ -79,7 +79,7 @@ describe('decisionToFrames', () => {
   });
 
   it('ends the call after a handoff prompt', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [], completed: [], queued: [] });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [], completed: [], queued: [], slots: {} });
     expect(frames[1]).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing"}' });
   });
 
@@ -101,8 +101,6 @@ describe('summary prompts', () => {
   it('leaves the completion line to say only that it is done', () => {
     for (const [form, spec] of Object.entries(FORMS)) {
       if (spec.completion.kind !== 'prompt' || spec.summaryPromptId === null) continue;
-      // appointment_details answers the caller's question, so it keeps its details.
-      if (spec.completion.promptId === 'appointment_details') continue;
       expect(promptEntry(spec.completion.promptId).text, form).not.toMatch(new RegExp(VAR.source));
     }
   });
@@ -122,13 +120,13 @@ describe('completion and chaining', () => {
   });
 
   it('speaks acks before a handoff and reports completed forms', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [] });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [], slots: { memberId: '4471 8293' } });
     expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's ask about billing.", 'Connecting you to billing now.', 'end']);
-    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"]}' });
+    expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"],"slots":{"memberId":"4471 8293"}}' });
   });
 
   it('reports intents the call never started in the handoff data', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent', acks: [], completed: ['cancel'], queued: ['schedule_new'] });
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent', acks: [], completed: ['cancel'], queued: ['schedule_new'], slots: {} });
     expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"live-agent","completed":["cancel"],"queued":["schedule_new"]}' });
   });
 });
@@ -183,9 +181,14 @@ describe('decisionToFrames with clips', () => {
   });
 
   it('merges a whole text run around a vocabulary clip and plays the goodbye clip before the end frame', () => {
-    const frames = decisionToFrames({ kind: 'complete', form: 'confirm_appointment', promptId: 'appointment_details', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, acks: [], completed: ['confirm_appointment'] }, ctx);
+    // No clip for the ack's own words, so its text run has to be spoken around the provider clip.
+    const partial = { clips: new Map([['provider.chen', 'provider.chen.wav'], ['goodbye.0', 'goodbye.0.wav']]), audioBase: base };
+    const frames = decisionToFrames({
+      kind: 'complete', form: 'confirm_appointment', promptId: 'appointment_details', vars: {}, completed: ['confirm_appointment'],
+      acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
+    }, partial);
     expect(frames).toEqual([
-      t('For member ID 4471 8293, your next appointment with', false), p(`${base}provider.chen.wav`, false), t('is confirmed.', false),
+      t('With', false), p(`${base}provider.chen.wav`, false), t('That appointment is confirmed.', false),
       p(`${base}goodbye.0.wav`, false),
       expect.objectContaining({ type: 'end' }),
     ]);
