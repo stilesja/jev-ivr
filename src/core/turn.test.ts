@@ -544,7 +544,8 @@ describe('final confirm', () => {
   it('asks what to change on a bare no, then reopens the named slot', () => {
     const r = afterTurns([...HAPPY, 'no']);
     expect(r.decision).toMatchObject({ promptId: 'ask_change', target: 'confirm' });
-    expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+    // The question takes the ladder's first rung, so it is asked once per summary.
+    expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1, askedChange: true });
     const r2 = afterTurns([...HAPPY, 'no', 'the day']);
     expect(r2.decision).toMatchObject({ promptId: 'ask_date', target: 'date' });
     expect(r2.session.slots.date.value).toBeNull();
@@ -575,14 +576,58 @@ describe('final confirm', () => {
     expect(r.session.slots.provider.value).toBe('alvarez');
   });
 
-  it('counts every bare no after the free ask_change, up to the keypad and an agent', () => {
+  it('counts every bare no from ask_change on, up to the keypad and an agent', () => {
     const no = (n: number): Turn[] => [...HAPPY, ...Array.from({ length: n }, () => 'no')];
     expect(afterTurns(no(1)).decision).toMatchObject({ promptId: 'ask_change' });
-    expect(afterTurns(no(1)).session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
-    expect(afterTurns(no(2)).decision).toMatchObject({ promptId: 'confirm_reschedule' });
-    expect(afterTurns(no(2)).session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
-    expect(afterTurns(no(3)).decision).toMatchObject({ promptId: 'confirm_dtmf' });
-    expect(afterTurns(no(4)).decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+    expect(afterTurns(no(1)).session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1, askedChange: true });
+    expect(afterTurns(no(2)).decision).toMatchObject({ promptId: 'confirm_dtmf' });
+    expect(afterTurns(no(3)).decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('still offers ask_change once when the first no follows an unanswered turn', () => {
+    const r = afterTurns([...HAPPY, 'what are your hours', 'no']);
+    expect(r.decision).toMatchObject({ promptId: 'ask_change' });
+    expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1, askedChange: true });
+    expect(afterTurns([...HAPPY, 'what are your hours', 'no', 'no']).decision).toMatchObject({ promptId: 'confirm_dtmf' });
+  });
+
+  it('does not take the value it just read back as a correction', () => {
+    // "Tuesday" at the Tuesday summary changes nothing, so it is an unanswered turn, not a reset.
+    const again = (n: number): Turn[] => [...HAPPY, ...Array.from({ length: n }, () => 'Tuesday')];
+    const first = afterTurns(again(1));
+    expect(first.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(first.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
+    expect(afterTurns(again(2)).decision).toMatchObject({ promptId: 'confirm_dtmf' });
+    expect(afterTurns(again(3)).decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('counts the turn when the request added to the queue was already on it', () => {
+    const adding = { intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }) };
+    const bill: Turn = { say: 'and can I also ask about my bill', over: adding };
+    const queued = afterTurns([...HAPPY, 'no', bill]);
+    // The first one buys the turn: it is a request to keep, not a dodged question.
+    expect(queued.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'ack_queued' }] });
+    expect(queued.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1, askedChange: true });
+    // Asking for the same thing again adds nothing, so the ladder moves on.
+    const r = afterTurns([...HAPPY, 'no', bill, 'no', bill]);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+    expect(r.session.queued).toEqual(['billing']);
+  });
+
+  it('reopens the named detail when the value in the same breath belongs to another one', () => {
+    // Not "not that doctor, Thursday": the confirmation gate reads that as a no and takes the
+    // correction path, which fills Thursday and re-asks the summary without reopening the doctor.
+    const r = afterTurns([...HAPPY, 'the doctor, Thursday']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', target: 'provider' });
+    expect(r.session.slots.provider).toMatchObject({ value: null, display: null });
+    expect(r.session.slots.date.display).toBe('Thursday, September 24');
+    expect(r.session.pendingConfirmation).toBeNull();
+    // A confidently heard date needs no ack of its own; the next summary reads it back.
+    expect(spokenText(r.decision)).toBe('Which provider is the appointment with?');
+    // And the value alone, with the detail named, answers it outright.
+    const both = afterTurns([...HAPPY, 'the doctor, Dr. Alvarez']);
+    expect(both.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(varsOf(both.decision)).toMatchObject({ provider: 'Dr. Alvarez' });
   });
 
   it('corrects the member ID at the summary', () => {
@@ -606,9 +651,20 @@ describe('final confirm', () => {
     expect(afterTurnsAndDtmf(asked, '1').decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
     const two = afterTurnsAndDtmf(asked, '2');
     expect(two.decision).toMatchObject({ promptId: 'ask_change', target: 'confirm' });
-    expect(two.session.pendingConfirmation).toMatchObject({ target: 'form', form: 'reschedule' });
+    // The keypad's 2 asks the same question as a bare no, and spends it the same way.
+    expect(two.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 2, askedChange: true });
+    expect(heuristicTurn(two.session, 'no').decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
     // A key that answers neither is a missed turn, and the third one hands off.
     expect(afterTurnsAndDtmf(asked, '5').decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('takes the keypad after a slow turn, which offers it', () => {
+    const asked = afterTurns(HAPPY);
+    const failed = resolve(asked.session, promptFrame('yes'), null, tc, { name: 'JevClientError', message: 'timeout' });
+    expect(failed.decision).toMatchObject({ promptId: 'system_slow_dtmf_hint', target: 'confirm' });
+    let r = failed;
+    for (const f of dtmfFrames('1')) r = resolve(r.session, f, null, tc);
+    expect(r.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
   });
 
   it('ignores the keypad where no keys were offered', () => {

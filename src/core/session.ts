@@ -36,8 +36,12 @@ export type PendingConfirmation =
       text: string;
     }
   | { target: 'slot'; slot: SlotId; value: string; display: string }
-  /** the summary question; attempts counts unanswered turns and resets when a correction lands */
-  | { target: 'form'; form: FormId; attempts: number };
+  /**
+   * the summary question; attempts counts unanswered turns and resets when a correction lands.
+   * askedChange records that "What should I change?" has already been asked for this summary, so
+   * the next answer with nothing usable in it walks the ladder instead of asking it again.
+   */
+  | { target: 'form'; form: FormId; attempts: number; askedChange?: boolean };
 
 export interface Interrupt {
   utteranceUntilInterrupt: string;

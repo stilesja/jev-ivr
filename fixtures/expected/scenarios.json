@@ -856,6 +856,24 @@
     "pass": true,
     "mismatches": []
   },
+  "summary-repeated-no-hands-off": {
+    "id": "summary-repeated-no-hands-off",
+    "decision": "handoff",
+    "promptId": "handoff_max_attempts",
+    "acks": [],
+    "reason": "max-attempts",
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "44718293",
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
   "summary-no-with-value": {
     "id": "summary-no-with-value",
     "decision": "complete",

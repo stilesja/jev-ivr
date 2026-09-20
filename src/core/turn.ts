@@ -6,11 +6,11 @@ import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import { describeWindow, type DateWindow } from './extract/date';
 import { candidateSpans } from './spans';
-import { cloneSession, emptySlot, missingSlots, setForm, type Session } from './session';
+import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
 import { evaluateGates, type GateRow, type Verdict } from './gates';
-import { applyDtmf, fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, type Ack, type FillEvent } from './fia';
+import { applyDtmf, fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, type Ack, type FillEvent, type FillResult } from './fia';
 import type { Decision, HandoffDecision, PromptDecision } from './decision';
 import type { Thresholds } from './thresholds';
 import { decisionToFrames, handoffPromptId, spokenText, type RenderContext } from '../prompts/render';
@@ -111,6 +111,24 @@ export function summaryVars(s: Session): Record<string, string> {
   return vars;
 }
 
+/** Everything the summary just read back, as one comparable value. */
+function summaryState(s: Session): string {
+  return JSON.stringify({ vars: summaryVars(s), window: s.slots.date.window });
+}
+
+/**
+ * A correction to a form the caller has already been read back. It only counts as progress when
+ * it changes something: repeating the value the summary just said is a turn the caller spent not
+ * answering the question, and it must walk the ladder rather than reset it (spec final-confirm §2.4).
+ */
+function correctingFill(s: Session, answers: AnswerMap, ctx: SlotContext, form: FormId): FillResult {
+  const before = summaryState(s);
+  const fill = fillSlots(s, answers, ctx, slotsFor(form), { correcting: true });
+  // A disambiguation changes no slot yet and still has to be asked, so it is progress either way.
+  if (!fill.progress || fill.disambiguate || summaryState(s) !== before) return fill;
+  return { ...fill, progress: false };
+}
+
 /** The summary question. Only a form that has one ever sets a form confirmation (askSummary). */
 function summaryPrompt(s: Session, form: FormId, acks: Ack[]): PromptDecision {
   const promptId = FORMS[form].summaryPromptId;
@@ -124,6 +142,16 @@ function askSummary(s: Session, form: FormId, acks: Ack[]): Decision {
   if (FORMS[form].summaryPromptId === null) return completeForm(s, form, acks);
   s.pendingConfirmation = { target: 'form', form, attempts: 0 };
   return summaryPrompt(s, form, acks);
+}
+
+/**
+ * "What should I change?", which takes the place of one re-ask: it occupies the ladder's first
+ * rung so that three answers with nothing usable in them still reach an agent.
+ */
+function askChange(pc: Extract<PendingConfirmation, { target: 'form' }>, acks: Ack[]): PromptDecision {
+  pc.askedChange = true;
+  pc.attempts = Math.max(pc.attempts, 1);
+  return prompt('ask_change', 'confirm', {}, acks);
 }
 
 /** Add an intent the caller asked for on the side; returns the ack to speak, if it was new. */
@@ -294,15 +322,14 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         const acks = enqueue(s, verdict.queue);
         // "No, Thursday" corrects and re-asks in one turn; continueForm re-arms the summary with a
         // fresh attempt count once the corrected slot -- or the narrowing it needs -- is settled.
-        const fill = fillSlots(s, answers, ctx, slotsFor(pc.form), { correcting: true });
+        const fill = correctingFill(s, answers, ctx, pc.form);
         if (fill.progress) return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
         // Nothing usable came with the no: ask what to change and keep the summary pending. That
-        // question is free once per summary; a caller who answers it with another bare no has
+        // question is asked once per summary; a caller who answers it with another bare no has
         // spent a turn on the confirmation, so the ladder counts it (keypad, then an agent).
         s.pendingConfirmation = pc;
-        const firstNo = pc.attempts === 0 && s.lastPromptId !== 'ask_change';
-        if (!firstNo) return { decision: reaskConfirmation(s, t, acks), events: fill.events };
-        return { decision: prompt('ask_change', 'confirm', {}, acks), events: fill.events };
+        if (pc.askedChange === true) return { decision: reaskConfirmation(s, t, acks), events: fill.events };
+        return { decision: askChange(pc, acks), events: fill.events };
       }
       if (pc.target === 'slot') {
         // A declined readback means the spoken path failed; go straight to the keypad,
@@ -327,28 +354,34 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // A correction is a correction whether or not the caller prefixed it with "no", and an
         // answer to ask_change is read for a value before it is read for a slot name (spec
         // final-confirm §2.2 cases 2 and 3).
-        const fill = fillSlots(s, answers, ctx, slotsFor(pc.form), { correcting: true });
+        const fill = correctingFill(s, answers, ctx, pc.form);
         if (fill.progress) {
           s.pendingConfirmation = null;
           return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
         }
-        return { decision: reaskConfirmation(s, t, acks, verdict.queue === undefined), events: fill.events };
+        return { decision: reaskConfirmation(s, t, acks, acks.length === 0), events: fill.events };
       }
-      return { decision: reaskConfirmation(s, t, acks, verdict.queue === undefined), events: [] };
+      // Only a request that actually joined the queue buys the turn: asking for the same thing
+      // twice is a turn spent, and must not hold the ladder at zero forever.
+      return { decision: reaskConfirmation(s, t, acks, acks.length === 0), events: [] };
     }
     case 'change_slot': {
       const acks = enqueue(s, verdict.queue);
       const form = s.pendingConfirmation?.target === 'form' ? s.pendingConfirmation.form : s.form;
       s.pendingConfirmation = null;
       // "Not that doctor, make it Alvarez" names a detail and replaces it in one breath: the value
-      // it carries is worth more than the question we would otherwise ask (spec §2.2 case 2).
-      const fill = form ? fillSlots(s, answers, ctx, slotsFor(form), { correcting: true }) : null;
-      if (fill?.progress) return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+      // it carries is worth more than the question we would otherwise ask (spec §2.2 case 2). Only
+      // a new value for the slot they named answers it, though: "not that doctor, Thursday" moves
+      // the date and still leaves the doctor to ask for.
+      const fill = form ? correctingFill(s, answers, ctx, form) : null;
+      const named = fill?.events.some((e) => e.slot === verdict.slot && e.outcome.kind !== 'absent' && e.outcome.kind !== 'invalid') === true;
+      if (named) return { decision: continueForm(s, [...acks, ...fill!.acks], fill!.disambiguate), events: fill!.events };
       // The named slot is asked from scratch, but the attempts it already cost stand: a caller
-      // who could not say it the first time should not start the ladder over.
+      // who could not say it the first time should not start the ladder over. Whatever else the
+      // same breath filled is kept, and acked on the way into the question.
       const st = s.slots[verdict.slot];
       Object.assign(st, emptySlot(), { attempts: st.attempts });
-      return { decision: askSlot(verdict.slot, null, acks), events: fill?.events ?? [] };
+      return { decision: askSlot(verdict.slot, null, [...acks, ...(fill?.acks ?? [])]), events: fill?.events ?? [] };
     }
     case 'route':
       if (verdict.confirm === 'explicit') {
@@ -401,15 +434,18 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
   if (s.promptedFor === 'confirm' && s.pendingConfirmation?.target === 'form') {
     const pc = s.pendingConfirmation;
     s.dtmfBuffer = '';
-    // Only where the keys mean something: the summary itself ("yes or no") and the keypad prompt
-    // that names them. At ask_change a digit answers nothing, so it is not a missed turn either.
-    const advertised = s.lastPromptId === 'confirm_dtmf' || s.lastPromptId === FORMS[pc.form].summaryPromptId;
+    // Only where the keys mean something: the summary itself ("yes or no"), the keypad prompt that
+    // names them, and the slow-turn hint, which offers the keypad in so many words. At ask_change a
+    // digit answers nothing, so it is not a missed turn either.
+    const summaryId = FORMS[pc.form].summaryPromptId;
+    const advertised = s.lastPromptId === 'confirm_dtmf' || s.lastPromptId === 'system_slow_dtmf_hint'
+      || (summaryId !== null && s.lastPromptId === summaryId);
     if (!advertised) return { decision: { kind: 'ignore' }, rows: [] };
     if (digit === '1') {
       s.pendingConfirmation = null;
       return { decision: completeForm(s, pc.form, []), rows: [] };
     }
-    if (digit === '2') return { decision: prompt('ask_change', 'confirm', {}, []), rows: [] };
+    if (digit === '2') return { decision: askChange(pc, []), rows: [] };
     return { decision: reaskConfirmation(s, tc.thresholds), rows: [] };
   }
   const result = applyDtmf(s, s.dtmfBuffer, slotContext(s, '', tc));

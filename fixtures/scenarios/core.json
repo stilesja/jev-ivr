@@ -1003,6 +1003,34 @@
     }
   },
   {
+    "id": "summary-repeated-no-hands-off",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no"
+      },
+      {
+        "say": "no"
+      },
+      {
+        "say": "no"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "max-attempts",
+      "form": "reschedule"
+    }
+  },
+  {
     "id": "summary-no-with-value",
     "steps": [
       {

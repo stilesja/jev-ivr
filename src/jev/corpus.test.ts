@@ -18,7 +18,8 @@ describe('fixtures/corpus.jsonl', () => {
 
   it('uses valid contexts', () => {
     for (const e of corpus) {
-      expect(['no_form', ...FORM_INTENTS], e.id).toContain(e.context);
+      // no_form, a form, or the confirm_ context of a form that asks a summary -- what the validator takes.
+      expect(e.context === 'no_form' || contextForm(e.context) !== null, `${e.id}: ${e.context}`).toBe(true);
       if (e.prompted) expect(FORM_INTENTS, e.id).toContain(e.context);
     }
   });
