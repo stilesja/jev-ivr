@@ -26,7 +26,7 @@ export interface TurnState {
   asr: { text: string; isFinal: boolean; bargeIn: boolean; dtmf: string | null };
   candidateSpans: string[];
   /** the model sees the slot id where the session stores a discriminant */
-  pendingConfirmation: { target: 'intent' | SlotId; value: string } | null;
+  pendingConfirmation: { target: 'intent' | 'form' | SlotId; value: string } | null;
 }
 
 export function buildTurnState(session: Session, input: TurnInput, nowMs: number): TurnState {
@@ -58,7 +58,9 @@ export function buildTurnState(session: Session, input: TurnInput, nowMs: number
     pendingConfirmation: session.pendingConfirmation
       ? session.pendingConfirmation.target === 'intent'
         ? { target: 'intent', value: INTENT_LABELS[session.pendingConfirmation.intent] }
-        : { target: session.pendingConfirmation.slot, value: session.pendingConfirmation.display }
+        : session.pendingConfirmation.target === 'form'
+          ? { target: 'form', value: INTENT_LABELS[session.pendingConfirmation.form] }
+          : { target: session.pendingConfirmation.slot, value: session.pendingConfirmation.display }
       : null,
   };
 }

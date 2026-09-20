@@ -36,4 +36,11 @@ describe('buildTurnState', () => {
     s.pendingConfirmation = { target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' };
     expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).pendingConfirmation).toEqual({ target: 'memberId', value: '4471 8293' });
   });
+
+  it('shows a form confirmation to the model as the form label', () => {
+    const s = newSession('s', 0);
+    s.form = 'reschedule';
+    s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
+    expect(buildTurnState(s, { text: 'yes', isFinal: true, dtmf: null }, 0).pendingConfirmation).toEqual({ target: 'form', value: 'reschedule an appointment' });
+  });
 });

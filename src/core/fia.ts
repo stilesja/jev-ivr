@@ -48,15 +48,17 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
       case 'filled': {
         // The slot's own policy, not the fill outcome, decides whether a spoken value is
         // read back: an always-confirm slot lands unconfirmed and silent, and the caller
-        // hears it in a confirm_<slot> prompt. A value already confirmed and spoken again
-        // unchanged stays confirmed, so repeating it does not re-open the readback.
-        const readBack = SLOTS[spec.id].spokenConfirm === 'always';
+        // hears it in a confirm_<slot> prompt. A summary-policy slot also lands unconfirmed
+        // and silent, but its readback is the form's final confirm rather than a confirm_<slot>
+        // prompt of its own. A value already confirmed and spoken again unchanged stays
+        // confirmed, so repeating it does not re-open the readback.
+        const policy = spec.spokenConfirm;
         const keepConfirmed = slot.confirmed && slot.value === outcome.value;
         slot.value = outcome.value;
         slot.display = outcome.display;
-        slot.confirmed = keepConfirmed || (!readBack && outcome.confirm === 'none');
+        slot.confirmed = keepConfirmed || (policy === 'by-confidence' && outcome.confirm === 'none');
         slot.window = null;
-        if (!readBack && outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
+        if (policy === 'by-confidence' && outcome.confirm === 'implicit') acks.push({ promptId: `ack_${spec.id}`, vars: { [spec.id]: outcome.display } });
         progress = true;
         break;
       }
@@ -107,7 +109,7 @@ export type DtmfResult =
 /** Apply a DTMF digit buffer to the slot that was last prompted. */
 export function applyDtmf(session: Session, buffer: string, ctx: SlotContext): DtmfResult {
   const target = session.promptedFor;
-  if (target === null || target === 'intent') return { kind: 'no_target' };
+  if (target === null || target === 'intent' || target === 'confirm') return { kind: 'no_target' };
   if (!requiredSlots(session).includes(target)) return { kind: 'no_target' };
   const spec = SLOTS[target];
   if (buffer.length < spec.dtmf.length) return { kind: 'collecting' };

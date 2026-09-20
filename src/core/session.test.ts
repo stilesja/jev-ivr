@@ -57,4 +57,14 @@ describe('session', () => {
     expect(s.queued).toEqual(['billing']);
     expect(c.completed).toEqual(['reschedule']);
   });
+
+  describe('confirm target', () => {
+    it('reports the form confirmation attempts as the current attempts', () => {
+      const s = newSession('s', 0);
+      s.promptedFor = 'confirm';
+      s.pendingConfirmation = { target: 'form', form: 'cancel', attempts: 2 };
+      expect(currentAttempts(s)).toBe(2);
+      expect(cloneSession(s).pendingConfirmation).toEqual({ target: 'form', form: 'cancel', attempts: 2 });
+    });
+  });
 });

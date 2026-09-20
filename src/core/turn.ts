@@ -120,6 +120,11 @@ function completeForm(s: Session, form: FormId, acks: Ack[]): Decision {
   return continueForm(s, [...kept, { promptId: completion.promptId, vars }, { promptId: 'bridge_next', vars: { intentLabel: label } }], null);
 }
 
+/** `promptedFor` as an attempt/prompt target: `null` and the not-yet-wired `'confirm'` (Task 6) both fall back to `'intent'`. */
+function promptedTarget(s: Session): 'intent' | SlotId {
+  return s.promptedFor === null || s.promptedFor === 'intent' || s.promptedFor === 'confirm' ? 'intent' : s.promptedFor;
+}
+
 function failAttempt(s: Session, target: 'intent' | SlotId, t: Thresholds): Decision {
   const attempts = target === 'intent' ? ++s.intentAttempts : ++s.slots[target].attempts;
   const step = retryStep(attempts, t);
@@ -156,6 +161,10 @@ function reaskConfirmation(s: Session, t: Thresholds, acks: Ack[] = [], count = 
       return prompt(`ask_${pc.slot}_dtmf`, pc.slot, {}, acks);
     }
     return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, acks, ['yes', 'no']);
+  }
+  if (pc.target === 'form') {
+    // The confirm-target retry ladder is wired in Task 6; nothing produces this variant yet.
+    throw new Error('form confirmation ladder not implemented until Task 6');
   }
   if (!count) return prompt('confirm_intent_explicit', 'intent', { intentLabel: INTENT_LABELS[pc.intent] }, acks, ['yes', 'no']);
   s.intentAttempts += 1;
@@ -204,7 +213,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       // An unintelligible answer to a confirmation is an unanswered confirmation,
       // not a slot nomatch; leaving the confirmation pending would let it go stale.
       if (s.pendingConfirmation) return { decision: reaskConfirmation(s, t), events: [] };
-      return { decision: failAttempt(s, s.promptedFor ?? 'intent', t), events: [] };
+      return { decision: failAttempt(s, promptedTarget(s), t), events: [] };
     case 'handoff':
       return { decision: handoff(s, verdict.reason), events: [] };
     case 'replay':
@@ -217,6 +226,10 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // before any fill could run, so the slot still holds exactly what we read back.
         s.slots[pc.slot].confirmed = true;
         return { decision: continueForm(s, [], null), events: [] };
+      }
+      if (pc.target === 'form') {
+        // The summary's yes/no handling is wired in Task 6; nothing produces this variant yet.
+        throw new Error('form confirmation yes not implemented until Task 6');
       }
       if (pc.intent === 'agent') return { decision: handoff(s, 'live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
@@ -276,7 +289,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       const specs = s.form ? slotsFor(s.form) : allSlots();
       const fill = fillSlots(s, answers, ctx, specs);
       if (!fill.progress) {
-        const target = s.promptedFor && s.promptedFor !== 'intent' ? s.promptedFor : (missingSlots(s)[0] ?? 'intent');
+        const target = s.promptedFor && s.promptedFor !== 'intent' && s.promptedFor !== 'confirm' ? s.promptedFor : (missingSlots(s)[0] ?? 'intent');
         return { decision: failAttempt(s, target, t), events: fill.events };
       }
       return { decision: continueForm(s, fill.acks, fill.disambiguate), events: fill.events };
@@ -316,7 +329,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
 function handleFailure(s: Session): Decision {
   s.consecutiveFailures += 1;
   if (s.consecutiveFailures >= 2) return handoff(s, 'system-failure');
-  return prompt('system_slow_dtmf_hint', s.promptedFor ?? 'intent');
+  return prompt('system_slow_dtmf_hint', promptedTarget(s));
 }
 
 function bookkeep(s: Session, decision: Decision, verdictLabel: string): void {

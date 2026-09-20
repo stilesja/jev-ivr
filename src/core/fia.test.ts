@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf } from './fia';
 import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
-import { slotsFor, type SlotContext } from '../domain/slots';
+import { SLOTS, slotsFor, type SlotContext } from '../domain/slots';
 import { choice, noul } from '../testing/answers';
 import { candidateSpans } from './spans';
 
@@ -158,5 +158,18 @@ describe('fillSlots member id policy', () => {
     const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
     expect(r.session.slots.memberId.confirmed).toBe(true);
     expect(r.acks).toEqual([]);
+  });
+
+  // pendingSlotConfirmation reads the policy from the global SLOTS registry, not from the spec
+  // list passed to fillSlots, and memberId's global policy stays 'always' in this task (per the
+  // plan's own note), so it still reports a pending slot readback for memberId regardless of the
+  // policy override below. That leaves this test to verify what fillSlots itself controls for a
+  // summary-policy fill: no ack, and the slot stays unconfirmed.
+  it('fills a summary-policy slot silently: no ack, not confirmed', () => {
+    const spec = { ...SLOTS.memberId, spokenConfirm: 'summary' as const };
+    const s = setForm(newSession('s', 0), 'cancel');
+    const r = fillSlots(s, answers, spoken, [spec]);
+    expect(r.acks).toEqual([]);
+    expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
   });
 });

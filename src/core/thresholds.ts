@@ -17,6 +17,9 @@ export const DEFAULT_THRESHOLDS = {
   INTENT_TENTATIVE: 0.5,
   INTENT_CHANGE: 0.6,
   PROVIDER_UNSURE: 0.45,
+  // final confirm (spec 2026-09-19 final-confirm §6)
+  SLOT_CHANGE: 0.6,
+  INTENT_SECOND: 0.6,
   // slots
   SLOT_DETECT: 0.6,
   SLOT_CHOICE_FILL: 0.55,

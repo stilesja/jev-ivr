@@ -35,7 +35,9 @@ export type PendingConfirmation =
       answers: Readonly<AnswerMap>;
       text: string;
     }
-  | { target: 'slot'; slot: SlotId; value: string; display: string };
+  | { target: 'slot'; slot: SlotId; value: string; display: string }
+  /** the summary question; attempts counts unanswered turns and resets when a correction lands */
+  | { target: 'form'; form: FormId; attempts: number };
 
 export interface Interrupt {
   utteranceUntilInterrupt: string;
@@ -50,7 +52,7 @@ export interface Session {
   slots: Record<SlotId, SlotState>;
   intentAttempts: number;
   /** what the last prompt asked for */
-  promptedFor: 'intent' | SlotId | null;
+  promptedFor: 'intent' | 'confirm' | SlotId | null;
   lastPromptId: string | null;
   lastPromptText: string;
   lastPromptOptions: string[];
@@ -172,6 +174,7 @@ export function missingSlots(session: Session): SlotId[] {
 }
 
 export function currentAttempts(session: Session): number {
+  if (session.promptedFor === 'confirm') return session.pendingConfirmation?.target === 'form' ? session.pendingConfirmation.attempts : 0;
   if (session.promptedFor === 'intent' || session.promptedFor === null) return session.intentAttempts;
   return session.slots[session.promptedFor].attempts;
 }
