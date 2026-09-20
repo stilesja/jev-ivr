@@ -1009,3 +1009,23 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
   is about the call") and the dropped "fragmentary" language from its true criterion could shift a
   borderline score either way, so any change to those three ids on the next cassette must be judged
   against the new wording, not assumed to be a regression.
+
+  A real-model run of the reworded questions above scored 183/188 corpus outcomes and 59/60 scenarios
+  against the (stub-derived) expected baseline — `addressedToSystem` and `confirmsNo` are fixed on all
+  four terse corrections (`fc-08`, `fc-17`, `fc-19`, `fc-20`), confirming the wording pass's intended
+  effect, but it surfaced two problems the stub cannot see. First, `provider`'s criteria named each
+  provider only as `Dr. ${p.name}`, so a bare surname with no title scored low: "it's Cheng" → provider
+  `none` 0.82 / `cheng` 0.18, "Cheng, not Chen" → `none` 0.53 / `cheng` 0.46, against "Dr. Cheng" → 1.00.
+  The criteria were changed to `` `Dr. ${p.name}, also said as just ${p.name}` `` for every provider
+  (`none` unchanged); `providerDisplay` and `vocabularyClipId` were checked and confirmed to read from
+  `PROVIDERS` directly, not from this criteria text, so the display string and clip lookup are
+  unaffected. Second, the new correction wording had a side effect on genuine hedges: "either Dr. Chen
+  or Dr. Cheng, I'm not sure which" moved from `chen` 0.88 to provider `none` 0.66 / `chen` 0.30, and
+  the `hedged-two-providers-disambiguate` scenario moved from `ask_date` to `ask_provider_retry` — the
+  model was reading the hedge's two names as a not-marked correction rather than an open choice between
+  them. Every question that gained the not-marks-the-rejected-one sentence (`provider`, `dateMonth`,
+  `dateDay`, `dateWeekday`, `dateWeekdayQualifier`, `dateRelativeDay`, `dateWindow`) gained one more
+  sentence distinguishing the two: a hedge such as "I'm not sure" or "either" is not a correction, and
+  the model should name the value the caller actually mentions instead. The cassette must be re-recorded
+  once more after this fix, on top of the earlier full re-record, since both the bare-surname and the
+  hedge wording touch nearly every turn's `provider` and date questions.
