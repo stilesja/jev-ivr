@@ -269,7 +269,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     }
     case 'change_slot':
       // The named-detail reopen is wired in Task 6; nothing produces this variant yet.
-      throw new Error('not implemented until Task 6');
+      throw new Error('form confirmation change_slot not implemented until Task 6');
     case 'route':
       if (verdict.confirm === 'explicit') {
         s.pendingConfirmation = { target: 'intent', intent: verdict.intent, answers, text: ctx.text };

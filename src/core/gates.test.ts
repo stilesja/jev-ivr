@@ -225,6 +225,44 @@ describe('evaluateGates', () => {
       expect(run(s, baseAnswers({ changeSlot: choice({ date: 0.9, none: 0.1 }) })).verdict).toEqual({ kind: 'confirm_unanswered' });
     });
 
+    it('carries an added intent onto a change_slot verdict', () => {
+      const v = run(pending(), baseAnswers({
+        changeSlot: choice({ date: 0.9, none: 0.1 }), intent: choice({ billing: 0.9, none: 0.1 }), intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }),
+      })).verdict;
+      expect(v).toEqual({ kind: 'change_slot', slot: 'date', queue: 'billing' });
+    });
+
+    it('breaks a yes/no tie toward confirmed', () => {
+      expect(run(pending(), baseAnswers({ confirmsYes: noul(0.9), confirmsNo: noul(0.9) })).verdict).toEqual({ kind: 'confirmed' });
+    });
+
+    it('confirms on yes even when the intent Choice is quiet', () => {
+      // The intent gate has no opinion at all here; the summary's yes still decides.
+      expect(run(pending(), baseAnswers({ confirmsYes: noul(0.9), intent: choice({ none: 0.9 }) })).verdict).toEqual({ kind: 'confirmed' });
+    });
+
+    it('marks the row that actually decided: confirmation for yes/no/unanswered, changeSlot for a named detail', () => {
+      const decidedGate = (r: ReturnType<typeof run>): string | undefined => r.rows.find((x) => x.decided)?.gate;
+      const intentOutcome = (r: ReturnType<typeof run>): string | undefined => r.rows.find((x) => x.gate === 'intent')?.outcome;
+
+      const yes = run(pending(), baseAnswers({ confirmsYes: noul(0.9) }));
+      expect(decidedGate(yes)).toBe('confirmation');
+      expect(intentOutcome(yes)).toBe('summary_confirmed:reschedule');
+      expect(yes.rows.find((x) => x.gate === 'intent')?.decided).toBe(false);
+
+      const no = run(pending(), baseAnswers({ confirmsNo: noul(0.9) }));
+      expect(decidedGate(no)).toBe('confirmation');
+      expect(intentOutcome(no)).toBe('summary_rejected:reschedule');
+
+      const unanswered = run(pending(), baseAnswers());
+      expect(decidedGate(unanswered)).toBe('confirmation');
+      expect(intentOutcome(unanswered)).toBe('summary_confirm_unanswered:reschedule');
+
+      const change = run(pending(), baseAnswers({ changeSlot: choice({ date: 0.9, none: 0.1 }) }));
+      expect(decidedGate(change)).toBe('changeSlot');
+      expect(intentOutcome(change)).toBe('summary_change_slot:reschedule');
+    });
+
     it('lets a replace, an agent request, or a replay win over the summary', () => {
       expect(run(pending(), baseAnswers({ confirmsYes: noul(0.9), wantsHuman: noul(0.95) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
       expect(run(pending(), baseAnswers({
@@ -252,9 +290,12 @@ describe('evaluateGates', () => {
         .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
       expect(run(newSession('s', 0), baseAnswers({ intent: choice({ reschedule: 0.95, none: 0.05 }), secondIntent: choice({ reschedule: 0.9, none: 0.1 }) })).verdict)
         .toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
-      expect(run(newSession('s', 0), baseAnswers({
+      const r = run(newSession('s', 0), baseAnswers({
         intent: choice({ reschedule: 0.95, none: 0.05 }), intentTentative: noul(0.9), secondIntent: choice({ billing: 0.9, none: 0.1 }),
-      })).verdict).toEqual({ kind: 'route', intent: 'reschedule', confirm: 'explicit' });
+      }));
+      expect(r.verdict).toEqual({ kind: 'route', intent: 'reschedule', confirm: 'explicit' });
+      // Named, but the route wasn't plain: logged as deliberately dropped, not silently lost.
+      expect(r.rows.find((x) => x.gate === 'secondIntent')).toMatchObject({ outcome: 'ignored:not_plain_route' });
     });
   });
 });
