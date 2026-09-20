@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { FORM_INTENTS, INTENTS, type FormId, type Intent } from '../domain/intents';
+import { FORM_INTENTS, INTENTS, isFormIntent, type FormId, type Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 
 export interface DateLabel {
@@ -66,7 +66,10 @@ export function confirmForm(context: CorpusContext): FormId | null {
 
 /** the form a context runs in: the form itself, or the form behind a confirm_ context */
 export function contextForm(context: CorpusContext): FormId | null {
-  return context === 'no_form' ? null : (confirmForm(context) ?? (context as FormId));
+  if (context === 'no_form') return null;
+  const cf = confirmForm(context);
+  if (cf !== null) return cf;
+  return isFormIntent(context) ? context : null;
 }
 
 export function normalizeText(text: string): string {
@@ -99,13 +102,10 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
     if (entry.context !== 'no_form' && !(FORM_INTENTS as readonly string[]).includes(cf ?? entry.context)) {
       throw new Error(`corpus ${entry.id}: unknown context ${entry.context}`);
     }
-    if (cf !== null && FORMS[cf].completion.kind !== 'prompt') {
-      throw new Error(`corpus ${entry.id}: unknown context ${entry.context}`);
-    }
     // prompted names a slot in a form already in progress; the confirm_ context has no "prompted slot" of its own.
     if (entry.prompted !== undefined) {
       if (cf !== null) throw new Error(`corpus ${entry.id}: prompted needs a form context, not ${entry.context}`);
-      const promptedForm = entry.context === 'no_form' ? null : contextForm(entry.context);
+      const promptedForm = contextForm(entry.context);
       if (promptedForm === null || !FORMS[promptedForm].slots.includes(entry.prompted)) {
         throw new Error(`corpus ${entry.id}: prompted slot ${entry.prompted} is not on form ${entry.context}`);
       }
@@ -122,16 +122,18 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
       if (entry.intent === 'none') throw new Error(`corpus ${entry.id}: change needs an intent to add or switch to`);
     }
     if (entry.confirm !== undefined) {
-      if (cf === null) throw new Error(`corpus ${entry.id}: confirm needs a confirm_ context`);
       if (!['yes', 'no', 'unanswered'].includes(entry.confirm)) throw new Error(`corpus ${entry.id}: confirm must be yes, no, or unanswered`);
+      if (cf === null) throw new Error(`corpus ${entry.id}: confirm needs a confirm_ context`);
     }
     if (entry.changeSlot !== undefined) {
       if (cf === null) throw new Error(`corpus ${entry.id}: changeSlot needs a confirm_ context`);
+      if (entry.confirm === 'yes') throw new Error(`corpus ${entry.id}: changeSlot needs confirm no or unanswered`);
       if (!FORMS[cf].slots.includes(entry.changeSlot)) throw new Error(`corpus ${entry.id}: changeSlot ${entry.changeSlot} is not on form ${cf}`);
     }
     if (entry.secondIntent !== undefined) {
       if (entry.context !== 'no_form') throw new Error(`corpus ${entry.id}: secondIntent needs no_form`);
       if (!(FORM_INTENTS as readonly string[]).includes(entry.secondIntent)) throw new Error(`corpus ${entry.id}: unknown secondIntent ${entry.secondIntent}`);
+      if (entry.secondIntent === entry.intent) throw new Error(`corpus ${entry.id}: secondIntent must differ from intent`);
     }
     if (entry.context !== 'no_form') {
       const form = contextForm(entry.context)!;

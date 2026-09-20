@@ -77,9 +77,15 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry): Session
   const confirming = confirmForm(entry.context) !== null;
   // An entry that targets a later slot starts from a form that already has the earlier ones; a confirm_
   // entry starts from a form that has every slot, since the summary is only asked once the form is full.
+  // Computed once, before any slot is filled: recomputing missingSlots(session) per iteration would chase
+  // a moving target as the loop fills earlier slots.
+  const stopAt = entry.prompted ?? missingSlots(session)[0];
   for (const id of FORMS[form].slots) {
-    if (!confirming && id === (entry.prompted ?? missingSlots(session)[0])) break;
+    if (!confirming && id === stopAt) break;
     const placeholder = PLACEHOLDER_SLOTS[id];
+    // In a confirm_ context every slot is seeded unconfirmed: the summary is what confirms them, not this
+    // placeholder fill. That is safe only once the member ID policy is `summary` (Task 6); until then, an
+    // always-confirm slot seeded here would raise a spurious confirm_memberId readback.
     session.slots[id] = { ...emptySlot(), value: placeholder.value, display: placeholder.display, confirmed: !confirming };
   }
   if (confirming) {
@@ -92,7 +98,7 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry): Session
     session.lastPromptOptions = ['yes', 'no'];
     return session;
   }
-  const slot = entry.prompted ?? missingSlots(session)[0] ?? null;
+  const slot = stopAt ?? null;
   session.promptedFor = slot;
   session.lastPromptId = slot ? `ask_${slot}` : null;
   session.lastPromptText = slot ? promptText(`ask_${slot}`, {}) : '';

@@ -109,7 +109,11 @@ export function answerHeuristically(id: string, q: Question, text: string): Answ
       case 'provider': return providerAnswer(text, labels);
       case 'memberIdSpan': return spanAnswer(labels);
       case 'changeSlot': {
-        const winner = /\b(day|date|when)\b/.test(text) ? 'date' : /\b(doctor|dr|provider|who)\b/.test(text) ? 'provider'
+        // A full member ID spoken here is an answer, not a naming of "memberId" as the field to
+        // change (that would just say "my member id" or "the number"), so it never wins changeSlot.
+        const fullMemberId = spokenToDigits(text).length >= 8;
+        const winner = fullMemberId ? 'none'
+          : /\b(day|date|when)\b/.test(text) ? 'date' : /\b(doctor|dr|provider|who)\b/.test(text) ? 'provider'
           : /\b(member|id|number)\b/.test(text) ? 'memberId' : 'none';
         return choiceAnswer(sharp(labels, labels.includes(winner) ? winner : 'none', 0.9));
       }

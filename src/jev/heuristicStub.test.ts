@@ -74,4 +74,11 @@ describe('HeuristicStubClient', () => {
     expect(await pick('my member id')).toBe('memberId');
     expect(await pick('Thursday')).toBe('none');
   });
+
+  it('does not name memberId for changeSlot when the utterance carries a full member id', async () => {
+    const q = { changeSlot: { type: 'choice', instructions: '', criteria: { provider: null, date: null, memberId: null, none: null } } } as const;
+    const pick = async (text: string) => ((await new HeuristicStubClient().ask({ state: { asr: { text } }, questions: q as never })).answers.changeSlot as { choice: string }).choice;
+    expect(await pick('no, my ID is four four seven one eight two nine four')).toBe('none');
+    expect(await pick('my member id')).toBe('memberId');
+  });
 });

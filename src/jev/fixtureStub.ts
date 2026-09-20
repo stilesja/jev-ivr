@@ -57,8 +57,8 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
     if (id === 'wantsHuman') return noulAnswer(entry.intent === 'agent' ? 0.9 : 0.04);
     if (id === 'intentTentative') return noulAnswer(entry.tentative ? 0.9 : QUIET_NOUL.intentTentative!);
     if (id === 'providerUnsure') return noulAnswer(entry.providerUnsure ? 0.9 : QUIET_NOUL.providerUnsure!);
-    if (id === 'confirmsYes') return noulAnswer(entry.confirm === 'yes' ? 0.92 : QUIET_NOUL.confirmsYes!);
-    if (id === 'confirmsNo') return noulAnswer(entry.confirm === 'no' ? 0.92 : QUIET_NOUL.confirmsNo!);
+    if (id === 'confirmsYes') return noulAnswer(entry.confirm === 'yes' ? 0.9 : QUIET_NOUL.confirmsYes!);
+    if (id === 'confirmsNo') return noulAnswer(entry.confirm === 'no' ? 0.9 : QUIET_NOUL.confirmsNo!);
     return quietAnswer(id, q, sharpness);
   }
   return quietAnswer(id, q, sharpness);

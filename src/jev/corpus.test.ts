@@ -133,10 +133,19 @@ describe('parseCorpus', () => {
     expect(() => parseCorpus('{"id":"x","text":"x","intent":"none","context":"confirm_billing"}')).toThrow(/unknown context/);
   });
 
+  it('rejects a changeSlot alongside confirm yes, and a secondIntent equal to intent', () => {
+    expect(() => parseCorpus('{"id":"x","text":"yes the day","intent":"none","context":"confirm_reschedule","confirm":"yes","changeSlot":"date"}')).toThrow(/changeSlot needs confirm no or unanswered/);
+    expect(() => parseCorpus('{"id":"x","text":"reschedule and reschedule","intent":"reschedule","context":"no_form","secondIntent":"reschedule"}')).toThrow(/secondIntent must differ from intent/);
+  });
+
   it('treats confirm_appointment as the confirm_appointment form itself, not a confirm_ context', () => {
     expect(contextForm('confirm_appointment')).toBe('confirm_appointment');
     expect(confirmForm('confirm_appointment')).toBeNull();
     expect(confirmForm('confirm_confirm_appointment')).toBe('confirm_appointment');
     expect(contextForm('confirm_confirm_appointment')).toBe('confirm_appointment');
+  });
+
+  it('resolves confirm_billing to null: billing hands off and has no summary prompt', () => {
+    expect(contextForm('confirm_billing')).toBeNull();
   });
 });
