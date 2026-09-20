@@ -57,32 +57,32 @@ export const dateSlot: SlotSpec = {
       },
       dateMonth: {
         type: 'choice',
-        instructions: 'Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April".',
+        instructions: 'Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September".',
         criteria: criteriaOf([...MONTHS, 'none']),
       },
       dateDay: {
         type: 'choice',
-        instructions: 'Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the fifth, the sixth".',
+        instructions: 'Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th".',
         criteria: criteriaOf([...DAYS, 'none']),
       },
       dateWeekday: {
         type: 'choice',
-        instructions: 'Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "Thursday, not Tuesday".',
+        instructions: 'Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday".',
         criteria: criteriaOf([...WEEKDAYS, 'none']),
       },
       dateWeekdayQualifier: {
         type: 'choice',
-        instructions: 'Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it?',
+        instructions: 'Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday".',
         criteria: criteriaOf(QUALIFIERS),
       },
       dateRelativeDay: {
         type: 'choice',
-        instructions: 'Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct this, the word not marks the one they are rejecting; choose the other one, as in "not tomorrow, today".',
+        instructions: 'Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow".',
         criteria: criteriaOf(RELATIVE_DAYS),
       },
       dateWindow: {
         type: 'choice',
-        instructions: 'Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month?',
+        instructions: 'Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week".',
         criteria: criteriaOf(WINDOWS),
       },
     };

@@ -970,29 +970,42 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
   criteria naming a short answer or correction — a name, a day, a number, a yes or no, or a bare
   correction — as addressed and as a no; `provider`'s instructions (`src/domain/slots/provider.ts`)
   now tell the model that the word not marks the name being rejected and to choose the other one, with
-  one example per direction ("not Chen, Cheng" and "Alvarez, not Patel") so the wording does not lean
-  on a single pair. `dateWeekday`, `dateMonth`, `dateDay`, and `dateRelativeDay` (`src/domain/slots/
-  date.ts`) gained the same not-marks-the-rejected-one phrasing, since a bare day or month correction
-  is just as plausible as a provider one; `dateMode` was left alone, since it classifies the shape of
-  the answer rather than a specific named value, so a "not X, Y" correction does not apply to it.
-  Four corpus entries were added at `confirm_reschedule` to cover the terse forms: `fc-17` ("Cheng, not
-  Chen", no/provider cheng), `fc-18` ("Thursday, not Tuesday", no/date thursday), `fc-19` ("it's
-  Cheng", no/provider cheng), and `fc-20` ("Dr. Cheng", no/provider cheng) — `fc-20`'s text did not
-  duplicate any existing entry after normalization, so it did not need the fallback "make it Dr.
-  Cheng" wording; `fc-19` and `fc-20` are labeled `confirm: 'no'` because each replaces the provider
-  the summary read back, which `confirmsNo`'s new criterion defines as a no whether or not the caller
-  says the word. Because `addressedToSystem` and `confirmsNo` are asked on nearly every turn
-  (`addressedToSystem` is in `ALWAYS_ON_IDS`; `confirmsNo` on every confirmation turn), the recorded
-  cassette must be fully re-recorded rather than patched for the affected turns.
+  one example per direction ("not Chen, Cheng" and "Okafor, not Nguyen") so the wording does not lean
+  on a single pair. `dateWeekday`, `dateMonth`, `dateDay`, `dateWeekdayQualifier`, `dateRelativeDay`,
+  and `dateWindow` (`src/domain/slots/date.ts`) gained the same not-marks-the-rejected-one phrasing,
+  since a bare day or month correction is just as plausible as a provider one; `dateMode` was left
+  alone, since it classifies the shape of the answer rather than a specific named value, so a "not X,
+  Y" correction does not apply to it. A later wording pass tightened the rule further: every question
+  with more than two labels gets two examples, one in each order ("not X, Y" and "Y, not X"), resolving
+  to two different labels and using values no fixture leans on — never a placeholder value, never an
+  id's exact text — while a question with an unordered or three-way label set (`dateWeekdayQualifier`,
+  `dateWindow`, `dateRelativeDay`) gets one unloaded example instead, since a second one adds no new
+  direction to check. That pass replaced `provider`'s second example (`"Alvarez, not Patel"`) because
+  Patel is the placeholder name the corpus's confirm-context stub always fills the form with (visible
+  in `fixtures/expected/corpus.json` as every `confirm_reschedule` entry's default `provider`), so an
+  example built from it was really a second, disguised copy of the placeholder rather than an
+  independent check; `dateDay`'s example moved to numerals ("the 5th", "the 6th", "the 20th", "the
+  12th") to match its labels, which are digit strings, not spelled-out ordinals. Four corpus entries
+  were added at `confirm_reschedule` to cover the terse forms: `fc-17` ("Cheng, not Chen", no/provider
+  cheng), `fc-18` ("Thursday, not Tuesday", no/date thursday), `fc-19` ("it's Cheng", no/provider
+  cheng), and `fc-20` ("Dr. Cheng", no/provider cheng) — `fc-20`'s text did not duplicate any existing
+  entry after normalization, so it did not need the fallback "make it Dr. Cheng" wording; `fc-19` and
+  `fc-20` are labeled `confirm: 'no'` because each replaces the provider the summary read back, which
+  `confirmsNo`'s new criterion defines as a no whether or not the caller says the word. Because
+  `addressedToSystem` and `confirmsNo` are asked on nearly every turn (`addressedToSystem` is in
+  `ALWAYS_ON_IDS`; `confirmsNo` on every confirmation turn), the recorded cassette must be fully
+  re-recorded rather than patched for the affected turns.
 
   A review pass on this wording flagged that the corpus summary always reads back the placeholder
   Dr. Patel, so a real-model score on `fc-08` ("not Chen, Cheng", the example embedded verbatim in
   `confirmsNo`'s and `provider`'s criteria) is not evidence that the class of terse corrections is
   fixed — the model could simply be matching the criteria text back to itself. `fc-17` (the same pair,
   reversed order), `fc-19`, and `fc-20` (no "not" at all, just a replacement value) are the actual
-  generalization tests, since none of their text appears in the criteria. The same re-record is also
-  expected to move `ns-02`, `ns-03`, and `ns-04` (side speech, a bare "um", and a garbled utterance) —
-  `addressedToSystem`'s reworded false criterion ("even when what they say is about the call") and the
-  dropped "fragmentary" language from its true criterion could shift a borderline score either way, so
-  any change to those three ids on the next cassette must be judged against the new wording, not
-  assumed to be a regression.
+  generalization tests, since none of their text appears in the criteria; `fc-18` ("Thursday, not
+  Tuesday") joined that list once the later wording pass moved `dateWeekday`'s examples to "not Monday,
+  Friday" and "Saturday, not Sunday", so `fc-18`'s own text no longer appears in any instruction either.
+  The same re-record is also expected to move `ns-02`, `ns-03`, and `ns-04` (side speech, a bare "um",
+  and a garbled utterance) — `addressedToSystem`'s reworded false criterion ("even when what they say
+  is about the call") and the dropped "fragmentary" language from its true criterion could shift a
+  borderline score either way, so any change to those three ids on the next cassette must be judged
+  against the new wording, not assumed to be a regression.

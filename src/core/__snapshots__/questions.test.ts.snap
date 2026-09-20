@@ -75,7 +75,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the fifth, the sixth".",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th".",
     "type": "choice",
   },
   "dateMode": {
@@ -105,7 +105,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April".",
+    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September".",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -115,7 +115,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "today": null,
       "tomorrow": null,
     },
-    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct this, the word not marks the one they are rejecting; choose the other one, as in "not tomorrow, today".",
+    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow".",
     "type": "choice",
   },
   "dateWeekday": {
@@ -129,7 +129,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "tuesday": null,
       "wednesday": null,
     },
-    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "Thursday, not Tuesday".",
+    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday".",
     "type": "choice",
   },
   "dateWeekdayQualifier": {
@@ -138,7 +138,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "none": null,
       "this": null,
     },
-    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it?",
+    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday".",
     "type": "choice",
   },
   "dateWindow": {
@@ -149,7 +149,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "this_month": null,
       "this_week": null,
     },
-    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month?",
+    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week".",
     "type": "choice",
   },
   "frustration": {
@@ -242,7 +242,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "patel": "Dr. Patel",
       "rossi": "Dr. Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Alvarez, not Patel".",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen".",
     "type": "choice",
   },
   "providerUnsure": {
@@ -347,7 +347,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the fifth, the sixth".",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th".",
     "type": "choice",
   },
   "dateMode": {
@@ -377,7 +377,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April".",
+    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September".",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -387,7 +387,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "today": null,
       "tomorrow": null,
     },
-    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct this, the word not marks the one they are rejecting; choose the other one, as in "not tomorrow, today".",
+    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow".",
     "type": "choice",
   },
   "dateWeekday": {
@@ -401,7 +401,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "tuesday": null,
       "wednesday": null,
     },
-    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "Thursday, not Tuesday".",
+    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday".",
     "type": "choice",
   },
   "dateWeekdayQualifier": {
@@ -410,7 +410,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "none": null,
       "this": null,
     },
-    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it?",
+    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday".",
     "type": "choice",
   },
   "dateWindow": {
@@ -421,7 +421,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "this_month": null,
       "this_week": null,
     },
-    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month?",
+    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week".",
     "type": "choice",
   },
   "frustration": {
@@ -514,7 +514,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "patel": "Dr. Patel",
       "rossi": "Dr. Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Alvarez, not Patel".",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen".",
     "type": "choice",
   },
   "providerUnsure": {
@@ -619,7 +619,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the fifth, the sixth".",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th".",
     "type": "choice",
   },
   "dateMode": {
@@ -649,7 +649,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April".",
+    "instructions": "Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September".",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -659,7 +659,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "today": null,
       "tomorrow": null,
     },
-    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct this, the word not marks the one they are rejecting; choose the other one, as in "not tomorrow, today".",
+    "instructions": "Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct a relative day, the word not marks the one they are rejecting; choose the other one, as in "not today, the day after tomorrow".",
     "type": "choice",
   },
   "dateWeekday": {
@@ -673,7 +673,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "tuesday": null,
       "wednesday": null,
     },
-    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "Thursday, not Tuesday".",
+    "instructions": "Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "not Monday, Friday" or "Saturday, not Sunday".",
     "type": "choice",
   },
   "dateWeekdayQualifier": {
@@ -682,7 +682,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "none": null,
       "this": null,
     },
-    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it?",
+    "instructions": "Read asr.text. If the caller names a day of the week, do they say "this" or "next" before it? When they correct this qualifier, the word not marks the one they are rejecting; choose the other one, as in "not this Thursday, next Thursday".",
     "type": "choice",
   },
   "dateWindow": {
@@ -693,7 +693,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "this_month": null,
       "this_week": null,
     },
-    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month?",
+    "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week".",
     "type": "choice",
   },
   "frustration": {
@@ -777,7 +777,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "patel": "Dr. Patel",
       "rossi": "Dr. Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Alvarez, not Patel".",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen".",
     "type": "choice",
   },
   "providerUnsure": {
