@@ -624,10 +624,28 @@ describe('final confirm', () => {
     expect(r.session.pendingConfirmation).toBeNull();
     // A confidently heard date needs no ack of its own; the next summary reads it back.
     expect(spokenText(r.decision)).toBe('Which provider is the appointment with?');
-    // And the value alone, with the detail named, answers it outright.
+    // And a new value for the detail they named answers it outright.
     const both = afterTurns([...HAPPY, 'the doctor, Dr. Alvarez']);
     expect(both.decision).toMatchObject({ promptId: 'confirm_reschedule' });
     expect(varsOf(both.decision)).toMatchObject({ provider: 'Dr. Alvarez' });
+  });
+
+  it('reopens the named detail when the caller repeats the value it already holds', () => {
+    // "The doctor, Dr. Chen" at a Dr. Chen summary answers nothing: taking it as a correction
+    // would re-arm the summary at attempts 0 and let the caller loop there forever.
+    const again: Turn[] = [...HAPPY, 'the doctor, Dr. Chen'];
+    const first = afterTurns(again);
+    expect(first.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', target: 'provider' });
+    expect(first.session.slots.provider).toMatchObject({ value: null, display: null });
+    expect(first.session.pendingConfirmation).toBeNull();
+    // Answering that question re-arms the summary, and repeating the round reopens the slot again
+    // rather than spinning on a summary that never counts a turn.
+    const second = afterTurns([...again, 'Dr. Chen', 'the doctor, Dr. Chen']);
+    expect(second.decision).toMatchObject({ promptId: 'ask_provider' });
+    expect(second.session.pendingConfirmation).toBeNull();
+    const third = afterTurns([...again, 'Dr. Chen', 'the doctor, Dr. Chen', 'Dr. Chen', 'the doctor, Dr. Chen']);
+    expect(third.decision).toMatchObject({ promptId: 'ask_provider' });
+    expect(third.session.slots.provider.value).toBeNull();
   });
 
   it('corrects the member ID at the summary', () => {

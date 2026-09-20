@@ -374,7 +374,11 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       // a new value for the slot they named answers it, though: "not that doctor, Thursday" moves
       // the date and still leaves the doctor to ask for.
       const fill = form ? correctingFill(s, answers, ctx, form) : null;
-      const named = fill?.events.some((e) => e.slot === verdict.slot && e.outcome.kind !== 'absent' && e.outcome.kind !== 'invalid') === true;
+      // `fill.progress` is what keeps a re-speak of the value the summary just read back off this
+      // path: naming a detail and repeating it unchanged answers nothing, so it reopens the slot
+      // rather than re-arming the summary with a fresh attempt count.
+      const named = fill?.progress === true
+        && fill.events.some((e) => e.slot === verdict.slot && e.outcome.kind !== 'absent' && e.outcome.kind !== 'invalid');
       if (named) return { decision: continueForm(s, [...acks, ...fill!.acks], fill!.disambiguate), events: fill!.events };
       // The named slot is asked from scratch, but the attempts it already cost stand: a caller
       // who could not say it the first time should not start the ladder over. Whatever else the

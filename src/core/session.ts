@@ -39,7 +39,9 @@ export type PendingConfirmation =
   /**
    * the summary question; attempts counts unanswered turns and resets when a correction lands.
    * askedChange records that "What should I change?" has already been asked for this summary, so
-   * the next answer with nothing usable in it walks the ladder instead of asking it again.
+   * the next spoken answer with nothing usable in it walks the ladder instead of asking it again.
+   * The question is free at most once per summary: the keypad's 2 can ask for it again, and each
+   * of those spends a rung.
    */
   | { target: 'form'; form: FormId; attempts: number; askedChange?: boolean };
 

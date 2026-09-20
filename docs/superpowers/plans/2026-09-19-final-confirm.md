@@ -950,8 +950,7 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
   plan's draft list duplicate existing corpus entries (`cy-01`, `cno-01`, `cno-02`) once normalized, so
   the parser's (pre-existing) duplicate-text check rejects them; they were dropped rather than given
   different text, since the existing entries already cover a plain yes/no. `fc-14` ("what are your
-  hours") was also left out of the committed corpus — an unrecognized utterance already gets quiet
-  default answers from both stubs, so it needs no label of its own to exercise the unanswered ladder.
+  hours") was dropped for the same reason: it normalizes to the same text as `ot-01`.
 - **General.** `SlotSpec.spokenConfirm`'s `'always'` value (spec §3) is now unused by any slot — the
   member ID was its only user and moved to `'summary'`. It stays in the type and keeps unit coverage
   (`reaskConfirmation`'s slot branch, `pendingSlotConfirmation`) since a future slot can still opt into
