@@ -57,13 +57,25 @@ corpus label or a threshold mapping a real distribution wrongly. `--update`
 is refused for any client but the stub, including `heuristic`; the baseline
 means "the labels", and only the stub re-records it.
 
-Corpus entries carry four kinds of label the stub answers from: the intent
-and slots, `tentative` (the caller hedges the request, so it is confirmed
-explicitly), `change` (`adding` or `replacing`, for an in-form utterance
-that asks for another task), and `providerUnsure` (a hedged or dual provider
-name is read back). An entry with none of the last three is a plain,
-committed answer to the current question. The parser rejects unknown
-fields, mistyped labels, and a labeled slot that is not on the entry's form.
+Corpus entries carry several kinds of label the stub answers from: the
+intent and slots, `tentative` (the caller hedges the request, so it is
+confirmed explicitly), `change` (`adding` or `replacing`, for an utterance
+that asks for another task, including at the summary), `providerUnsure` (a
+hedged or dual provider name is read back), `confirm` (`yes`, `no`, or
+`unanswered`: how an utterance at the summary answers it), `changeSlot`
+(`provider`, `date`, or `memberId`: which detail the caller names when asked
+what to change), and `secondIntent` (a second form intent named alongside
+the main one, `no_form` entries only). An entry with none of the optional
+labels is a plain, committed answer to the current question. Contexts add
+`confirm_<form>` for the summary turn, alongside a plain form or `no_form`:
+`confirm_schedule_new`, `confirm_reschedule`, `confirm_cancel`, and
+`confirm_confirm_appointment` (billing hands off and has no summary). The
+parser rejects unknown fields, mistyped labels, a labeled slot that is not
+on the entry's form, and a `confirm`/`changeSlot`/`secondIntent` label on
+the wrong kind of context. An entry's text must also be unique once
+normalized (lowercased, punctuation stripped): the fixture stub looks
+entries up by that text, so two entries that normalize the same are
+ambiguous and the parser rejects the second one.
 
 Every run ends with a summary: corpus outcomes matching the baseline,
 scenarios passing their own expectation and matching the baseline, a cost
@@ -199,13 +211,28 @@ session is kept, `SESSION_MAX_AGE_MS` the hard cap on any one session.
 
 A hedged request ("maybe cancel it") is confirmed before anything happens:
 "Just to check, do you want to cancel an appointment?" The slots spoken in
-that utterance are kept and filled once the caller says yes. A spoken
-member ID is always read back, "Your member ID is 4471 8293. Is that
-right?"; a "no" goes straight to the keypad, a second "no" or repeated
-silence hands off, and digits typed on the keypad need no readback. A
-request added mid-task ("can I also ask about my bill") is acknowledged
-once and queued: the current task finishes, its summary is spoken without
-a goodbye, and the call moves on with "Now, let's ask about billing." The member
+that utterance are kept and filled once the caller says yes.
+
+Every form that fills its last slot ends with a summary question instead of
+finishing outright: "Your appointment with Dr. Chen would move to Tuesday,
+September 22, member ID 4471 8293. Shall I make that change?" Saying "yes"
+completes the form with a short line, "Your appointment is moved." A
+correction — "no, Thursday", "no, Thursday with Dr. Alvarez", or a bare
+"Thursday" on its own — refills the named slot(s) and asks the summary
+again with the new values. A bare "no" asks "What should I change?" once
+per summary; answering that with another bare "no" still counts as a turn
+spent on the confirmation, so repeated bare no's walk the same ladder as an
+unanswered turn: a re-ask, then the keypad ("Press 1 to confirm, or 2 to
+change something."), then an agent. An utterance that is neither yes/no nor
+a slot value or name is itself an unanswered turn and follows that same
+ladder. The member ID fills silently — no ack, no readback of its own — and
+is confirmed only in the summary, where it can be corrected like any other
+slot. A form that ends in a handoff (billing) has no summary; the slots
+collected so far ride along in the handoff data instead.
+
+A request added mid-task ("can I also ask about my bill") is acknowledged
+once and queued: the current task completes with its short line, and the
+call moves on with "Now, let's ask about billing." The member
 ID carries over; provider and date are asked again, because an added task
 is a different appointment. "Never mind, I have a question about my bill"
 replaces the current task instead, and "actually, just cancel it instead"
@@ -213,6 +240,15 @@ keeps the appointment's provider and date because it is the same
 appointment. A task that ends in a handoff (billing) always runs last, and
 the `end` frame's handoff data lists the forms completed and any still
 queued.
+
+An opening utterance that names two tasks queues the second one the same
+way: "I need to reschedule my appointment with Dr. Alvarez for next
+Thursday, and also I have a question about my bill" is acknowledged with
+"Sure, we'll ask about billing after this." before the first question is
+even asked, as long as the first task routes plainly. A hedged opener
+("maybe reschedule, and also my bill") confirms the first task explicitly
+instead and drops the second; the caller can add it again once the form is
+open.
 
 ### Recorded prompts
 
@@ -222,6 +258,12 @@ queued.
     pnpm prompts:generate --only greeting.0 --candidates 3 --force   # audition variants under assets/audio/candidates/
     pnpm prompts:generate --pick greeting.0-2      # promote a candidate to the clip and record it
     pnpm prompts:generate --dry-run --voice Hannah --only greeting.0 # print the request; no key, no network
+
+After the final-confirm change, `pnpm prompts:check` reports 16 missing
+clips (the four summary questions, `ask_change`, and `confirm_dtmf`) and 4
+stale ones (the shortened completion lines); see Task 10 of
+`docs/superpowers/plans/2026-09-19-final-confirm.md` for the exact commands
+to regenerate them and remove the clips that are now unused.
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
 and are discovered by filename; adding one needs no manifest edit. A clip
@@ -276,25 +318,37 @@ as quiet as possible.
 4. Call the number. You should hear the greeting within a second.
 5. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
    week." Expect: "What's your member ID?"
-6. Spoken ID: say the eight digits. Expect the readback and then the window
-   question, as one turn: "Member ID four four seven one, eight two nine three.
-   next week. Which day works for you?" (the digits are spaced out before they
-   reach TTS, which would otherwise read "4471 8293" as two large numbers).
+6. Spoken ID: say the eight digits. Expect the window question on its own,
+   with no readback: "next week. Which day works for you?" The member ID
+   fills silently now — it is confirmed only in the summary (step 8), not
+   read back here.
 7. Keypad ID: on a second call, press the eight digits instead. Expect the
-   window question on its own, with no readback — keypad entry is unambiguous,
-   so there is nothing to implicitly confirm.
-8. Say "Tuesday". Expect the confirmation and the call ends: the server leaves
-   the socket open after `end` so Twilio can finish the queued clips, and
-   Twilio closes it and hits `/cr-action` with `SessionStatus=ended`.
-9. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
-10. Call again, say "what are your hours" three times. Expect the open
+   same window question, with no readback either — spoken or keyed, there is
+   nothing to implicitly confirm before the summary.
+8. Say "Tuesday". Expect the summary question, with the digits spaced out
+   for TTS: "Your appointment with Dr. Chen would move to Tuesday, September
+   22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?"
+9. Say "yes". Expect "Your appointment is moved." then "Goodbye.", and the
+   call ends: the server leaves the socket open after `end` so Twilio can
+   finish the queued clips, and Twilio closes it and hits `/cr-action` with
+   `SessionStatus=ended`.
+10. Call again, repeat through step 8, then say "no, Thursday" instead of
+    "yes". Expect the summary question again, now naming Thursday instead of
+    Tuesday. Say "yes" to finish.
+11. Call again and say: "I need to reschedule my appointment with Dr.
+    Alvarez for next Thursday, and also I have a question about my bill."
+    Expect "Sure, we'll ask about billing after this." before the member ID
+    question. Give the ID, say "yes" at the summary, and expect the billing
+    handoff to follow.
+12. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
+13. Call again, say "what are your hours" three times. Expect the open
     reprompt, the keypad menu, then the transfer.
-11. Call again, get as far as the member ID question, then kill `pnpm serve`
+14. Call again, get as far as the member ID question, then kill `pnpm serve`
     (Ctrl-C) and start it again. ConversationRelay's session fails, `/cr-action`
     reconnects, and the caller hears the last prompt again. Repeat the kill more
     than `RECONNECT_LIMIT` times on one call: the next callback stops
     reconnecting, apologizes, and dials `HANDOFF_NUMBER`.
-12. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
+15. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
     and compare its decisions with `traces/<CallSid>.jsonl`.
 
 Things to note on the first real call, per the spec's open questions: whether

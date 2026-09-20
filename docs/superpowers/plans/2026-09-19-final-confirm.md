@@ -842,13 +842,22 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 10 (Jason, not an agent): clips, cassette, live call
 
-1. `pnpm prompts:check` lists the new clips as missing and the three completion clips as stale. Generate:
+1. `pnpm prompts:check` lists 16 new clips as missing (the four summary
+   prompts' fixed segments, `ask_change.0`, `confirm_dtmf.0`) and 4
+   completion clips as stale (`schedule_confirmed.0`, `reschedule_confirmed.0`,
+   `cancel_confirmed.0`, `appointment_details.0` — the last is stale too
+   because `appointment_details` was shortened, a deviation from spec §5;
+   see the deviation record below). Generate:
 
 ```bash
 set -a; source .env; set +a; pnpm prompts:generate
-set -a; source .env; set +a; pnpm prompts:generate --only schedule_confirmed.0,reschedule_confirmed.0,cancel_confirmed.0 --force
+set -a; source .env; set +a; pnpm prompts:generate --only schedule_confirmed.0,reschedule_confirmed.0,cancel_confirmed.0,appointment_details.0 --force
 ```
-then `pnpm prompts:check` (77 → about 90 of 90, 0 stale), and remove the old `confirm_memberId.*.wav` files it reports as `unused`.
+then `pnpm prompts:check` (67 of 83 → 83 of 83, 0 stale), and remove the 10
+clips it reports as `unused`: `confirm_memberId.0`, `confirm_memberId.1`
+(the readback prompt is gone), and the now-single-segment completions'
+leftover `.1`/`.2` files (`schedule_confirmed`, `reschedule_confirmed`,
+`cancel_confirmed`, `appointment_details`).
 
 2. Re-record the cassette (every completing scenario's tail and the two-task openers):
 
@@ -866,3 +875,86 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
 - Spec coverage: §2.1 state (Task 1), §2.2 flow and §2.3 corrections (Tasks 5–6), §2.4 ladder and keypad (Task 6), §3 summary policy (Tasks 1, 6), §4 second intent (Tasks 3, 5, 6 route queue, 7), §5 prompts (Tasks 2, 6), §6 questions and thresholds (Tasks 1, 3), §7 labels and scenarios (Tasks 4, 6, 7), §8 baseline unchanged, §9 tests per task, §10 README (Task 8).
 - Names used across tasks: `PendingConfirmation` form variant `{ target: 'form', form, attempts }`; `promptedFor: 'confirm'`; `spokenConfirm: 'summary'`; verdicts `confirmed`/`rejected`/`confirm_unanswered` with `queue?`, `change_slot`, `route` with `queue?`; questions `changeSlot`, `secondIntent`; thresholds `SLOT_CHANGE`, `INTENT_SECOND`; corpus fields `confirm`, `changeSlot`, `secondIntent`, contexts `confirm_<form>`; helpers `summaryVars`, `askSummary`, `summaryPrompt`, `enqueue`; prompts `confirm_<form>`, `ask_change`, `confirm_dtmf`.
 - Green after every task: Tasks 1–5 change no decisions (verified by `pnpm regress` no changes); Task 6 re-records in the same commit.
+
+---
+
+## Deviations recorded during execution
+
+- **Task 1 (610aee7).** Extra files beyond the task's list: `src/core/turn.ts` gained type guards
+  and a `promptedTarget` helper mapping `null`/`'intent'`/`'confirm'` to `'intent'`, needed early so
+  later tasks share one place that answers "what is this turn's attempt bucket"; `sweepSpace.test.ts`'s
+  sweepable-threshold count moved from 20 to 22 for `SLOT_CHANGE` and `INTENT_SECOND`.
+- **Task 2 (6aa3816).** The plan's `confirm_${form}` naming is a map instead: `FormSpec.summaryPromptId`
+  (`src/domain/forms.ts`) gives `schedule_new` → `confirm_schedule`, `reschedule` → `confirm_reschedule`,
+  `cancel` → `confirm_cancel`, `confirm_appointment` → `confirm_appointment_details`, and `billing` →
+  `null` (it hands off, so it has no summary). `confirm_appointment` has no date slot
+  (`FORMS.confirm_appointment.slots` is `['memberId', 'provider']`), so its summary cannot say a date;
+  its text is `"That's your appointment with {provider}, member ID {memberId}. Is that the one?"`
+  instead of the spec's text (spec §5).
+- **Task 3 (43e87fc, e7fac8c).** `changeSlot`'s criteria were rewritten to stay disjoint from
+  value-giving answers (drop "not Tuesday" / "not Dr. Chen" as examples of naming a detail, since
+  those *are* new values) and are filtered to the slots on the form actually being confirmed —
+  `confirm_cancel` and `confirm_appointment_details` have no `date` option. `secondIntent`'s criteria
+  are prefixed "A second, separate request on top of the main one: …" and its `none` covers a request
+  described twice or elaborated on, not just "no second task"; the instructions name the joining cues
+  ("and also", "as well", "another thing", "while I have you").
+- **Task 4 (9a7c0c7, df1f192).** `confirmForm`/`contextForm` (`src/jev/corpus.ts`) are exact
+  membership against a map of `confirm_<form>` → `form` for every form with a `summaryPromptId`, not a
+  `startsWith('confirm_')` prefix test — `confirm_appointment` is itself a form (one of `FORM_INTENTS`),
+  so a prefix test would misparse it as the confirm context for a nonexistent form named "appointment".
+  This makes `confirm_confirm_appointment` the (unusual but valid) summary context for the
+  `confirm_appointment` form. `change` (`adding`/`replacing`) is allowed on `confirm_<form>` contexts,
+  not only in-form ones — an added intent at the summary ("yes, and can I also ask about my bill") is
+  labeled the same way as an in-form "also", so `fc-15` in Task 7 needs it. The corpus already rejected
+  two entries whose text is the same after normalization (a pre-existing rule, since the fixture stub
+  looks answers up by that text); several of Task 7's drafted ids collide with existing entries under
+  it (see below).
+- **Task 5 (bdb357f, e85ec5f).** `change_slot` additionally requires the named slot to actually be on
+  the active form's slot list (`FORMS[form].slots`), so the verdict can never name a slot the form
+  doesn't have. The row credited with deciding a summary turn is the `confirmation` row (yes/no) or the
+  `changeSlot` row, not the `intent` row that gate 8 computes — the gates' existing "only if nothing
+  decided yet" convention is extended so the debug table and `decidedGate` point at whichever question
+  actually settled the summary. `change_slot` carries the `queue` field forward like `confirmed`/
+  `rejected` do, so an added intent named at the same time as a correction is not lost. Spec §4 lists
+  `agent` as a second task the caller could name, but the `secondIntent` question only offers
+  `FORM_INTENTS` (which excludes `agent`); "agent" as a second request still works, just via the
+  existing `wantsHuman` gate rather than `secondIntent`.
+- **Task 6 (3962773, b6b646b, 0693c16).** `fillSlots` gained a `{ correcting?: boolean }` option: at
+  the summary, a window over an already-filled date must reopen that slot even though it already has a
+  value, which the ordinary mid-form fill (value only overwrites `null`) would not do. A fill that
+  reproduces exactly what the summary just read back (a repeated "Thursday" after the caller was
+  already told Thursday) does not count as progress — `correctingFill` snapshots the summary's
+  variables and the date window before and after the fill and only accepts it as a correction if
+  something actually changed; otherwise it is treated as an unanswered turn, so repeating the same
+  value cannot stall the ladder forever. `PendingConfirmation`'s form variant gained `askedChange?:
+  boolean`, set the first time `ask_change` is asked; `ask_change` occupies the ladder's first rung
+  (`attempts` is bumped to at least 1 when it is asked) so that a bare "no" followed by three more
+  bare no's still reaches an agent in four turns total, not seven. The keypad only answers 1/2 while a
+  digit is actually advertised — the summary itself ("yes or no"), `confirm_dtmf`, or
+  `system_slow_dtmf_hint` (which also mentions the keypad) — a stray digit at `ask_change` answers
+  nothing and is ignored rather than counted as a miss. `handoff()`'s data now carries every filled
+  slot's display value (`HandoffDecision.slots`), not just the completed forms and the queue, since a
+  form that hands off (billing) has no summary of its own to have told the caller anything back — this
+  is the only record of what was collected. `appointment_details`'s completion line was shortened to
+  "That appointment is confirmed." even though spec §5 says to keep its details (it is the answer to
+  the caller's question); the confirm-first flow already reads the details back in
+  `confirm_appointment_details` before the caller says yes, so repeating them a second time in the
+  completion line felt redundant, but this is a deviation from what the spec says. "Not that doctor,
+  Thursday" at `change_slot` moves the date and still leaves the doctor open to ask for — only a new
+  value for the *named* slot answers the question; anything else it carries is kept and acked on the
+  way into the reopened slot's own question. Baseline re-record: 44 corpus outcomes changed (a
+  `confirm_memberId` readback became either the next question, a summary, or a billing handoff, and
+  every `complete` outcome for a form with a summary became a `prompt confirm_<form>`); only the
+  `decision`/`promptId`/`reason` fields moved.
+- **Task 7 (5efaaac).** `fc-01` ("yes"), `fc-04` ("no"), and `fc-05` ("no that's wrong") from the
+  plan's draft list duplicate existing corpus entries (`cy-01`, `cno-01`, `cno-02`) once normalized, so
+  the parser's (pre-existing) duplicate-text check rejects them; they were dropped rather than given
+  different text, since the existing entries already cover a plain yes/no. `fc-14` ("what are your
+  hours") was also left out of the committed corpus — an unrecognized utterance already gets quiet
+  default answers from both stubs, so it needs no label of its own to exercise the unanswered ladder.
+- **General.** `SlotSpec.spokenConfirm`'s `'always'` value (spec §3) is now unused by any slot — the
+  member ID was its only user and moved to `'summary'`. It stays in the type and keeps unit coverage
+  (`reaskConfirmation`'s slot branch, `pendingSlotConfirmation`) since a future slot can still opt into
+  it, but doing so needs its own `confirm_<slotId>` prompt manifest entry: `reaskConfirmation` and
+  `continueForm` both build that prompt id directly, and the one entry that used to satisfy it,
+  `confirm_memberId`, was removed in Task 6.
