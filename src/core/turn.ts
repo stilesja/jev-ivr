@@ -239,6 +239,10 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
     case 'rejected': {
       const pc = s.pendingConfirmation!;
       s.pendingConfirmation = null;
+      if (pc.target === 'form') {
+        // The summary's no handling is wired in Task 6; nothing produces this variant yet.
+        throw new Error('form confirmation no not implemented until Task 6');
+      }
       if (pc.target === 'slot') {
         // A declined readback means the spoken path failed; go straight to the keypad,
         // and let a second decline hand off rather than read a third value back.

@@ -1,5 +1,6 @@
 import type { QuestionMap } from '../jev/types';
-import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU } from '../domain/intents';
+import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU, type FormId } from '../domain/intents';
+import { FORMS, type SlotId } from '../domain/forms';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import type { Session } from './session';
 
@@ -121,32 +122,51 @@ function inForm(): QuestionMap {
   };
 }
 
-/** Spec final-confirm §4: a second task named on the opening utterance. Asked only outside a form. */
+/**
+ * Spec final-confirm §4: a second task named on the opening utterance. Deliberately asked on
+ * every out-of-form turn -- menu and intent-confirm turns included -- because the gate only
+ * acts on this answer for a plain route; asking it everywhere else keeps the question set stable.
+ */
 function noForm(): QuestionMap {
   const criteria: Record<string, string> = {};
-  for (const i of FORM_INTENTS) criteria[i] = INTENT_CRITERIA[i];
-  criteria.none = 'The caller asks for one task only, or for nothing';
+  for (const i of FORM_INTENTS) criteria[i] = `A second, separate request on top of the main one: ${INTENT_CRITERIA[i]}`;
+  criteria.none = 'Everything the caller says belongs to one request, even if they describe it twice or add details to it; or they ask for nothing';
   return {
     secondIntent: {
       type: 'choice',
-      instructions: 'Read asr.text. If the caller asks for a second, different task in addition to the main one they ask for, which is it? Choose none when there is only one task.',
+      instructions: 'Read asr.text. The caller states one main request. Does the same utterance also ask for a second, separate task on top of it, joined by words such as and also, as well, another thing, or while I have you? If so, which is the extra task? Choose none when everything they say is part of one request.',
       criteria,
     },
   };
 }
 
-/** Spec final-confirm §6: which detail the caller names when asked what to change. Asked only while the summary is pending. */
-function formConfirmation(): QuestionMap {
+/**
+ * Fixed presentation order for changeSlot's criteria: this question has no "none" bias toward
+ * any one slot, so quiet answers pick none regardless of order. The order is pinned anyway so the
+ * wire order, and any option-order bias in the model's answer, stay stable across runs.
+ */
+const CHANGE_SLOT_ORDER: readonly SlotId[] = ['provider', 'date', 'memberId'];
+
+const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
+  provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',
+  date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong',
+  memberId: 'They name the member ID or member number as the thing to change, without saying the digits',
+};
+
+/**
+ * Spec final-confirm §6: which detail the caller names when asked what to change. Criteria are
+ * disjoint from value-giving answers (naming a detail, not giving its new value) and limited to
+ * the slots on the current form. Asked only while the summary is pending.
+ */
+function formConfirmation(form: FormId): QuestionMap {
+  const criteria: Record<string, string> = {};
+  for (const id of CHANGE_SLOT_ORDER) if (FORMS[form].slots.includes(id)) criteria[id] = CHANGE_SLOT_TEXT[id];
+  criteria.none = 'They say a new value rather than naming which detail is wrong, such as a weekday, a doctor name, or a string of digits; or they only answer yes or no; or they name nothing';
   return {
     changeSlot: {
       type: 'choice',
       instructions: 'Read asr.text and node.promptJustPlayed. The caller was read a summary of their appointment and asked to confirm it, or asked what to change. Which detail do they name as wrong or ask to change?',
-      criteria: {
-        provider: 'The doctor or provider, as in the doctor, not Dr. Chen, or a different doctor',
-        date: 'The day or date, as in the day, not Tuesday, or a different day',
-        memberId: 'The member ID or member number',
-        none: 'They give a new value instead of naming a detail, answer yes or no, or name nothing',
-      },
+      criteria,
     },
   };
 }
@@ -171,7 +191,7 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   if (session.form) Object.assign(q, inForm());
   if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
-  if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation());
+  if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation(session.pendingConfirmation.form));
   if (session.menuActive) Object.assign(q, menu());
   return q;
 }

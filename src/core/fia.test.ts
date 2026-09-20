@@ -122,6 +122,12 @@ describe('applyDtmf', () => {
     expect(applyDtmf(s, '0922', ctx())).toEqual({ kind: 'no_target' });
     expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
   });
+
+  it('ignores the confirm target (the confirm keypad is handled in turn.ts)', () => {
+    const s = setForm(newSession('s', 0), 'cancel');
+    s.promptedFor = 'confirm';
+    expect(applyDtmf(s, '1', ctx())).toEqual({ kind: 'no_target' });
+  });
 });
 
 describe('pendingSlotConfirmation', () => {
@@ -170,6 +176,18 @@ describe('fillSlots member id policy', () => {
     const s = setForm(newSession('s', 0), 'cancel');
     const r = fillSlots(s, answers, spoken, [spec]);
     expect(r.acks).toEqual([]);
+    expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
+  });
+
+  // Contrasts with the summary-policy test above: passing a spec whose spokenConfirm differs from
+  // SLOTS.memberId's global 'always' policy must change fillSlots' behavior, proving it reads the
+  // policy off the spec it is given rather than off the global SLOTS registry (the summary-policy
+  // test alone would still pass against code that read SLOTS[spec.id].spokenConfirm instead).
+  it('fills a by-confidence-policy spec with an implicit ack and stays unconfirmed', () => {
+    const spec = { ...SLOTS.memberId, spokenConfirm: 'by-confidence' as const };
+    const s = setForm(newSession('s', 0), 'cancel');
+    const r = fillSlots(s, answers, spoken, [spec]);
+    expect(r.acks).toEqual([{ promptId: 'ack_memberId', vars: { memberId: '4471 8293' } }]);
     expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
   });
 });

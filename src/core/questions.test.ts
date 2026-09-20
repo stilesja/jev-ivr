@@ -71,6 +71,12 @@ describe('question redesign', () => {
   it('pins every question the model sees inside a form (a diff here re-keys the cassette)', () => {
     expect(buildQuestions(setForm(newSession('s', 0), 'reschedule'), ctx)).toMatchSnapshot();
   });
+  it('pins every question the model sees at the summary (a diff here re-keys the cassette)', () => {
+    const s = newSession('s', 0);
+    setForm(s, 'reschedule');
+    s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
+    expect(buildQuestions(s, ctx)).toMatchSnapshot();
+  });
 
   it('asks which detail to change only while a form confirmation is pending', () => {
     const s = newSession('s', 0);
@@ -83,6 +89,21 @@ describe('question redesign', () => {
     expect(q.confirmsYes).toBeDefined();
     expect(q.provider).toBeDefined();
     expect(q.dateMode).toBeDefined();
+  });
+
+  it('limits changeSlot to the slots on the pending form (cancel has no date)', () => {
+    const s = newSession('s', 0);
+    setForm(s, 'cancel');
+    s.pendingConfirmation = { target: 'form', form: 'cancel', attempts: 0 };
+    const q = buildQuestions(s, ctx);
+    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['provider', 'memberId', 'none']);
+  });
+
+  it('does not ask changeSlot for a slot-target confirmation', () => {
+    const s = newSession('s', 0);
+    setForm(s, 'cancel');
+    s.pendingConfirmation = { target: 'slot', slot: 'memberId', value: '44718293', display: '4471 8293' };
+    expect(buildQuestions(s, ctx).changeSlot).toBeUndefined();
   });
 
   it('asks for a second task only outside a form', () => {

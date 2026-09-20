@@ -25,7 +25,7 @@ export interface TurnState {
   caller: { verified: boolean; openAppointment: boolean; priorCalls: PriorCallsBucket };
   asr: { text: string; isFinal: boolean; bargeIn: boolean; dtmf: string | null };
   candidateSpans: string[];
-  /** the model sees the slot id where the session stores a discriminant */
+  /** the model sees 'intent', 'form', or the slot id */
   pendingConfirmation: { target: 'intent' | 'form' | SlotId; value: string } | null;
 }
 
