@@ -113,6 +113,86 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Is that right?",
   },
   {
+    "id": "confirm_schedule.0",
+    "note": "open",
+    "text": "You'd be booked with",
+  },
+  {
+    "id": "confirm_schedule.1",
+    "note": "open",
+    "text": "on",
+  },
+  {
+    "id": "confirm_schedule.2",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "confirm_schedule.3",
+    "note": "closed",
+    "text": "Shall I book that?",
+  },
+  {
+    "id": "confirm_reschedule.0",
+    "note": "open",
+    "text": "Your appointment with",
+  },
+  {
+    "id": "confirm_reschedule.1",
+    "note": "open",
+    "text": "would move to",
+  },
+  {
+    "id": "confirm_reschedule.2",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "confirm_reschedule.3",
+    "note": "closed",
+    "text": "Shall I make that change?",
+  },
+  {
+    "id": "confirm_cancel.0",
+    "note": "open",
+    "text": "Your appointment with",
+  },
+  {
+    "id": "confirm_cancel.1",
+    "note": "open",
+    "text": "would be cancelled, member ID",
+  },
+  {
+    "id": "confirm_cancel.2",
+    "note": "closed",
+    "text": "Shall I cancel it?",
+  },
+  {
+    "id": "confirm_appointment_details.0",
+    "note": "open",
+    "text": "That's your appointment with",
+  },
+  {
+    "id": "confirm_appointment_details.1",
+    "note": "open",
+    "text": "member ID",
+  },
+  {
+    "id": "confirm_appointment_details.2",
+    "note": "closed",
+    "text": "Is that the one?",
+  },
+  {
+    "id": "ask_change.0",
+    "note": "closed",
+    "text": "What should I change?",
+  },
+  {
+    "id": "confirm_dtmf.0",
+    "note": "closed",
+    "text": "Press 1 to confirm, or 2 to change something.",
+  },
+  {
     "id": "disambiguate_intent.0",
     "note": "open",
     "text": "Do you want to",
