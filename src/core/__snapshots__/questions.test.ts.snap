@@ -490,6 +490,18 @@ exports[`question redesign > pins every question the model sees outside a form (
     "instructions": "Read asr.text and history. Is the caller repeating or rewording a request because the previous turn's outcome in history shows the system did not act on it?",
     "type": "noul",
   },
+  "secondIntent": {
+    "criteria": {
+      "billing": "Asks about a bill, charge, payment, or insurance coverage",
+      "cancel": "Wants to cancel an existing appointment",
+      "confirm_appointment": "Wants to check or confirm the details of an existing appointment",
+      "none": "The caller asks for one task only, or for nothing",
+      "reschedule": "Wants to move an existing appointment to a different day",
+      "schedule_new": "Wants to book a new appointment that does not exist yet",
+    },
+    "instructions": "Read asr.text. If the caller asks for a second, different task in addition to the main one they ask for, which is it? Choose none when there is only one task.",
+    "type": "choice",
+  },
   "spokeAMenuNumber": {
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
     "type": "noul",

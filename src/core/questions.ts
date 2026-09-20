@@ -1,5 +1,5 @@
 import type { QuestionMap } from '../jev/types';
-import { INTENTS, INTENT_CRITERIA, INTENT_MENU } from '../domain/intents';
+import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU } from '../domain/intents';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import type { Session } from './session';
 
@@ -121,6 +121,36 @@ function inForm(): QuestionMap {
   };
 }
 
+/** Spec final-confirm §4: a second task named on the opening utterance. Asked only outside a form. */
+function noForm(): QuestionMap {
+  const criteria: Record<string, string> = {};
+  for (const i of FORM_INTENTS) criteria[i] = INTENT_CRITERIA[i];
+  criteria.none = 'The caller asks for one task only, or for nothing';
+  return {
+    secondIntent: {
+      type: 'choice',
+      instructions: 'Read asr.text. If the caller asks for a second, different task in addition to the main one they ask for, which is it? Choose none when there is only one task.',
+      criteria,
+    },
+  };
+}
+
+/** Spec final-confirm §6: which detail the caller names when asked what to change. Asked only while the summary is pending. */
+function formConfirmation(): QuestionMap {
+  return {
+    changeSlot: {
+      type: 'choice',
+      instructions: 'Read asr.text and node.promptJustPlayed. The caller was read a summary of their appointment and asked to confirm it, or asked what to change. Which detail do they name as wrong or ask to change?',
+      criteria: {
+        provider: 'The doctor or provider, as in the doctor, not Dr. Chen, or a different doctor',
+        date: 'The day or date, as in the day, not Tuesday, or a different day',
+        memberId: 'The member ID or member number',
+        none: 'They give a new value instead of naming a detail, answer yes or no, or name nothing',
+      },
+    },
+  };
+}
+
 function menu(): QuestionMap {
   const criteria: Record<string, string | null> = {};
   for (const { digit } of INTENT_MENU) criteria[digit] = null;
@@ -139,7 +169,9 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   const specs = session.form ? slotsFor(session.form) : allSlots();
   for (const spec of specs) Object.assign(q, spec.questions(ctx));
   if (session.form) Object.assign(q, inForm());
+  if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
+  if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation());
   if (session.menuActive) Object.assign(q, menu());
   return q;
 }

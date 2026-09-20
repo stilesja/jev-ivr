@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildQuestions, ALWAYS_ON_IDS } from './questions';
 import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
+import { FORM_INTENTS } from '../domain/intents';
 import type { SlotContext } from '../domain/slots';
 
 const ctx: SlotContext = { text: 'hi', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
@@ -69,5 +70,27 @@ describe('question redesign', () => {
   });
   it('pins every question the model sees inside a form (a diff here re-keys the cassette)', () => {
     expect(buildQuestions(setForm(newSession('s', 0), 'reschedule'), ctx)).toMatchSnapshot();
+  });
+
+  it('asks which detail to change only while a form confirmation is pending', () => {
+    const s = newSession('s', 0);
+    setForm(s, 'reschedule');
+    expect(buildQuestions(s, ctx).changeSlot).toBeUndefined();
+    s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
+    const q = buildQuestions(s, ctx);
+    expect(q.changeSlot?.type).toBe('choice');
+    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['provider', 'date', 'memberId', 'none']);
+    expect(q.confirmsYes).toBeDefined();
+    expect(q.provider).toBeDefined();
+    expect(q.dateMode).toBeDefined();
+  });
+
+  it('asks for a second task only outside a form', () => {
+    const s = newSession('s', 0);
+    const q = buildQuestions(s, ctx);
+    expect(q.secondIntent?.type).toBe('choice');
+    expect(Object.keys((q.secondIntent as { criteria: Record<string, unknown> }).criteria)).toEqual([...FORM_INTENTS, 'none']);
+    setForm(s, 'reschedule');
+    expect(buildQuestions(s, ctx).secondIntent).toBeUndefined();
   });
 });
