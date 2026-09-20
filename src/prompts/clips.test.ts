@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
-import { discoverClips, recordableClips, vocabularyClipId } from './clips';
+import { clipVersions, discoverClips, recordableClips, vocabularyClipId } from './clips';
 
 describe('discoverClips', () => {
   let dir: string;
@@ -32,6 +32,28 @@ describe('discoverClips', () => {
   it('ignores a subdirectory even when its name looks like a clip file', () => {
     mkdirSync(join(dir, 'sub.wav'));
     expect(discoverClips(dir).size).toBe(0);
+  });
+});
+
+describe('clipVersions', () => {
+  let dir: string;
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'audio-')); });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('appends a content-hash query string, distinct per file, that changes when the file changes', () => {
+    writeFileSync(join(dir, 'greeting.0.wav'), 'hello');
+    writeFileSync(join(dir, 'goodbye.0.wav'), 'goodbye');
+    const clips = discoverClips(dir);
+    const versions = clipVersions(dir, clips);
+    const greeting = versions.get('greeting.0');
+    const goodbye = versions.get('goodbye.0');
+    expect(greeting).toMatch(/^greeting\.0\.wav\?v=[0-9a-f]{10}$/);
+    expect(goodbye).toMatch(/^goodbye\.0\.wav\?v=[0-9a-f]{10}$/);
+    expect(greeting).not.toBe(goodbye);
+
+    writeFileSync(join(dir, 'greeting.0.wav'), 'hello, rewritten');
+    const rewritten = clipVersions(dir, discoverClips(dir)).get('greeting.0');
+    expect(rewritten).not.toBe(greeting);
   });
 });
 

@@ -318,6 +318,9 @@ generated before this existed.
 The server discovers clips once at startup (restart it after adding one),
 serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that
 segment only, and adjacent TTS segments are merged so prosody survives.
+Each clip URL carries a `?v=<hash>` content hash of the file's bytes, so a
+clip regenerated under the same filename gets a new URL and is never played
+back from Twilio's day-long cache of the old one.
 Clips are generated with Fish Audio's `s2.1-pro` model and the voice named
 in `FISH_VOICE`. Set `FISH_VOICE` to the voice's id from its page URL
 (`fish.audio/m/<id>/`), not its title: Fish's library is public and titles

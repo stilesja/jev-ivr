@@ -65,7 +65,9 @@ export function playbackEstimateMs(frames: readonly OutboundFrame[], durations: 
   for (const f of frames) {
     if (f.type === 'text') total += textEstimateMs(f.token);
     else if (f.type === 'play') {
-      const name = f.source.slice(f.source.lastIndexOf('/') + 1);
+      // A content-hash query string (clipVersions) is part of the URL, not the filename the
+      // duration map is keyed by, so it is stripped before the lookup.
+      const name = f.source.slice(f.source.lastIndexOf('/') + 1).replace(/\?.*$/, '');
       total += (durations.get(name) ?? UNKNOWN_CLIP_MS) * Math.max(1, f.loop);
     }
   }

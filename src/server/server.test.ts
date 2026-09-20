@@ -93,15 +93,24 @@ describe('server end to end', () => {
     relay.setup('CA1');
     await relay.waitForMessages(1);
     // No trailing text frame: the whole greeting is one recorded clip, so the turn produces
-    // exactly this one play frame.
+    // exactly this one play frame. The source carries a content-hash query string (clipVersions)
+    // so a regenerated clip under the same filename is never served from Twilio's cache.
     expect(relay.received).toEqual([
-      { type: 'play', source: 'https://localhost/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true },
+      {
+        type: 'play',
+        source: expect.stringMatching(/^https:\/\/localhost\/audio\/greeting\.0\.wav\?v=[0-9a-f]{10}$/),
+        loop: 1,
+        preemptible: false,
+        interruptible: true,
+      },
     ]);
     relay.assertKnownTypes();
     expect(logs.some((l) => l.includes('audio: 1 of') && l.includes('clips present'))).toBe(true);
-    // The renderer's audioBase points here, so the clip it just referenced must actually be
-    // reachable at that URL's path.
-    const clip = await fetch(`${base}/audio/greeting.0.wav`);
+    // The renderer's audioBase points here, so the clip it just referenced (query string and
+    // all) must actually be reachable at that URL's path.
+    const source = relay.received[0]?.source;
+    if (typeof source !== 'string') throw new Error('expected a play frame with a source');
+    const clip = await fetch(source.replace('https://localhost', base));
     expect(clip.status).toBe(200);
     expect(clip.headers.get('content-type')).toBe('audio/wav');
   });
@@ -280,7 +289,10 @@ describe('server end to end', () => {
     const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
     relay.setup('CA12');
     await relay.waitForMessages(1);
-    expect(relay.received[0]).toMatchObject({ type: 'play', source: 'https://localhost/audio/greeting.0.wav' });
+    expect(relay.received[0]).toMatchObject({
+      type: 'play',
+      source: expect.stringMatching(/^https:\/\/localhost\/audio\/greeting\.0\.wav\?v=[0-9a-f]{10}$/),
+    });
     // Nothing is sent from here on: the next frames are the server's own doing.
     const texts = await relay.waitForTexts(2);
     expect(texts[0]).toBe("I didn't hear anything.");

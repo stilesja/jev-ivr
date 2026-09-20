@@ -16,7 +16,7 @@ import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
-import { discoverClips, recordableClips } from '../prompts/clips';
+import { clipVersions, discoverClips, recordableClips } from '../prompts/clips';
 import { clipDurations } from '../prompts/playback';
 import { coverage, readRecorded } from '../prompts/sheet';
 
@@ -83,7 +83,9 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   }
   const noInputMs = overrides.noInputMs ?? config.noInputMs;
   log(noInputMs > 0 ? `no-input: ${noInputMs} ms after playback (${durations.size} clip durations)` : 'no-input: off');
-  const render = { clips, audioBase: `https://${config.publicHost}/audio/` };
+  // The coverage/count logic above stays on the unversioned map; only what the caller actually
+  // fetches carries the content hash, so a regenerated clip is never served from Twilio's cache.
+  const render = { clips: clipVersions(config.audioDir, clips), audioBase: `https://${config.publicHost}/audio/` };
 
   const store = new SessionStore(
     (callSid) => {

@@ -70,4 +70,12 @@ describe('clipDurations and playbackEstimateMs', () => {
     ];
     expect(playbackEstimateMs(frames, d)).toBe(2000 + 800 + 1500);
   });
+  it('finds a clip duration through a content-hash query string on the source', () => {
+    writeFileSync(join(dir, 'greeting.0.wav'), wav(88200));
+    const d = clipDurations(dir);
+    const frames = [
+      { type: 'play' as const, source: 'https://h/audio/greeting.0.wav?v=abc1234567', loop: 1, preemptible: false, interruptible: true },
+    ];
+    expect(playbackEstimateMs(frames, d)).toBe(2000);
+  });
 });

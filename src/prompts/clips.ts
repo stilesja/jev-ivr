@@ -1,4 +1,6 @@
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 import manifest from './manifest.json';
 import { isPauseOnly, segmentsOf, stripLeadingPause, VOCAB_VARS } from './segments';
 import { PROVIDERS } from '../domain/slots/provider';
@@ -29,6 +31,22 @@ export function discoverClips(dir: string): Map<string, string> {
     const prev = out.get(id);
     if (prev) throw new Error(`clip ${id} is recorded twice: ${prev} and ${name}`);
     out.set(id, name);
+  }
+  return out;
+}
+
+/**
+ * clip id → filename with a `?v=<hash>` suffix, the first 10 hex characters of the sha1 of the
+ * file's bytes. Twilio's media fetcher caches a clip URL for a day (`cache-control: public,
+ * max-age=86400`); when a clip is regenerated under the same filename, the old URL would still
+ * serve the stale cached recording for up to a day. Content-hashing the URL means a changed
+ * file is a new URL, so the cache is never stale.
+ */
+export function clipVersions(dir: string, clips: Map<string, string>): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [id, filename] of clips) {
+    const hash = createHash('sha1').update(readFileSync(join(dir, filename))).digest('hex').slice(0, 10);
+    out.set(id, `${filename}?v=${hash}`);
   }
   return out;
 }
