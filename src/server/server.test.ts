@@ -284,7 +284,8 @@ describe('server end to end', () => {
     // Nothing is sent from here on: the next frames are the server's own doing.
     const texts = await relay.waitForTexts(2);
     expect(texts[0]).toBe("I didn't hear anything.");
-    expect(texts[1]).toContain("Sorry, I didn't catch that.");
+    // The first ladder rung is the plain question, not the nomatch_open apology.
+    expect(texts[1]).toBe('How can I help you today?');
     expect(running.store.get('CA12')?.session.intentAttempts).toBe(1);
     relay.assertKnownTypes();
   });

@@ -213,6 +213,9 @@ No input: if the caller says and presses nothing after a prompt finishes
 playing, the server treats the silence as an unanswered turn on whatever was
 just asked — the same ladder a garbled answer walks: "I didn't hear
 anything." then the question again, then the keypad offer, then an agent.
+That first re-ask is the plain question, not the "Sorry, ..." retry text: the
+apology is reserved for a turn where the caller said something that missed,
+not for one where nothing was said at all.
 The wait is `NO_INPUT_MS` (default 7 seconds) after the prompt's estimated
 playback time — from the clip's WAV header for a recorded clip, or 2.5 words
 per second for TTS text — and is approximate by design, so a wrong estimate
@@ -341,7 +344,7 @@ as quiet as possible.
    server are not actually connected, which is easier to see here than on a call.
 4. Call the number. You should hear the greeting within a second.
 5. Call again and stay quiet after the greeting: expect "I didn't hear
-   anything." then the open reprompt, then the keypad menu, then the
+   anything." then the question again, then the keypad menu, then the
    transfer to `HANDOFF_NUMBER` — the same ladder step 15 walks by saying
    something unrecognized instead. Partial results are on: watch the server
    log for the one-per-connection "dropped a non-final prompt" line while you

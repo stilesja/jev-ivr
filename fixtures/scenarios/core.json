@@ -1357,7 +1357,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "nomatch_open",
+      "promptId": "ask_intent",
       "form": null,
       "text": "I didn't hear anything."
     }

@@ -1099,7 +1099,7 @@
   "silence-greeting-reask": {
     "id": "silence-greeting-reask",
     "decision": "prompt",
-    "promptId": "nomatch_open",
+    "promptId": "ask_intent",
     "acks": [
       "no_input"
     ],

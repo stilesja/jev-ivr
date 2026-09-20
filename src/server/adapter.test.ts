@@ -389,7 +389,8 @@ describe('no-input timer', () => {
 
   const GREETING = promptText('greeting', {});
   const NO_INPUT = promptText('no_input', {});
-  const NOMATCH_OPEN = promptText('nomatch_open', {});
+  // A silence turn's first ladder rung re-asks the plain question, not the nomatch_open apology.
+  const ASK_INTENT = promptText('ask_intent', {});
   const DTMF_MENU = promptText('nomatch_dtmf_menu', {});
   const MAX_ATTEMPTS = promptText('handoff_max_attempts', {});
   const WAIT = 100;
@@ -425,7 +426,7 @@ describe('no-input timer', () => {
     expect(texts(sock)).toEqual([GREETING]);
     await vi.advanceTimersByTimeAsync(1);
     // The ack goes out as its own frame, ahead of the question the ladder re-asks.
-    expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+    expect(texts(sock)).toEqual([GREETING, NO_INPUT, ASK_INTENT]);
     expect(d.store.get('CA1')?.session.intentAttempts).toBe(1);
     expect(silenceLines(d.dir)).toHaveLength(1);
   });
@@ -438,7 +439,7 @@ describe('no-input timer', () => {
     await vi.advanceTimersByTimeAsync(2000 + WAIT - 1);
     expect(texts(sock)).toEqual([]);
     await vi.advanceTimersByTimeAsync(1);
-    expect(texts(sock)).toEqual([NO_INPUT, NOMATCH_OPEN]);
+    expect(texts(sock)).toEqual([NO_INPUT, ASK_INTENT]);
   });
 
   const partial = (t: string) => JSON.stringify({ type: 'prompt', voicePrompt: t, lang: 'en-US', last: false });
@@ -486,7 +487,7 @@ describe('no-input timer', () => {
       await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 1);
       expect(texts(sock)).toEqual([GREETING]);
       await vi.advanceTimersByTimeAsync(1);
-      expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+      expect(texts(sock)).toEqual([GREETING, NO_INPUT, ASK_INTENT]);
       expect(d.store.get('CA1')?.session.intentAttempts).toBe(1);
     });
   }
@@ -503,8 +504,8 @@ describe('no-input timer', () => {
     await vi.advanceTimersByTimeAsync(textEstimateMs(promptText('ask_memberId', {})) + WAIT - 1);
     expect(texts(sock)).toHaveLength(2);
     await vi.advanceTimersByTimeAsync(1);
-    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_memberId_retry', {})]);
-    // Silence abandons the half-typed ID rather than carrying it into the retry.
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_memberId', {})]);
+    // Silence abandons the half-typed ID rather than carrying it into the plain re-ask.
     expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('');
   });
 
@@ -526,7 +527,7 @@ describe('no-input timer', () => {
     expect(texts(sock).at(-1)).toBe(TURN_ERROR_TEXT);
     await vi.advanceTimersByTimeAsync(textEstimateMs(TURN_ERROR_TEXT) + WAIT);
     // "Please say that again" is a question; a caller who says nothing after it walks the ladder.
-    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, NOMATCH_OPEN]);
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, ASK_INTENT]);
   });
 
   it('estimates on the frames as they went out, digit spacing included', async () => {
@@ -557,7 +558,7 @@ describe('no-input timer', () => {
     await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 1);
     expect(texts(sock2)).toEqual([GREETING]);
     await vi.advanceTimersByTimeAsync(1);
-    expect(texts(sock2)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+    expect(texts(sock2)).toEqual([GREETING, NO_INPUT, ASK_INTENT]);
     // The re-ask went to the reconnected socket only; the old one is long gone.
     expect(silenceLines(d.dir)).toHaveLength(1);
   });
@@ -573,7 +574,7 @@ describe('no-input timer', () => {
     await vi.advanceTimersByTimeAsync(10_000 + WAIT - 1_000 - 1);
     expect(texts(sock)).toEqual([]);
     await vi.advanceTimersByTimeAsync(1);
-    expect(texts(sock)).toEqual([NO_INPUT, NOMATCH_OPEN]);
+    expect(texts(sock)).toEqual([NO_INPUT, ASK_INTENT]);
   });
 
   it('stops re-arming once turns keep throwing, and starts again when one works', async () => {
@@ -702,9 +703,9 @@ describe('no-input timer', () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
     await vi.advanceTimersByTimeAsync(GREETING_DEADLINE);
-    expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+    expect(texts(sock)).toEqual([GREETING, NO_INPUT, ASK_INTENT]);
 
-    await vi.advanceTimersByTimeAsync(textEstimateMs(NO_INPUT) + textEstimateMs(NOMATCH_OPEN) + WAIT);
+    await vi.advanceTimersByTimeAsync(textEstimateMs(NO_INPUT) + textEstimateMs(ASK_INTENT) + WAIT);
     expect(texts(sock).slice(-2)).toEqual([NO_INPUT, DTMF_MENU]);
 
     await vi.advanceTimersByTimeAsync(textEstimateMs(NO_INPUT) + textEstimateMs(DTMF_MENU) + WAIT);

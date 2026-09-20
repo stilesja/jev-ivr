@@ -11,6 +11,7 @@
   "ask_date.0": "[calm]",
   "ask_date_dtmf.0": "[calm]",
   "ask_date_retry.0": "[calm]",
+  "ask_intent.0": "[calm]",
   "ask_memberId.0": "[calm]",
   "ask_memberId_dtmf.0": "[calm]",
   "ask_memberId_retry.0": "[calm]",

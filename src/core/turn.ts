@@ -192,7 +192,12 @@ function promptedTarget(s: Session): 'intent' | 'confirm' | SlotId {
   return s.promptedFor ?? 'intent';
 }
 
-function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thresholds, acks: Ack[] = []): Decision {
+/**
+ * `plain` is true only for a silence turn's first rung: the caller never heard anything to be
+ * unintelligible about, so the re-ask is the plain question, not the "Sorry, ..." retry text
+ * (`nomatch_open`/`ask_<slot>_retry`), which stays reserved for an answer that missed.
+ */
+function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thresholds, acks: Ack[] = [], plain = false): Decision {
   // A guard, not a path anything takes today: `nomatch` re-asks a pending confirmation before it
   // gets here and `proceed` maps a confirm target to a slot. Should a confirm turn reach it, the
   // summary's own ladder owns the attempt rather than the intent's.
@@ -205,12 +210,14 @@ function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thres
   if (step === 'agent') return handoff(s, 'max-attempts', acks);
   if (target === 'intent') {
     if (step === 'dtmf') return { ...prompt('nomatch_dtmf_menu', 'intent', {}, acks, INTENT_MENU.map((m) => m.digit)), menu: true };
+    if (plain) return prompt('ask_intent', 'intent', {}, acks);
     return prompt('nomatch_open', 'intent', {}, acks);
   }
   // A slot narrowed to a window re-asks the window question, not the generic retry:
   // "next week. Which day works for you?" is what the caller failed to answer.
   const window = s.slots[target].window;
   if (step === 'open' && window) return askSlot(target, window, acks);
+  if (step === 'open' && plain) return askSlot(target, null, acks);
   return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
 }
 
@@ -262,7 +269,7 @@ function handleSilence(s: Session, t: Thresholds): Decision {
   s.dtmfBuffer = '';
   if (s.pendingConfirmation) return reaskConfirmation(s, t, [NO_INPUT_ACK]);
   // `promptedFor === 'confirm'` without a pending confirmation cannot happen; the fallback is defensive.
-  return failAttempt(s, s.promptedFor === 'confirm' ? 'intent' : s.promptedFor, t, [NO_INPUT_ACK]);
+  return failAttempt(s, s.promptedFor === 'confirm' ? 'intent' : s.promptedFor, t, [NO_INPUT_ACK], true);
 }
 
 /** After slots changed: disambiguate, ask the next slot, or complete. */

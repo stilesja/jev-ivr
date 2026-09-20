@@ -36,6 +36,6 @@ describe('runTurn trace source', () => {
     expect(run.response).toBeNull();
     expect(run.record.source).toBe('silence');
     expect(run.record.questions).toBeNull();
-    expect(run.record.decision).toMatchObject({ kind: 'prompt', promptId: 'nomatch_open' });
+    expect(run.record.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_intent' });
   });
 });

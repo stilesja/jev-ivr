@@ -785,9 +785,9 @@ describe('final confirm', () => {
  * `no_input` ack in front. `started()` is this file's "after the greeting" helper.
  */
 describe('silence', () => {
-  it('re-asks the intent prompt with the no_input ack, then the keypad menu, then hands off', () => {
+  it('re-asks the plain intent question on silence (not the nomatch_open apology), then the keypad menu, then hands off', () => {
     const one = resolve(started(), silenceFrame(), null, tc);
-    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'nomatch_open', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_intent', acks: [{ promptId: 'no_input', vars: {} }] });
     expect(one.session.intentAttempts).toBe(1);
     expect(one.session.history.at(-1)).toMatchObject({ intent: 'silence' });
     const two = resolve(one.session, silenceFrame(), null, tc);
@@ -810,13 +810,22 @@ describe('silence', () => {
     expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts', acks: [{ promptId: 'no_input', vars: {} }] });
   });
 
-  it('re-asks a slot prompt and clears a half-typed keypad buffer', () => {
+  it('re-asks the plain slot question on silence (not the ask_memberId_retry apology), then the keypad, and clears a half-typed keypad buffer', () => {
     const s = afterTurns(['I need to reschedule my appointment']).session; // at ask_memberId
     s.dtmfBuffer = '4471';
+    const one = resolve(s, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ promptId: 'ask_memberId', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.dtmfBuffer).toBe('');
+    expect(one.session.slots.memberId.attempts).toBe(1);
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ promptId: 'ask_memberId_dtmf', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  it('re-asks a pending window question on silence, unaffected by the plain-question change since the window branch already ran first', () => {
+    const s = afterTurns([...HAPPY, 'no, next week']).session; // date narrowed to a window, not yet answered
+    expect(s.promptedFor).toBe('date');
     const r = resolve(s, silenceFrame(), null, tc);
-    expect(r.decision).toMatchObject({ promptId: 'ask_memberId_retry', acks: [{ promptId: 'no_input', vars: {} }] });
-    expect(r.session.dtmfBuffer).toBe('');
-    expect(r.session.slots.memberId.attempts).toBe(1);
+    expect(r.decision).toMatchObject({ promptId: 'date_narrow_window', acks: [{ promptId: 'no_input', vars: {} }] });
   });
 
   it('walks the summary ladder', () => {
