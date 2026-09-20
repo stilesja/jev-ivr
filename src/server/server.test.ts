@@ -19,6 +19,18 @@ afterEach(async () => {
 /** Shaped like a minted token (32 hex), but never minted: the upgrade itself must refuse it. */
 const UNMINTED_TOKEN = 'f'.repeat(32);
 
+/** A playable 8 kHz mono 16-bit PCM WAV of the given length, so clipDurations can measure it. */
+function wavOfMs(ms: number, rate = 8000): Buffer {
+  const bytesPerSample = 2;
+  const data = Math.round((ms / 1000) * rate) * bytesPerSample;
+  const b = Buffer.alloc(44 + data);
+  b.write('RIFF', 0); b.writeUInt32LE(36 + data, 4); b.write('WAVE', 8);
+  b.write('fmt ', 12); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24); b.writeUInt32LE(rate * bytesPerSample, 28); b.writeUInt16LE(bytesPerSample, 32); b.writeUInt16LE(16, 34);
+  b.write('data', 36); b.writeUInt32LE(data, 40);
+  return b;
+}
+
 function makeConfig(extra: Record<string, string> = {}) {
   const traceDir = mkdtempSync(join(tmpdir(), 'server-'));
   tempDirs.push(traceDir);
@@ -81,15 +93,24 @@ describe('server end to end', () => {
     relay.setup('CA1');
     await relay.waitForMessages(1);
     // No trailing text frame: the whole greeting is one recorded clip, so the turn produces
-    // exactly this one play frame.
+    // exactly this one play frame. The source carries a content-hash query string (clipVersions)
+    // so a regenerated clip under the same filename is never served from Twilio's cache.
     expect(relay.received).toEqual([
-      { type: 'play', source: 'https://localhost/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true },
+      {
+        type: 'play',
+        source: expect.stringMatching(/^https:\/\/localhost\/audio\/greeting\.0\.wav\?v=[0-9a-f]{10}$/),
+        loop: 1,
+        preemptible: false,
+        interruptible: true,
+      },
     ]);
     relay.assertKnownTypes();
     expect(logs.some((l) => l.includes('audio: 1 of') && l.includes('clips present'))).toBe(true);
-    // The renderer's audioBase points here, so the clip it just referenced must actually be
-    // reachable at that URL's path.
-    const clip = await fetch(`${base}/audio/greeting.0.wav`);
+    // The renderer's audioBase points here, so the clip it just referenced (query string and
+    // all) must actually be reachable at that URL's path.
+    const source = relay.received[0]?.source;
+    if (typeof source !== 'string') throw new Error('expected a play frame with a source');
+    const clip = await fetch(source.replace('https://localhost', base));
     expect(clip.status).toBe(200);
     expect(clip.headers.get('content-type')).toBe('audio/wav');
   });
@@ -252,6 +273,33 @@ describe('server end to end', () => {
     const closed = settled as { code: number; reason: string };
     expect(closed.code).toBe(1000);
     expect(closed.reason).toBe('end grace elapsed');
+  });
+
+  it('re-asks on its own when the caller says nothing after the greeting', async () => {
+    // A real 200 ms WAV, so the whole greeting is one recorded clip and the wait is that clip's
+    // measured length plus the configured 50 ms - the clipDurations path, end to end, on real timers.
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    tempDirs.push(audioDir);
+    writeFileSync(join(audioDir, 'greeting.0.wav'), wavOfMs(200));
+    const { config } = makeConfig({ AUDIO_DIR: audioDir });
+    const logs: string[] = [];
+    running = await startServer(config, { log: (line) => logs.push(line), noInputMs: 50 });
+    expect(logs.some((l) => l === 'no-input: 50 ms after playback (1 clip durations)')).toBe(true);
+    const token = running.tokens.mint('CA12');
+    const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
+    relay.setup('CA12');
+    await relay.waitForMessages(1);
+    expect(relay.received[0]).toMatchObject({
+      type: 'play',
+      source: expect.stringMatching(/^https:\/\/localhost\/audio\/greeting\.0\.wav\?v=[0-9a-f]{10}$/),
+    });
+    // Nothing is sent from here on: the next frames are the server's own doing.
+    const texts = await relay.waitForTexts(2);
+    expect(texts[0]).toBe("I didn't hear anything.");
+    // The first ladder rung is the plain question, not the nomatch_open apology.
+    expect(texts[1]).toBe('How can I help you today?');
+    expect(running.store.get('CA12')?.session.intentAttempts).toBe(1);
+    relay.assertKnownTypes();
   });
 
   it('handles dtmf and agent handoff', async () => {

@@ -10,7 +10,7 @@ describe('loadConfig', () => {
     expect(c).toMatchObject({
       port: 3000, publicHost: 'demo.ngrok.app', jevClient: 'stub', todayOverride: null,
       traceDir: 'traces', signatureCheck: true, reconnectLimit: 2, sessionTtlMs: 1_800_000,
-      sessionMaxAgeMs: 7_200_000, timezone: defaultTimeZone(),
+      sessionMaxAgeMs: 7_200_000, timezone: defaultTimeZone(), noInputMs: 7000,
     });
   });
 
@@ -83,6 +83,19 @@ describe('loadConfig', () => {
   it('describes the tts setting as default or as the configured provider and voice', () => {
     expect(describeConfig(loadConfig(base))).toContain('tts default');
     expect(describeConfig(loadConfig({ ...base, TTS_PROVIDER: 'Google', TTS_VOICE: 'en-US-Neural2-F' }))).toContain('tts Google en-US-Neural2-F');
+  });
+
+  it('defaults the no-input wait to seven seconds, takes 0 as off, and rejects a negative one', () => {
+    expect(loadConfig(base).noInputMs).toBe(7000);
+    expect(loadConfig({ ...base, NO_INPUT_MS: '250' }).noInputMs).toBe(250);
+    expect(loadConfig({ ...base, NO_INPUT_MS: '0' }).noInputMs).toBe(0);
+    expect(() => loadConfig({ ...base, NO_INPUT_MS: '-1' })).toThrow('NO_INPUT_MS');
+    expect(() => loadConfig({ ...base, NO_INPUT_MS: 'soon' })).toThrow('NO_INPUT_MS');
+  });
+
+  it('describes the no-input wait, and says off when it is disabled', () => {
+    expect(describeConfig(loadConfig(base))).toContain('no-input 7000 ms');
+    expect(describeConfig(loadConfig({ ...base, NO_INPUT_MS: '0' }))).toContain('no-input off');
   });
 
   it('rejects a PUBLIC_HOST with a path, query, or port', () => {

@@ -153,6 +153,17 @@ describe('http routes', () => {
     expect((await get_('/audio/sub%2fclip.wav')).status).toBe(404);
     expect((await get_('/audio/%E0%A4%A')).status).toBe(404);
   });
+
+  it('serves a clip when the request carries a content-hash query string', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    const base = await listen(deps({}, audioDir));
+    writeFileSync(join(audioDir, 'greeting.0.wav'), Buffer.from('RIFFdata'));
+    const res = await get(base, '/audio/greeting.0.wav?v=abc1234567');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('audio/wav');
+    expect(res.headers['cache-control']).toBe('public, max-age=86400');
+    expect(res.body.toString()).toBe('RIFFdata');
+  });
 });
 
 describe('clipName', () => {

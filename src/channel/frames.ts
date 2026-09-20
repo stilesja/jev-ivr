@@ -41,7 +41,12 @@ export interface ErrorFrame {
   description: string;
 }
 
-export type InboundFrame = SetupFrame | PromptFrame | DtmfFrame | InterruptFrame | ErrorFrame;
+/** Server-generated: the caller said and pressed nothing for the no-input wait. Never sent by Twilio. */
+export interface SilenceFrame {
+  type: 'silence';
+}
+
+export type InboundFrame = SetupFrame | PromptFrame | DtmfFrame | InterruptFrame | ErrorFrame | SilenceFrame;
 
 export interface TextFrame {
   type: 'text';
@@ -86,6 +91,10 @@ export function promptFrame(text: string, last = true): PromptFrame {
 
 export function dtmfFrames(digits: string): DtmfFrame[] {
   return [...digits].map((digit) => ({ type: 'dtmf', digit }));
+}
+
+export function silenceFrame(): SilenceFrame {
+  return { type: 'silence' };
 }
 
 export function setupFrame(sessionId: string): SetupFrame {

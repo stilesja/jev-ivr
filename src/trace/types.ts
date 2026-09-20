@@ -6,7 +6,7 @@ import type { Decision } from '../core/decision';
 import type { SlotState } from '../core/session';
 import type { SlotId } from '../domain/forms';
 
-export type TraceSource = AnswerSource | 'dtmf' | 'error' | 'none';
+export type TraceSource = AnswerSource | 'dtmf' | 'silence' | 'error' | 'none';
 
 export interface TraceTiming {
   planMs: number;

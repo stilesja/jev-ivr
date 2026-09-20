@@ -7,7 +7,7 @@ import { JevClientError, type JevClient } from '../jev/types';
 import { promptText } from '../prompts/render';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
 import type { SlotCandidate } from '../domain/slots';
-import { promptFrame, setupFrame, dtmfFrames } from '../channel/frames';
+import { promptFrame, setupFrame, dtmfFrames, silenceFrame } from '../channel/frames';
 export { runTurn, nowOf, type RunOptions, type TurnRun } from '../run/turn';
 import { runTurn, nowOf, type RunOptions, type TurnRun } from '../run/turn';
 
@@ -98,7 +98,7 @@ export async function runCorpusEntry(entry: CorpusEntry, opts: RunOptions): Prom
   return { outcome: outcomeOf(entry.id, run.result), run, setup };
 }
 
-export type ScenarioStep = { say: string; fail?: boolean; partial?: boolean } | { dtmf: string };
+export type ScenarioStep = { say: string; fail?: boolean; partial?: boolean } | { dtmf: string } | { silence: true };
 
 export interface ScenarioExpectation {
   decision: string;
@@ -138,7 +138,7 @@ export async function runScenario(scenario: Scenario, opts: RunOptions): Promise
   for (const step of scenario.steps) {
     if (session.ended) break;
     // A partial step is a non-final ASR result, which the complete gate may hold on.
-    const events = 'dtmf' in step ? dtmfFrames(step.dtmf) : [promptFrame(step.say, step.partial !== true)];
+    const events = 'dtmf' in step ? dtmfFrames(step.dtmf) : 'silence' in step ? [silenceFrame()] : [promptFrame(step.say, step.partial !== true)];
     failNext = 'say' in step && step.fail === true;
     for (const event of events) {
       last = await runTurn(session, event, o);

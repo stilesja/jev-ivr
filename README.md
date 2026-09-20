@@ -33,9 +33,11 @@ A replay re-resolves relative dates against the call's own date, taken from its
 setup line; `--today` overrides that, which is what you want when you are
 checking today's behaviour against an old recording rather than reproducing it.
 
-In the REPL, type an utterance, `dtmf:44718293` to send keypad digits, or
-`/reset` to start a new call. The corpus has 154 labeled utterances and there
-are 35 scenarios available for multi-turn testing.
+In the REPL, type an utterance, `dtmf:44718293` to send keypad digits,
+`/silence` (or an empty line) to run a silence turn — as if the caller said
+and pressed nothing — or `/reset` to start a new call. A scenario step can be
+`{ "silence": true }` for the same thing. The corpus has 188 labeled
+outcomes and there are 67 scenarios available for multi-turn testing.
 
 ## Regression
 
@@ -207,6 +209,31 @@ not where UTC has already got to. `SESSION_TTL_MS` is how long an idle call
 session is kept, `SESSION_MAX_AGE_MS` the hard cap on any one session.
 `TODAY_OVERRIDE` pins the date for a demo.
 
+No input: if the caller says and presses nothing after a prompt finishes
+playing, the server treats the silence as an unanswered turn on whatever was
+just asked — the same ladder a garbled answer walks: "I didn't hear
+anything." then the question again, then the keypad offer, then an agent.
+That first re-ask is the plain question, not the "Sorry, ..." retry text: the
+apology is reserved for a turn where the caller said something that missed,
+not for one where nothing was said at all.
+The wait is `NO_INPUT_MS` (default 7 seconds) after the prompt's estimated
+playback time — from the clip's WAV header for a recorded clip, or 2.5 words
+per second for TTS text — and is approximate by design, so a wrong estimate
+moves the wait by a second or two, not by the length of the prompt. Any
+speech, a partial result, a keypad digit, or a barge-in cancels the wait and
+starts a fresh one, so a caller who is audibly there is never cut off
+mid-thought. A fresh wait that has nothing of its own to play still runs from
+the end of the prompt that was already playing, so a cough a second into a
+long menu does not put the re-ask on top of the rest of it.
+`NO_INPUT_MS=0` disables it. The TwiML carries
+`partialPrompts="true"` for this and only this: a partial tells the server the
+caller has started speaking so the wait stops at the first syllable, but a
+turn still runs only on the final transcript. A reconnect that replays the
+last prompt starts a wait on it too. If three turns in a row throw, the
+apology is still spoken but the wait stops re-arming, so a model that is down
+cannot leave the line apologizing every few seconds; the server log says
+`N consecutive turn failures, no-input wait stopped`.
+
 ### Confirmation and multi-intent
 
 A hedged request ("maybe cancel it") is confirmed before anything happens:
@@ -291,6 +318,9 @@ generated before this existed.
 The server discovers clips once at startup (restart it after adding one),
 serves them at `https://PUBLIC_HOST/audio/<file>`, and logs coverage; any segment without a clip falls back to TTS for that
 segment only, and adjacent TTS segments are merged so prosody survives.
+Each clip URL carries a `?v=<hash>` content hash of the file's bytes, so a
+clip regenerated under the same filename gets a new URL and is never played
+back from Twilio's day-long cache of the old one.
 Clips are generated with Fish Audio's `s2.1-pro` model and the voice named
 in `FISH_VOICE`. Set `FISH_VOICE` to the voice's id from its page URL
 (`fish.audio/m/<id>/`), not its title: Fish's library is public and titles
@@ -316,43 +346,54 @@ as quiet as possible.
    `{"ok":true,"sessions":0,"retained":0}`; anything else means ngrok and the
    server are not actually connected, which is easier to see here than on a call.
 4. Call the number. You should hear the greeting within a second.
-5. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
+5. Call again and stay quiet after the greeting: expect "I didn't hear
+   anything." then the question again, then the keypad menu, then the
+   transfer to `HANDOFF_NUMBER` — the same ladder step 15 walks by saying
+   something unrecognized instead. Partial results are on: watch the server
+   log for the one-per-connection "dropped a non-final prompt" line while you
+   speak, and confirm that starting to talk during a long pause stops the
+   re-ask rather than racing it.
+6. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
    week." Expect: "What's your member ID?"
-6. Spoken ID: say the eight digits. Expect the window question on its own,
+7. Spoken ID: say the eight digits. Expect the window question on its own,
    with no readback: "next week. Which day works for you?" The member ID
-   fills silently now — it is confirmed only in the summary (step 8), not
+   fills silently now — it is confirmed only in the summary (step 9), not
    read back here.
-7. Keypad ID: on a second call, press the eight digits instead. Expect the
+8. Keypad ID: on a second call, press the eight digits instead. Expect the
    same window question, with no readback either — spoken or keyed, there is
    nothing to implicitly confirm before the summary.
-8. Say "Tuesday". Expect the summary question, with the digits spaced out
+9. Say "Tuesday". Expect the summary question, with the digits spaced out
    for TTS: "Your appointment with Dr. Chen would move to Tuesday, September
    22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?"
-9. Say "yes". Expect "Your appointment is moved." then "Goodbye.", and the
-   call ends: the server leaves the socket open after `end` so Twilio can
-   finish the queued clips, and Twilio closes it and hits `/cr-action` with
-   `SessionStatus=ended`.
-10. Call again, repeat through step 8, then say "no, Thursday" instead of
+10. Call again, repeat through step 9, then stay quiet at the summary
+    question: expect "I didn't hear anything." then the summary question
+    again, then the keypad offer ("Press 1 to confirm, or 2 to change
+    something."), then the transfer.
+11. Call again, repeat through step 9, then say "yes". Expect "Your
+    appointment is moved." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
+    finish the queued clips, and Twilio closes it and hits `/cr-action` with
+    `SessionStatus=ended`.
+12. Call again, repeat through step 9, then say "no, Thursday" instead of
     "yes". Expect the summary question again, now naming Thursday instead of
     Tuesday. Say "yes" to finish.
-11. Call again and say: "I need to reschedule my appointment with Dr.
+13. Call again and say: "I need to reschedule my appointment with Dr.
     Alvarez for next Thursday, and also I have a question about my bill."
     Expect "Sure, we'll ask about billing after this." before the member ID
     question. Give the ID, say "yes" at the summary, and expect the billing
     handoff to follow.
-12. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
-13. Call again, say "what are your hours" three times. Expect the open
+14. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
+15. Call again, say "what are your hours" three times. Expect the open
     reprompt, the keypad menu, then the transfer.
-14. Call again, get as far as the member ID question, then kill `pnpm serve`
+16. Call again, get as far as the member ID question, then kill `pnpm serve`
     (Ctrl-C) and start it again. ConversationRelay's session fails, `/cr-action`
     reconnects, and the caller hears the last prompt again. Repeat the kill more
     than `RECONNECT_LIMIT` times on one call: the next callback stops
     reconnecting, apologizes, and dials `HANDOFF_NUMBER`.
-15. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
+17. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
     and compare its decisions with `traces/<CallSid>.jsonl`.
 
 Things to note on the first real call, per the spec's open questions: whether
-`speechModel="flux"` is accepted with partial prompts off, how long Deepgram
+`speechModel="flux"` is accepted alongside partial prompts, how long Deepgram
 takes to finalize a turn, whether an interrupted prompt also arrives as a
 `prompt`, and how TTS reads the member ID and provider names.
 
@@ -373,8 +414,10 @@ takes to finalize a turn, whether an interrupted prompt also arrives as a
   URLs; there is one live token per call, replaced on every re-mint, and it expires in ten minutes, but treat those
   logs accordingly.
 - Ten unparsable inbound messages close the socket with 1007. A prompt message
-  with `last: false` is logged and dropped rather than run as a turn, since the
-  TwiML has partial prompts off.
+  with `last: false` is logged and dropped rather than run as a turn: partial
+  prompts are on so they can cancel the no-input wait, not so they can be
+  scored. The operator log says so once per connection; the frame log records
+  every one.
 - Ten consecutive unrecognized outbound messages close the socket (Twilio
   error 64105). The adapter sends only the five documented message types.
 - Signature validation needs `PUBLIC_HOST` to match the ngrok domain exactly.
@@ -391,6 +434,9 @@ takes to finalize a turn, whether an interrupted prompt also arrives as a
   file names are sanitized from the call SID, not used verbatim.
 - Frame logs contain caller phone numbers (`From`/`To`) and error stacks, so
   treat `traces/` as sensitive and don't share its contents raw.
+- Startup logs `no-input: 7000 ms after playback (N clip durations)` (the
+  default `NO_INPUT_MS`, and how many clips under `AUDIO_DIR` had a WAV
+  header the server could measure), or `no-input: off` when `NO_INPUT_MS=0`.
 
 ## Layout
 

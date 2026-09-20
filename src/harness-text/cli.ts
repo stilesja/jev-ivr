@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { realpathSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { dtmfFrames, promptFrame, setupFrame } from '../channel/frames';
+import { dtmfFrames, promptFrame, setupFrame, silenceFrame } from '../channel/frames';
 import { newSession, type Session } from '../core/session';
 import { loadCorpus } from '../jev/corpus';
 import { TraceWriter } from '../trace/writer';
@@ -91,6 +91,14 @@ async function repl(opts: RunOptions, quiet: boolean): Promise<TraceRecord[]> {
         session = run.result.session;
         records.push(run.record);
         if (run.result.decision.kind !== 'ignore') printRun(run, quiet);
+      }
+    } else if (text === '/silence' || text === '') {
+      // An empty line stands in for the caller saying nothing, same as /silence.
+      if (!session.ended) {
+        const run = await runTurn(session, silenceFrame(), opts);
+        session = run.result.session;
+        records.push(run.record);
+        printRun(run, quiet);
       }
     } else if (text) {
       if (!session.ended) {

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describeConfig, loadConfig, type ServerConfig } from './config';
 import { createRequestHandler } from './http';
 import { attachWebSocketServer } from './ws';
+import { forgetNoInput } from './adapter';
 import { SessionStore } from './sessions';
 import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
@@ -15,7 +16,8 @@ import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
-import { discoverClips, recordableClips } from '../prompts/clips';
+import { clipVersions, discoverClips, recordableClips } from '../prompts/clips';
+import { clipDurations } from '../prompts/playback';
 import { coverage, readRecorded } from '../prompts/sheet';
 
 export interface RunningServer {
@@ -34,6 +36,8 @@ export interface ServerOverrides {
   setupTimeoutMs?: number;
   /** Tests use a short grace period to prove the end-close backstop fires without waiting 30 seconds. */
   endCloseGraceMs?: number;
+  /** Tests use a short wait so a silence turn runs without sitting through the configured seven seconds. */
+  noInputMs?: number;
 }
 
 const TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -60,6 +64,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
 
   const clips = discoverClips(config.audioDir);
+  const durations = clipDurations(config.audioDir);
   let recorded: Record<string, string> | null;
   try {
     recorded = readRecorded(config.audioDir);
@@ -76,7 +81,11 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   if (cov.stale.length > 0) {
     log(`audio: ${cov.stale.length} stale clips (recorded text differs from the sheet): ${cov.stale.join(', ')}`);
   }
-  const render = { clips, audioBase: `https://${config.publicHost}/audio/` };
+  const noInputMs = overrides.noInputMs ?? config.noInputMs;
+  log(noInputMs > 0 ? `no-input: ${noInputMs} ms after playback (${durations.size} clip durations)` : 'no-input: off');
+  // The coverage/count logic above stays on the unversioned map; only what the caller actually
+  // fetches carries the content hash, so a regenerated clip is never served from Twilio's cache.
+  const render = { clips: clipVersions(config.audioDir, clips), audioBase: `https://${config.publicHost}/audio/` };
 
   const store = new SessionStore(
     (callSid) => {
@@ -97,9 +106,18 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const deps = { config, store, tokens, hints: buildHints(), log };
 
   const server = createServer(createRequestHandler(deps));
-  const wss = attachWebSocketServer(server, { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs }, overrides.setupTimeoutMs);
+  const wss = attachWebSocketServer(
+    server,
+    { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs, noInputMs, clipDurations: durations },
+    overrides.setupTimeoutMs,
+  );
   const evictor = setInterval(() => {
-    for (const sid of store.evictIdle()) log(`${sid}: evicted idle session`);
+    for (const sid of store.evictIdle()) {
+      // An evicted call with a socket gets here again through the socket's own close, but one
+      // whose socket had already gone would otherwise leave its no-input bookkeeping behind.
+      forgetNoInput(sid);
+      log(`${sid}: evicted idle session`);
+    }
     const swept = tokens.evictExpired();
     if (swept) log(`swept ${swept} expired call tokens`);
   }, EVICT_EVERY_MS);

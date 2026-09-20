@@ -80,6 +80,8 @@ export function parseInbound(raw: string): InboundFrame | null {
     case 'error':
       if (m.description !== undefined && !str(m.description)) return null;
       return { type: 'error', description: str(m.description) ? m.description : '' };
+    // 'silence' is never sent by Twilio -- it is synthesized by the server's no-input timer
+    // (silenceFrame() in frames.ts) -- so it falls through to the default and is rejected here.
     default:
       return null;
   }

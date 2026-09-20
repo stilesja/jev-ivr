@@ -3,6 +3,7 @@ import { parseInbound } from '../channel/wire';
 import { newSession, type Session } from '../core/session';
 import { runTurn, type RunOptions, type TurnRun } from '../run/turn';
 import type { TraceRecord } from '../trace/types';
+import { silenceFrame, type InboundFrame } from '../channel/frames';
 
 export interface ReplayResult {
   runs: TurnRun[];
@@ -14,6 +15,17 @@ function rawType(msg: unknown): string {
   return typeof msg === 'object' && msg !== null && typeof (msg as { type?: unknown }).type === 'string'
     ? (msg as { type: string }).type
     : 'message';
+}
+
+/**
+ * `parseInbound` never accepts `{ type: 'silence' }`: a silence frame is server-generated
+ * (the no-input timer), never sent over the wire, so the wire parser keeps rejecting it. A
+ * recorded frame log is our own trusted output, though -- the adapter logs the silence frame it
+ * synthesized the same as any other inbound message -- so replay special-cases the exact shape
+ * here rather than loosening parseInbound itself.
+ */
+function isRecordedSilence(msg: unknown): boolean {
+  return typeof msg === 'object' && msg !== null && Object.keys(msg).length === 1 && (msg as { type?: unknown }).type === 'silence';
 }
 
 /**
@@ -52,7 +64,7 @@ export async function replayFrameLog(
       skipped.push(`line ${lineNumber}: ${rawType(line.msg)} after the call ended`);
       continue;
     }
-    const frame = parseInbound(JSON.stringify(line.msg));
+    const frame: InboundFrame | null = parseInbound(JSON.stringify(line.msg)) ?? (isRecordedSilence(line.msg) ? silenceFrame() : null);
     if (!frame) {
       skipped.push(`line ${lineNumber}: unrecognized message`);
       continue;

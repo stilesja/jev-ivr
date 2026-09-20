@@ -31,6 +31,10 @@ describe('parseInbound', () => {
     expect(parseInbound('{"type":"prompt","voicePrompt":5}')).toBeNull();
   });
 
+  it('never parses a silence frame off the wire: it is server-generated only', () => {
+    expect(parseInbound(JSON.stringify({ type: 'silence' }))).toBeNull();
+  });
+
   it('rejects text fields over the max length', () => {
     const long = 'a'.repeat(MAX_TEXT_LENGTH + 1000);
     expect(parseInbound(JSON.stringify({ type: 'prompt', voicePrompt: long }))).toBeNull();

@@ -18,6 +18,11 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Let's try the keypad. For a new appointment press 1. To reschedule press 2. To cancel press 3. To confirm an appointment press 4. For billing press 5. For an agent press 0.",
   },
   {
+    "id": "ask_intent.0",
+    "note": "closed",
+    "text": "How can I help you today?",
+  },
+  {
     "id": "ask_memberId.0",
     "note": "closed",
     "text": "What's your member ID?",
@@ -91,6 +96,11 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "id": "ack_declined.0",
     "note": "closed",
     "text": "Sorry about that.",
+  },
+  {
+    "id": "no_input.0",
+    "note": "closed",
+    "text": "I didn't hear anything.",
   },
   {
     "id": "confirm_intent_explicit.0",

@@ -1347,5 +1347,163 @@
       "promptId": "confirm_intent_explicit",
       "form": null
     }
+  },
+  {
+    "id": "silence-greeting-reask",
+    "steps": [
+      {
+        "silence": true
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_intent",
+      "form": null,
+      "text": "I didn't hear anything."
+    }
+  },
+  {
+    "id": "silence-greeting-menu",
+    "steps": [
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "nomatch_dtmf_menu",
+      "form": null
+    }
+  },
+  {
+    "id": "silence-greeting-agent",
+    "steps": [
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "max-attempts",
+      "form": null
+    }
+  },
+  {
+    "id": "silence-then-answer",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "silence": true
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Dr. Chen"
+      },
+      {
+        "say": "Tuesday"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule",
+      "slots": {
+        "memberId": "44718293",
+        "provider": "chen",
+        "date": "2026-09-22"
+      }
+    }
+  },
+  {
+    "id": "silence-summary-reask",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "silence": true
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule",
+      "text": "I didn't hear anything."
+    }
+  },
+  {
+    "id": "silence-summary-agent",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "max-attempts",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "silence-confirm-dtmf-then-1",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "four four seven one eight two nine three"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      },
+      {
+        "dtmf": "1"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule"
+    }
   }
 ]

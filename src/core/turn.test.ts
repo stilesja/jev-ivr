@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { plan, resolve, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
-import { promptFrame, dtmfFrames, setupFrame, type InterruptFrame } from '../channel/frames';
+import { promptFrame, dtmfFrames, setupFrame, silenceFrame, type InterruptFrame } from '../channel/frames';
 import { choice, noul, score } from '../testing/answers';
 import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
@@ -776,5 +776,100 @@ describe('final confirm', () => {
     expect(r.session.promptedFor).toBe('confirm');
     // The failure is not a dodged summary: the ladder keeps its place.
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+});
+
+/**
+ * Spec no-input §3: a silence event is an unanswered turn on whatever was prompted, resolved
+ * without a model call, walking the same ladders as an unintelligible answer with the
+ * `no_input` ack in front. `started()` is this file's "after the greeting" helper.
+ */
+describe('silence', () => {
+  it('re-asks the plain intent question on silence (not the nomatch_open apology), then the keypad menu, then hands off', () => {
+    const one = resolve(started(), silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_intent', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.intentAttempts).toBe(1);
+    expect(one.session.history.at(-1)).toMatchObject({ intent: 'silence' });
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ promptId: 'nomatch_dtmf_menu', menu: true, acks: [{ promptId: 'no_input', vars: {} }] });
+    const three = resolve(two.session, silenceFrame(), null, tc);
+    expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  it('re-asks the explicit intent confirmation on silence, then hands off', () => {
+    // A tentative opener puts the intent behind an explicit yes/no rather than a form.
+    let r = say(started(), 'maybe reschedule', { intent: choice({ reschedule: 0.5, none: 0.5 }) });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
+    const one = resolve(r.session, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.intentAttempts).toBe(1);
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(two.session.intentAttempts).toBe(2);
+    const three = resolve(two.session, silenceFrame(), null, tc);
+    expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  it('re-asks the plain slot question on silence (not the ask_memberId_retry apology), then the keypad, and clears a half-typed keypad buffer', () => {
+    const s = afterTurns(['I need to reschedule my appointment']).session; // at ask_memberId
+    s.dtmfBuffer = '4471';
+    const one = resolve(s, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ promptId: 'ask_memberId', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.dtmfBuffer).toBe('');
+    expect(one.session.slots.memberId.attempts).toBe(1);
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ promptId: 'ask_memberId_dtmf', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  it('re-asks a pending window question on silence, unaffected by the plain-question change since the window branch already ran first', () => {
+    const s = afterTurns([...HAPPY, 'no, next week']).session; // date narrowed to a window, not yet answered
+    expect(s.promptedFor).toBe('date');
+    const r = resolve(s, silenceFrame(), null, tc);
+    expect(r.decision).toMatchObject({ promptId: 'date_narrow_window', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  it('walks the summary ladder', () => {
+    const s = afterTurns(HAPPY).session; // at confirm_reschedule
+    const one = resolve(s, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ promptId: 'confirm_reschedule', target: 'confirm', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ promptId: 'confirm_dtmf' });
+    const three = resolve(two.session, silenceFrame(), null, tc);
+    expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  // `ask_change` already spends the summary ladder's first rung, so a silence right after it
+  // lands on the keypad offer rather than a second open re-ask of the summary.
+  it('silence at ask_change moves straight to the keypad offer', () => {
+    const r = afterTurns([...HAPPY, 'no']);
+    expect(r.decision).toMatchObject({ promptId: 'ask_change', target: 'confirm' });
+    const s = resolve(r.session, silenceFrame(), null, tc);
+    expect(s.decision).toMatchObject({ promptId: 'confirm_dtmf', acks: [{ promptId: 'no_input', vars: {} }] });
+  });
+
+  // No slot's spokenConfirm policy is `always` in the current domain (date and provider are
+  // `by-confidence`, memberId is `summary`), so a silence during a slot readback confirmation
+  // (the `pc.target === 'slot'` branch of reaskConfirmation) cannot be driven from a scenario
+  // today; there is nothing to add a test for here.
+
+  it('is ignored after the call ended and clears a barge-in marker', () => {
+    const done = afterTurns([...HAPPY, 'yes']).session;
+    expect(resolve(done, silenceFrame(), null, tc).decision).toEqual({ kind: 'ignore' });
+    const s = afterTurns(HAPPY).session;
+    s.lastInterrupt = { utteranceUntilInterrupt: 'x', durationUntilInterruptMs: 10 };
+    expect(resolve(s, silenceFrame(), null, tc).session.lastInterrupt).toBeNull();
+  });
+
+  it('is ignored before anything has been prompted, and leaves history and turnIndex untouched', () => {
+    const before = newSession('s', 0);
+    const r = resolve(before, silenceFrame(), null, tc);
+    expect(r.decision).toEqual({ kind: 'ignore' });
+    expect(r.session.turnIndex).toBe(before.turnIndex);
+    expect(r.session.history).toHaveLength(before.history.length);
+  });
+
+  it('needs no model', () => {
+    expect(plan(started(), silenceFrame(), tc).needsModel).toBe(false);
   });
 });

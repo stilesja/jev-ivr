@@ -17,13 +17,19 @@ export interface ConnectOptions {
   voice?: string;
 }
 
-/** The ConversationRelay connect document. Attributes follow the spec's §5 and handoff §10, finals only. */
+/**
+ * The ConversationRelay connect document. Attributes follow the spec's §5 and handoff §10.
+ *
+ * `partialPrompts="true"` is on for the no-input wait, not for scoring: the adapter still runs a
+ * turn only on a final prompt, but a partial tells it the caller has started speaking, so the
+ * wait is cancelled at the first syllable rather than after the whole utterance is transcribed.
+ */
 export function connectRelayTwiml(o: ConnectOptions): string {
   const attrs = [
     `url="wss://${escapeXml(o.publicHost)}/conversation?token=${escapeXml(o.token)}"`,
     'transcriptionProvider="Deepgram"',
     'speechModel="flux"',
-    'partialPrompts="false"',
+    'partialPrompts="true"',
     'dtmfDetection="true"',
     'interruptible="any"',
     'interruptSensitivity="medium"',

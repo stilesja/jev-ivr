@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './turn';
 import { newSession } from '../core/session';
-import { setupFrame } from '../channel/frames';
+import { setupFrame, silenceFrame } from '../channel/frames';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
@@ -26,5 +26,16 @@ describe('runTurn render context', () => {
 
     const withNullRender = await runTurn(newSession('s', 0), setupFrame('s'), { ...opts, render: null });
     expect(withNullRender.result.frames[0]).toMatchObject({ type: 'text' });
+  });
+});
+
+describe('runTurn trace source', () => {
+  it('records source "silence" and no questions for a silence turn, with no model call', async () => {
+    const greeted = await runTurn(newSession('s', 0), setupFrame('s'), opts);
+    const run = await runTurn(greeted.result.session, silenceFrame(), opts);
+    expect(run.response).toBeNull();
+    expect(run.record.source).toBe('silence');
+    expect(run.record.questions).toBeNull();
+    expect(run.record.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_intent' });
   });
 });

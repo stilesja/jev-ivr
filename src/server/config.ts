@@ -22,6 +22,8 @@ export interface ServerConfig {
   audioDir: string;
   ttsProvider: string | null;
   ttsVoice: string | null;
+  /** Silence after a prompt's estimated playback before the caller is asked again; 0 disables. */
+  noInputMs: number;
 }
 
 type Env = Record<string, string | undefined>;
@@ -95,6 +97,7 @@ export function loadConfig(env: Env): ServerConfig {
     audioDir: env.AUDIO_DIR?.trim() || 'assets/audio',
     ttsProvider,
     ttsVoice,
+    noInputMs: integer(env, 'NO_INPUT_MS', 7_000),
   };
 }
 
@@ -115,6 +118,7 @@ export function describeConfig(c: ServerConfig): string {
     `traces ${c.traceDir}`,
     `reconnect limit ${c.reconnectLimit}`,
     `audio dir ${c.audioDir}`,
+    c.noInputMs > 0 ? `no-input ${c.noInputMs} ms` : 'no-input off',
     c.ttsProvider && c.ttsVoice ? `tts ${c.ttsProvider} ${c.ttsVoice}` : 'tts default',
   ].join('  ');
 }
