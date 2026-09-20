@@ -25,7 +25,7 @@ export const providerSlot: SlotSpec = {
     return {
       provider: {
         type: 'choice',
-        instructions: 'Read asr.text. Which provider, if any, does the caller name?',
+        instructions: 'Read asr.text. Which provider, if any, does the caller name? If they correct a name, as in not Chen, Cheng, or Cheng, not Chen, choose the name they say is right.',
         criteria,
       },
       providerUnsure: {

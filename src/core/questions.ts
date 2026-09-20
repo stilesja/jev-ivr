@@ -31,6 +31,10 @@ function alwaysOn(): QuestionMap {
     addressedToSystem: {
       type: 'noul',
       instructions: 'Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?',
+      criteria: {
+        true: 'Anything said in reply to the phone system, including a short or fragmentary answer or correction to the question it just asked, such as a name, a day, a number, yes, no, or not Chen, Cheng',
+        false: 'Talking to someone else in the room, to a television, or to themselves, with no connection to what the system just asked',
+      },
     },
     utteranceComplete: {
       type: 'noul',
@@ -99,6 +103,10 @@ function confirmation(): QuestionMap {
     confirmsNo: {
       type: 'noul',
       instructions: 'Read asr.text and node.promptJustPlayed. Does the caller answer no to the confirmation question?',
+      criteria: {
+        true: 'The caller says no, or rejects or corrects something in the question that was just asked, as in not Chen, Cheng, or Thursday, not Tuesday, or that is wrong',
+        false: 'The caller agrees, answers something else, or says nothing about the question',
+      },
     },
   };
 }

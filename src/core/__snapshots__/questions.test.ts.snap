@@ -3,6 +3,10 @@
 exports[`question redesign > pins every question the model sees at the summary (a diff here re-keys the cassette) 1`] = `
 {
   "addressedToSystem": {
+    "criteria": {
+      "false": "Talking to someone else in the room, to a television, or to themselves, with no connection to what the system just asked",
+      "true": "Anything said in reply to the phone system, including a short or fragmentary answer or correction to the question it just asked, such as a name, a day, a number, yes, no, or not Chen, Cheng",
+    },
     "instructions": "Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?",
     "type": "noul",
   },
@@ -17,6 +21,10 @@ exports[`question redesign > pins every question the model sees at the summary (
     "type": "choice",
   },
   "confirmsNo": {
+    "criteria": {
+      "false": "The caller agrees, answers something else, or says nothing about the question",
+      "true": "The caller says no, or rejects or corrects something in the question that was just asked, as in not Chen, Cheng, or Thursday, not Tuesday, or that is wrong",
+    },
     "instructions": "Read asr.text and node.promptJustPlayed. Does the caller answer no to the confirmation question?",
     "type": "noul",
   },
@@ -234,7 +242,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "patel": "Dr. Patel",
       "rossi": "Dr. Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name?",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? If they correct a name, as in not Chen, Cheng, or Cheng, not Chen, choose the name they say is right.",
     "type": "choice",
   },
   "providerUnsure": {
@@ -289,6 +297,10 @@ exports[`question redesign > pins every question the model sees at the summary (
 exports[`question redesign > pins every question the model sees inside a form (a diff here re-keys the cassette) 1`] = `
 {
   "addressedToSystem": {
+    "criteria": {
+      "false": "Talking to someone else in the room, to a television, or to themselves, with no connection to what the system just asked",
+      "true": "Anything said in reply to the phone system, including a short or fragmentary answer or correction to the question it just asked, such as a name, a day, a number, yes, no, or not Chen, Cheng",
+    },
     "instructions": "Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?",
     "type": "noul",
   },
@@ -502,7 +514,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "patel": "Dr. Patel",
       "rossi": "Dr. Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name?",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? If they correct a name, as in not Chen, Cheng, or Cheng, not Chen, choose the name they say is right.",
     "type": "choice",
   },
   "providerUnsure": {
@@ -557,6 +569,10 @@ exports[`question redesign > pins every question the model sees inside a form (a
 exports[`question redesign > pins every question the model sees outside a form (a diff here re-keys the cassette) 1`] = `
 {
   "addressedToSystem": {
+    "criteria": {
+      "false": "Talking to someone else in the room, to a television, or to themselves, with no connection to what the system just asked",
+      "true": "Anything said in reply to the phone system, including a short or fragmentary answer or correction to the question it just asked, such as a name, a day, a number, yes, no, or not Chen, Cheng",
+    },
     "instructions": "Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?",
     "type": "noul",
   },
@@ -761,7 +777,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "patel": "Dr. Patel",
       "rossi": "Dr. Rossi",
     },
-    "instructions": "Read asr.text. Which provider, if any, does the caller name?",
+    "instructions": "Read asr.text. Which provider, if any, does the caller name? If they correct a name, as in not Chen, Cheng, or Cheng, not Chen, choose the name they say is right.",
     "type": "choice",
   },
   "providerUnsure": {

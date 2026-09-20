@@ -961,3 +961,20 @@ then `pnpm regress --client recorded` (no misses). Commit `assets/audio`, `asset
   it, but doing so needs its own `confirm_<slotId>` prompt manifest entry: `reaskConfirmation` and
   `continueForm` both build that prompt id directly, and the one entry that used to satisfy it,
   `confirm_memberId`, was removed in Task 6.
+- **Post-review.** On the real model, the summary-turn correction "not Chen, Cheng" scored
+  `addressedToSystem` 0.62 against gate 0.70, `confirmsNo` 0.23, and `provider` none 0.80 / cheng 0.18,
+  so it was ignored, while a fuller correction ("no, Thursday with Dr. Alvarez") scored 0.95 / 0.97 /
+  1.00 on the same three questions. The fix is wording, not logic: terse fragments that answer the
+  system's own question need to read as addressed to it, as a no, and as the corrected name.
+  `addressedToSystem` and `confirmsNo` (`src/core/questions.ts`) each gained explicit `true`/`false`
+  criteria naming a short or fragmentary answer or correction — a name, a day, a number, yes, no, or
+  "not Chen, Cheng" — as addressed and as a no; `provider`'s instructions (`src/domain/slots/
+  provider.ts`) now tell the model that a correction such as "not Chen, Cheng" or "Cheng, not Chen"
+  names the right value as whichever name the caller says is right. Four corpus entries were added at
+  `confirm_reschedule` to cover the terse forms: `fc-17` ("Cheng, not Chen", no/provider cheng),
+  `fc-18` ("Thursday, not Tuesday", no/date thursday), `fc-19` ("it's Cheng", provider cheng, no
+  confirm label), and `fc-20` ("Dr. Cheng", provider cheng, no confirm label) — `fc-20`'s text did not
+  duplicate any existing entry after normalization, so it did not need the fallback "make it Dr.
+  Cheng" wording. Because both `addressedToSystem` and `confirmsNo` are asked on nearly every turn
+  (`addressedToSystem` is in `ALWAYS_ON_IDS`; `confirmsNo` on every confirmation turn), the recorded
+  cassette must be fully re-recorded rather than patched for the affected turns.

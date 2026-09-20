@@ -2876,6 +2876,70 @@
     },
     "queued": []
   },
+  "fc-17": {
+    "id": "fc-17",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-18": {
+    "id": "fc-18",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "patel",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "fc-19": {
+    "id": "fc-19",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirm_unanswered",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-20": {
+    "id": "fc-20",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirm_unanswered",
+    "form": "reschedule",
+    "slots": {
+      "memberId": "00000000",
+      "provider": "cheng",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
   "si-01": {
     "id": "si-01",
     "decision": "prompt",

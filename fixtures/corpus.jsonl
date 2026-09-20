@@ -192,6 +192,10 @@
 {"id":"fc-13","text":"no, my ID is four four seven one eight two nine four","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"memberId":{"span":"four four seven one eight two nine four","value":"44718294"}}}
 {"id":"fc-15","text":"yes, and can I also ask about my bill","intent":"billing","context":"confirm_reschedule","confirm":"yes","change":"adding"}
 {"id":"fc-16","text":"no, the doctor is wrong","intent":"none","context":"confirm_reschedule","confirm":"no","changeSlot":"provider"}
+{"id":"fc-17","text":"Cheng, not Chen","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}
+{"id":"fc-18","text":"Thursday, not Tuesday","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"date":{"mode":"weekday","weekday":"thursday"}}}
+{"id":"fc-19","text":"it's Cheng","intent":"none","context":"confirm_reschedule","slots":{"provider":"cheng"}}
+{"id":"fc-20","text":"Dr. Cheng","intent":"none","context":"confirm_reschedule","slots":{"provider":"cheng"}}
 {"id":"si-01","text":"I need to reschedule my appointment with Dr. Alvarez for next Thursday, and also I have a question about my bill","intent":"reschedule","context":"no_form","secondIntent":"billing","slots":{"provider":"alvarez","date":{"mode":"weekday","weekday":"thursday","weekdayQualifier":"next"}}}
 {"id":"si-02","text":"Cancel my appointment and then I want to book a new one","intent":"cancel","context":"no_form","secondIntent":"schedule_new"}
 {"id":"si-03","text":"I want to reschedule, just reschedule","intent":"reschedule","context":"no_form"}
