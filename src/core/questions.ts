@@ -32,8 +32,8 @@ function alwaysOn(): QuestionMap {
       type: 'noul',
       instructions: 'Read asr.text. Is the caller speaking to the phone system, as opposed to someone else in the room, a television, or themselves?',
       criteria: {
-        true: 'Anything said in reply to the phone system, including a short or fragmentary answer or correction to the question it just asked, such as a name, a day, a number, yes, no, or not Chen, Cheng',
-        false: 'Talking to someone else in the room, to a television, or to themselves, with no connection to what the system just asked',
+        true: 'Anything said in reply to the phone system, including a short answer or correction to the question it just asked, such as a name, a day, a number, a yes or no, or a bare correction',
+        false: 'Talking to someone else in the room, to a television, or to themselves, even when what they say is about the call',
       },
     },
     utteranceComplete: {
@@ -104,7 +104,7 @@ function confirmation(): QuestionMap {
       type: 'noul',
       instructions: 'Read asr.text and node.promptJustPlayed. Does the caller answer no to the confirmation question?',
       criteria: {
-        true: 'The caller says no, or rejects or corrects something in the question that was just asked, as in not Chen, Cheng, or Thursday, not Tuesday, or that is wrong',
+        true: 'The caller says no, says something is wrong, or gives a value that replaces or contradicts a detail the system just read back, including a bare correction such as "not Chen, Cheng" or "Thursday, not Tuesday", whether or not the system itself named the value they reject',
         false: 'The caller agrees, answers something else, or says nothing about the question',
       },
     },

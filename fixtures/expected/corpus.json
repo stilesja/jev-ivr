@@ -2915,7 +2915,7 @@
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
-    "verdict": "confirm_unanswered",
+    "verdict": "rejected",
     "form": "reschedule",
     "slots": {
       "memberId": "00000000",
@@ -2931,7 +2931,7 @@
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
-    "verdict": "confirm_unanswered",
+    "verdict": "rejected",
     "form": "reschedule",
     "slots": {
       "memberId": "00000000",

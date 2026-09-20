@@ -57,17 +57,17 @@ export const dateSlot: SlotSpec = {
       },
       dateMonth: {
         type: 'choice',
-        instructions: 'Read asr.text. Which month does the caller name, if any?',
+        instructions: 'Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April".',
         criteria: criteriaOf([...MONTHS, 'none']),
       },
       dateDay: {
         type: 'choice',
-        instructions: 'Read asr.text. Which day of the month does the caller name, if any?',
+        instructions: 'Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the fifth, the sixth".',
         criteria: criteriaOf([...DAYS, 'none']),
       },
       dateWeekday: {
         type: 'choice',
-        instructions: 'Read asr.text. Which day of the week does the caller name, if any?',
+        instructions: 'Read asr.text. Which day of the week does the caller name, if any? When they correct a day, the word not marks the day they are rejecting; choose the other one, as in "Thursday, not Tuesday".',
         criteria: criteriaOf([...WEEKDAYS, 'none']),
       },
       dateWeekdayQualifier: {
@@ -77,7 +77,7 @@ export const dateSlot: SlotSpec = {
       },
       dateRelativeDay: {
         type: 'choice',
-        instructions: 'Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow?',
+        instructions: 'Read asr.text. Does the caller say today, tomorrow, or the day after tomorrow? When they correct this, the word not marks the one they are rejecting; choose the other one, as in "not tomorrow, today".',
         criteria: criteriaOf(RELATIVE_DAYS),
       },
       dateWindow: {
