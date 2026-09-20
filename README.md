@@ -36,8 +36,8 @@ checking today's behaviour against an old recording rather than reproducing it.
 In the REPL, type an utterance, `dtmf:44718293` to send keypad digits,
 `/silence` (or an empty line) to run a silence turn — as if the caller said
 and pressed nothing — or `/reset` to start a new call. A scenario step can be
-`{ "silence": true }` for the same thing. The corpus has 154 labeled
-utterances and there are 35 scenarios available for multi-turn testing.
+`{ "silence": true }` for the same thing. The corpus has 188 labeled
+outcomes and there are 67 scenarios available for multi-turn testing.
 
 ## Regression
 
@@ -219,10 +219,17 @@ per second for TTS text — and is approximate by design, so a wrong estimate
 moves the wait by a second or two, not by the length of the prompt. Any
 speech, a partial result, a keypad digit, or a barge-in cancels the wait and
 starts a fresh one, so a caller who is audibly there is never cut off
-mid-thought; `NO_INPUT_MS=0` disables it. The TwiML carries
+mid-thought. A fresh wait that has nothing of its own to play still runs from
+the end of the prompt that was already playing, so a cough a second into a
+long menu does not put the re-ask on top of the rest of it.
+`NO_INPUT_MS=0` disables it. The TwiML carries
 `partialPrompts="true"` for this and only this: a partial tells the server the
 caller has started speaking so the wait stops at the first syllable, but a
-turn still runs only on the final transcript.
+turn still runs only on the final transcript. A reconnect that replays the
+last prompt starts a wait on it too. If three turns in a row throw, the
+apology is still spoken but the wait stops re-arming, so a model that is down
+cannot leave the line apologizing every few seconds; the server log says
+`N consecutive turn failures, no-input wait stopped`.
 
 ### Confirmation and multi-intent
 
@@ -335,7 +342,7 @@ as quiet as possible.
 4. Call the number. You should hear the greeting within a second.
 5. Call again and stay quiet after the greeting: expect "I didn't hear
    anything." then the open reprompt, then the keypad menu, then the
-   transfer to `HANDOFF_NUMBER` — the same ladder step 13 walks by saying
+   transfer to `HANDOFF_NUMBER` — the same ladder step 15 walks by saying
    something unrecognized instead. Partial results are on: watch the server
    log for the one-per-connection "dropped a non-final prompt" line while you
    speak, and confirm that starting to talk during a long pause stops the
@@ -356,8 +363,8 @@ as quiet as possible.
     question: expect "I didn't hear anything." then the summary question
     again, then the keypad offer ("Press 1 to confirm, or 2 to change
     something."), then the transfer.
-11. Say "yes". Expect "Your appointment is moved." then "Goodbye.", and the
-    call ends: the server leaves the socket open after `end` so Twilio can
+11. Call again, repeat through step 9, then say "yes". Expect "Your
+    appointment is moved." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
     finish the queued clips, and Twilio closes it and hits `/cr-action` with
     `SessionStatus=ended`.
 12. Call again, repeat through step 9, then say "no, Thursday" instead of

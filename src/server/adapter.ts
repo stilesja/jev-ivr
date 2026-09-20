@@ -51,6 +51,28 @@ const noInputTimers = new Map<string, NoInput>();
  */
 const noInputGeneration = new Map<string, number>();
 
+/** When a call's last frames went out and how long they were estimated to take to play. */
+interface Playback {
+  sentAtMs: number;
+  estimateMs: number;
+}
+/**
+ * So a re-arm that speaks nothing of its own still waits for the prompt already playing to
+ * finish. A barge-in one second into an eleven second menu clip would otherwise restart a bare
+ * `noInputMs` and fire a silence turn over the top of the menu.
+ */
+const lastPlayback = new Map<string, Playback>();
+
+/** Consecutive turns that threw, per call, reset by any turn that produces a decision. */
+const turnFailures = new Map<string, number>();
+
+/**
+ * Thrown turns in a row before the no-input wait stops re-arming. Each one speaks the apology and
+ * the wait asks the question again, so a client that is down would otherwise loop for the life of
+ * the call; three attempts is enough to ride out a blip.
+ */
+export const TURN_FAILURE_LIMIT = 3;
+
 /** Cancel any armed no-input timer for a call and invalidate whatever it already queued. */
 function clearNoInput(callSid: string): void {
   const armed = noInputTimers.get(callSid);
@@ -71,19 +93,35 @@ export function forgetNoInput(callSid: string): void {
   if (armed) clearTimeout(armed.timer);
   noInputTimers.delete(callSid);
   noInputGeneration.delete(callSid);
+  lastPlayback.delete(callSid);
+  turnFailures.delete(callSid);
 }
 
 /**
- * Arm the no-input timer after a prompt: `noInputMs` after the frames have (approximately)
- * played. When it fires the silence turn goes through the same per-call queue as a socket
- * message, so it can never interleave with a real turn.
+ * Arm the no-input timer: `noInputMs` after the frames have (approximately) finished playing.
+ * When it fires the silence turn goes through the same per-call queue as a socket message, so it
+ * can never interleave with a real turn.
+ *
+ * `frames` is what actually went out. An empty list means the caller was heard from but nothing
+ * was said back (a barge-in, a keypad terminator, a partial), so the wait is measured from the
+ * end of whatever is still playing rather than from now.
  */
 function armNoInput(deps: AdapterDeps, entry: CallEntry, frames: readonly OutboundFrame[]): void {
   const wait = deps.noInputMs ?? 0;
   if (wait <= 0) return;
   clearNoInput(entry.callSid);
   const generation = noInputGeneration.get(entry.callSid) ?? 0;
-  const delay = wait + playbackEstimateMs(frames, deps.clipDurations ?? new Map());
+  const nowMs = Date.now();
+  let remainingMs: number;
+  if (frames.length > 0) {
+    const estimateMs = playbackEstimateMs(frames, deps.clipDurations ?? new Map());
+    lastPlayback.set(entry.callSid, { sentAtMs: nowMs, estimateMs });
+    remainingMs = estimateMs;
+  } else {
+    const last = lastPlayback.get(entry.callSid);
+    remainingMs = last ? Math.max(0, last.sentAtMs + last.estimateMs - nowMs) : 0;
+  }
+  const delay = wait + remainingMs;
   const timer = setTimeout(() => {
     noInputTimers.delete(entry.callSid);
     void deps.store
@@ -98,7 +136,9 @@ function armNoInput(deps: AdapterDeps, entry: CallEntry, frames: readonly Outbou
   }, delay);
   timer.unref?.();
   noInputTimers.set(entry.callSid, { timer, generation });
-  entry.frames.write('log', { noInputArmedMs: delay });
+  // Only for a re-arm that had something to say. Partials arrive several times a second while the
+  // caller speaks, and a line each would drown the frame log in bookkeeping.
+  if (frames.length > 0) entry.frames.write('log', { noInputArmedMs: delay });
 }
 
 /** Digit runs long enough that TTS would read them as a number ("4471" as "four thousand ..."). */
@@ -215,6 +255,7 @@ async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): P
   let ending = false;
   try {
     const run = await runTurn(entry.session, event, entry.opts);
+    turnFailures.delete(entry.callSid);
     entry.session = run.result.session;
     const kind = run.result.decision.kind;
     ending = kind === 'complete' || kind === 'handoff';
@@ -231,10 +272,22 @@ async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): P
     const info = describe(err);
     deps.log(`${entry.callSid}: turn failed: ${info.name}: ${info.message}`);
     entry.frames.write('log', { turnFailed: info });
+    const failures = (turnFailures.get(entry.callSid) ?? 0) + 1;
+    turnFailures.set(entry.callSid, failures);
     const sent = await sendFrames(deps, entry, [textFrame(TURN_ERROR_TEXT, true)]);
     // "Please say that again" is a question like any other: a caller who then says nothing must
-    // not be left listening to an open line.
-    if (entry.session.promptedFor !== null) armNoInput(deps, entry, sent);
+    // not be left listening to an open line. But the wait asking it again is what turns a client
+    // that is down into an apology every few seconds until the caller hangs up, so it stops after
+    // a few tries and leaves the line open rather than talking over a caller who has given up.
+    if (failures >= TURN_FAILURE_LIMIT) {
+      if (failures === TURN_FAILURE_LIMIT) {
+        deps.log(`${entry.callSid}: ${failures} consecutive turn failures, no-input wait stopped`);
+        entry.frames.write('log', { noInputStopped: failures });
+      }
+      clearNoInput(entry.callSid);
+    } else if (entry.session.promptedFor !== null) {
+      armNoInput(deps, entry, sent);
+    }
   } finally {
     // Runs even when sending the decision failed: the call is over either way.
     if (ending) {
@@ -292,8 +345,8 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
         socket.close(1000, 'call ended');
         return;
       }
-      // A reconnect is caller activity of a sort, and the prompt it replays below is not a turn,
-      // so the wait the old connection was counting down no longer means anything.
+      // The wait the old connection was counting down no longer means anything. The replay below
+      // starts a fresh one; this clear is what covers a reconnect with no prompt to replay yet.
       clearNoInput(frame.callSid);
       const previous = existing.socket;
       if (previous && previous !== socket) {
@@ -306,7 +359,11 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
       const entry = deps.store.attach(frame.callSid, socket) ?? existing;
       entry.frames.write('log', { resumed: true, sessionId: frame.sessionId });
       await deps.store.enqueue(frame.callSid, async (e) => {
-        if (e.session.lastPromptText) await sendFrames(deps, e, [textFrame(e.session.lastPromptText, true)]);
+        if (!e.session.lastPromptText) return;
+        const sent = await sendFrames(deps, e, [textFrame(e.session.lastPromptText, true)]);
+        // The replay is a question the caller has to answer, so it starts a wait of its own; the
+        // reconnect is not a turn, so nothing else would.
+        armNoInput(deps, e, sent);
       });
       return;
     }

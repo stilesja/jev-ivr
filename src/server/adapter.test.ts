@@ -10,6 +10,7 @@ import {
   newConnectionContext,
   spokenDigits,
   TURN_ERROR_TEXT,
+  TURN_FAILURE_LIMIT,
   type AdapterDeps,
 } from './adapter';
 import { SessionStore, type SocketLike } from './sessions';
@@ -379,7 +380,12 @@ describe('adapter', () => {
 
 describe('no-input timer', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    // The adapter keeps its no-input bookkeeping in module maps keyed by call SID, and every test
+    // here uses CA1; forgetting it keeps one test's armed timer or failure count out of the next.
+    forgetNoInput('CA1');
+    vi.useRealTimers();
+  });
 
   const GREETING = promptText('greeting', {});
   const NO_INPUT = promptText('no_input', {});
@@ -391,9 +397,11 @@ describe('no-input timer', () => {
   const GREETING_DEADLINE = textEstimateMs(GREETING) + WAIT;
 
   /** deps with the no-input wait armed, and one measured clip so a play frame can be estimated. */
-  function noInputDeps(noInputMs = WAIT, render?: RenderContext): AdapterDeps & { dir: string } {
-    return { ...deps(undefined, render), noInputMs, clipDurations: new Map([['greeting.0.wav', 2000]]) };
+  function noInputDeps(noInputMs = WAIT, render?: RenderContext, greetingClipMs = 2000): AdapterDeps & { dir: string } {
+    return { ...deps(undefined, render), noInputMs, clipDurations: new Map([['greeting.0.wav', greetingClipMs]]) };
   }
+
+  const clipRender: RenderContext = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
 
   /** A connected call that has just heard the greeting, with its no-input timer armed. */
   async function greeted(d: AdapterDeps): Promise<{ sock: Fake; ctx: ReturnType<typeof newConnectionContext> }> {
@@ -423,8 +431,7 @@ describe('no-input timer', () => {
   });
 
   it('uses the clip duration for a play frame', async () => {
-    const render: RenderContext = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
-    const d = noInputDeps(WAIT, render);
+    const d = noInputDeps(WAIT, clipRender);
     const { sock } = await greeted(d);
     // The whole greeting is one recorded clip, so the estimate is the wav's own 2000 ms.
     expect(sock.sent).toEqual([{ type: 'play', source: 'https://h/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true }]);
@@ -474,8 +481,9 @@ describe('no-input timer', () => {
       const d = noInputDeps();
       const { sock, ctx } = await greeted(d);
       for (const m of messages) await handleSocketMessage(d, sock, ctx, m);
-      // Nothing was spoken, so the restarted wait is the bare configured one.
-      await vi.advanceTimersByTimeAsync(WAIT - 1);
+      // Nothing was spoken back, so the restarted wait still runs from the end of the greeting:
+      // the caller is heard from at once, and the deadline lands where it already was.
+      await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 1);
       expect(texts(sock)).toEqual([GREETING]);
       await vi.advanceTimersByTimeAsync(1);
       expect(texts(sock)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
@@ -492,7 +500,7 @@ describe('no-input timer', () => {
     // keeps the caller from being left with a half-typed buffer and an open line.
     for (const n of ['4', '4']) await handleSocketMessage(d, sock, ctx, digit(n));
     expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('44');
-    await vi.advanceTimersByTimeAsync(WAIT - 1);
+    await vi.advanceTimersByTimeAsync(textEstimateMs(promptText('ask_memberId', {})) + WAIT - 1);
     expect(texts(sock)).toHaveLength(2);
     await vi.advanceTimersByTimeAsync(1);
     expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_memberId_retry', {})]);
@@ -537,18 +545,86 @@ describe('no-input timer', () => {
     expect(textEstimateMs(readable)).toBeLessThan(textEstimateMs(spoken));
   });
 
-  it('is cleared by a reconnect setup', async () => {
+  it('restarts the wait on the prompt a reconnect replays', async () => {
     const d = noInputDeps();
     await greeted(d);
     const sock2 = fakeSocket();
     const ctx2 = newConnectionContext(d.tokens.mint('CA1'), sock2);
     await handleSocketMessage(d, sock2, ctx2, setupMsg('CA1', 'VX2'));
-    // The reconnect replays the last prompt without running a turn, so nothing re-arms.
+    // The replay is not a turn, so only the arm inside the setup branch can start a wait on it.
     expect(texts(sock2)).toEqual([GREETING]);
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(GREETING_DEADLINE - 1);
+    expect(texts(sock2)).toEqual([GREETING]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(texts(sock2)).toEqual([GREETING, NO_INPUT, NOMATCH_OPEN]);
+    // The re-ask went to the reconnected socket only; the old one is long gone.
+    expect(silenceLines(d.dir)).toHaveLength(1);
+  });
+
+  it('measures a frameless re-arm from the end of the prompt already playing', async () => {
+    const d = noInputDeps(WAIT, clipRender, 10_000);
+    const { sock, ctx } = await greeted(d);
+    expect(sock.sent).toHaveLength(1);
+    // A cough one second into a ten second clip: restarting a bare wait from here would put the
+    // silence turn on top of the rest of the clip.
+    await vi.advanceTimersByTimeAsync(1_000);
+    await handleSocketMessage(d, sock, ctx, interrupt);
+    await vi.advanceTimersByTimeAsync(10_000 + WAIT - 1_000 - 1);
+    expect(texts(sock)).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(texts(sock)).toEqual([NO_INPUT, NOMATCH_OPEN]);
+  });
+
+  it('stops re-arming once turns keep throwing, and starts again when one works', async () => {
+    const base = corpusClient();
+    let broken = true;
+    const client: JevClient = {
+      ask: async (req) => {
+        if (broken) throw new Error('boom');
+        return base.ask(req);
+      },
+    };
+    const lines: string[] = [];
+    const d: AdapterDeps & { dir: string } = {
+      ...deps(client),
+      log: (line) => lines.push(line),
+      noInputMs: WAIT,
+      clipDurations: new Map(),
+    };
+    const { sock, ctx } = await greeted(d);
+    for (let i = 0; i < TURN_FAILURE_LIMIT; i++) await handleSocketMessage(d, sock, ctx, prompt('hello?'));
+    expect(texts(sock).filter((t) => t === TURN_ERROR_TEXT)).toHaveLength(TURN_FAILURE_LIMIT);
+    // The wait would otherwise ask the question again and fail again, for the life of the call.
     expect(vi.getTimerCount()).toBe(0);
+    expect(lines).toContain('CA1: 3 consecutive turn failures, no-input wait stopped');
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(texts(sock2)).toEqual([GREETING]);
-    expect(silenceLines(d.dir)).toHaveLength(0);
+    expect(texts(sock)).not.toContain(NO_INPUT);
+
+    broken = false;
+    await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
+    expect(texts(sock).at(-1)).toBe(promptText('ask_memberId', {}));
+    // One turn that works resets the count, so the wait comes back with it.
+    expect(vi.getTimerCount()).toBe(1);
+
+    broken = true;
+    await handleSocketMessage(d, sock, ctx, prompt('hello?'));
+    expect(texts(sock).at(-1)).toBe(TURN_ERROR_TEXT);
+    // A single fresh failure is not the third in a row, so it still gets a wait of its own.
+    expect(vi.getTimerCount()).toBe(1);
+    expect(lines.filter((l) => l.includes('no-input wait stopped'))).toHaveLength(1);
+  });
+
+  it('logs nothing for a re-arm that had nothing to say', async () => {
+    const d = noInputDeps();
+    const { sock, ctx } = await greeted(d);
+    const armedBefore = frameLines(d.dir).filter((f) => f.dir === 'log' && f.msg.noInputArmedMs !== undefined);
+    expect(armedBefore).toHaveLength(1);
+    // Partials arrive several times a second while the caller speaks; a line each would bury the
+    // frame log in bookkeeping.
+    for (const t of ['I', 'I need', 'I need to']) await handleSocketMessage(d, sock, ctx, partial(t));
+    expect(frameLines(d.dir).filter((f) => f.dir === 'log' && f.msg.noInputArmedMs !== undefined)).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(1);
   });
 
   it('forgetting a call cancels its wait', async () => {
