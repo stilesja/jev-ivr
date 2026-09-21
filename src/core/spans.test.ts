@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { candidateSpans, MAX_SPANS } from './spans';
+import { candidateSpans, candidateWordSpans, MAX_SPANS } from './spans';
 
 describe('candidateSpans', () => {
   it('includes n-grams containing a number word', () => {
@@ -35,5 +35,23 @@ describe('candidateSpans', () => {
     const spans = candidateSpans(long);
     expect(spans).toHaveLength(MAX_SPANS);
     expect(spans[0]!.split(' ')).toHaveLength(1);
+  });
+});
+
+describe('candidateWordSpans', () => {
+  it('keeps 1-3 word spans that carry no number word and do not start or end with a filler', () => {
+    const spans = candidateWordSpans('my name is Jason Stiles and I need to reschedule');
+    expect(spans).toContain('jason stiles');
+    expect(spans).toContain('jason');
+    expect(spans).toContain('reschedule');
+    expect(spans).not.toContain('name is jason'); // starts with a filler
+    expect(spans).not.toContain('stiles and'); // ends with a filler
+    expect(spans).not.toContain('my');
+    expect(spans.every((s) => !/\d/.test(s))).toBe(true);
+  });
+
+  it('drops number words and caps the list', () => {
+    expect(candidateWordSpans('four four seven one')).toEqual([]);
+    expect(candidateWordSpans(Array.from({ length: 200 }, (_, i) => `w${i}`).join(' ')).length).toBeLessThanOrEqual(MAX_SPANS);
   });
 });

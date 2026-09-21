@@ -5,11 +5,12 @@ import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
 import { SLOTS, slotsFor, type SlotContext } from '../domain/slots';
 import { ALL_SLOTS } from '../domain/forms';
 import { choice, noul } from '../testing/answers';
-import { candidateSpans } from './spans';
+import { candidateSpans, candidateWordSpans } from './spans';
+import type { DateWindow } from './extract/date';
 
 const T = { ...DEFAULT_THRESHOLDS };
 function ctx(text = ''): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: T, window: null };
+  return { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: T, window: null };
 }
 
 describe('retryStep', () => {
@@ -208,7 +209,7 @@ describe('fillSlots correcting a filled slot', () => {
     const s = filled();
     const r = fillSlots(s, nextWeek, ctx('next week'), slotsFor('reschedule'), { correcting: true });
     expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
-    expect(s.slots.date.window?.label).toBe('next_week');
+    expect((s.slots.date.window as DateWindow | null)?.label).toBe('next_week');
     expect(r.progress).toBe(true);
   });
 });

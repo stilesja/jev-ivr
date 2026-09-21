@@ -253,7 +253,7 @@ describe('runScenario', () => {
 const outcome: Outcome = {
   id: 'x', decision: 'prompt', promptId: 'ask_memberId', acks: [], reason: null,
   decidedGate: 'intent', verdict: 'route', form: 'cancel',
-  slots: { memberId: null, provider: 'patel', date: null }, queued: [],
+  slots: { name: null, dob: null, memberId: null, provider: 'patel', date: null }, queued: [],
 };
 
 describe('checkExpectation', () => {
@@ -292,7 +292,7 @@ describe('outcomeOf', () => {
     }, opts);
     const o = outcomeOf('done', r.runs.at(-1)!.result);
     expect(o).toMatchObject({ id: 'done', decision: 'complete', promptId: 'cancel_confirmed', reason: null, form: 'cancel' });
-    expect(o.slots).toEqual({ memberId: '44718293', provider: 'patel', date: null });
+    expect(o.slots).toEqual({ name: null, dob: null, memberId: '44718293', provider: 'patel', date: null });
   });
 
   it('reads an ignored turn as having no prompt, gate or verdict', () => {
@@ -302,7 +302,7 @@ describe('outcomeOf', () => {
     } satisfies TurnResult;
     expect(outcomeOf('i', ignored)).toEqual({
       id: 'i', decision: 'ignore', promptId: null, acks: [], reason: null, decidedGate: null, verdict: null,
-      form: null, slots: { memberId: null, provider: null, date: null }, queued: [],
+      form: null, slots: { name: null, dob: null, memberId: null, provider: null, date: null }, queued: [],
     });
   });
 });

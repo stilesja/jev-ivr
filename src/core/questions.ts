@@ -154,9 +154,11 @@ function noForm(): QuestionMap {
  * label. The order is pinned only so the wire order, and any option-order bias in the model's answer,
  * stay stable across runs. Every slot is listed; formConfirmation keeps the ones its form has.
  */
-export const CHANGE_SLOT_ORDER: readonly SlotId[] = ['provider', 'date', 'memberId'];
+export const CHANGE_SLOT_ORDER: readonly SlotId[] = ['name', 'dob', 'provider', 'date', 'memberId'];
 
 const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
+  name: 'They name their own name as the thing to change, without saying a new name, as in the name, or you got my name wrong',
+  dob: 'They name their date of birth or birthday as the thing to change, without saying the new date, as in the birthday, or my date of birth is wrong',
   provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',
   date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong',
   memberId: 'They name the member ID or member number as the thing to change, without saying the digits',

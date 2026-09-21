@@ -106,7 +106,10 @@ export const dateSlot: SlotSpec = {
         if (resolved.confidence < t.SLOT_CHOICE_CONFIRM) {
           return { kind: 'invalid', reason: 'low_confidence', raw: resolved.iso };
         }
-        const iso = constrainToWindow(resolved.iso, components.mode.choice, ctx.window, ctx.todayIso);
+        // ctx.window is a per-slot partial now; the date slot only ever narrows against its own
+        // DateWindow (never a dob partial, which slotContext never routes here).
+        const dateWindow = ctx.window && !('kind' in ctx.window) ? ctx.window : null;
+        const iso = constrainToWindow(resolved.iso, components.mode.choice, dateWindow, ctx.todayIso);
         if (iso === null) return { kind: 'invalid', reason: 'outside_window', raw: resolved.iso };
         return {
           kind: 'filled',

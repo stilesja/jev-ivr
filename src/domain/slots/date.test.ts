@@ -6,7 +6,7 @@ import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { choice } from '../../testing/answers';
 import type { AnswerMap } from '../../jev/types';
 
-const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
 
 function dateAnswers(picks: Record<string, [string, number]>): AnswerMap {
   const ids = ['dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow'];
@@ -95,14 +95,14 @@ describe('dateSlot', () => {
   });
 
   it('parses MMDD dtmf', () => {
-    expect(dateSlot.dtmf.parse('1005', ctx)).toEqual({ value: '2026-10-05', display: 'Monday, October 5' });
-    expect(dateSlot.dtmf.parse('1305', ctx)).toBeNull();
+    expect(dateSlot.dtmf!.parse('1005', ctx)).toEqual({ value: '2026-10-05', display: 'Monday, October 5' });
+    expect(dateSlot.dtmf!.parse('1305', ctx)).toBeNull();
   });
 });
 
 describe('slot registry', () => {
-  it('exposes all three slots', () => {
-    expect(Object.keys(SLOTS)).toEqual(['memberId', 'provider', 'date']);
+  it('exposes all five slots (name and dob are inert placeholders until Tasks 2 and 3)', () => {
+    expect(Object.keys(SLOTS)).toEqual(['name', 'dob', 'memberId', 'provider', 'date']);
   });
   it('returns the slot specs for a form in priority order', () => {
     expect(slotsFor('cancel').map((s) => s.id)).toEqual(['memberId', 'provider']);

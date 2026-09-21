@@ -1,7 +1,6 @@
 import type { AnswerMap } from '../jev/types';
 import type { SlotId } from '../domain/forms';
-import { SLOTS, type SlotCandidate, type SlotContext, type SlotOutcome, type SlotSpec } from '../domain/slots';
-import type { DateWindow } from './extract/date';
+import { SLOTS, type SlotCandidate, type SlotContext, type SlotOutcome, type SlotPartial, type SlotSpec } from '../domain/slots';
 import { missingSlots, requiredSlots, type PendingConfirmation, type Session } from './session';
 import type { Thresholds } from './thresholds';
 
@@ -93,7 +92,7 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
 }
 
 export type NextPrompt =
-  | { kind: 'ask'; slot: SlotId; window: DateWindow | null }
+  | { kind: 'ask'; slot: SlotId; window: SlotPartial | null }
   | { kind: 'complete' };
 
 export function nextPrompt(session: Session): NextPrompt {
@@ -125,6 +124,7 @@ export function applyDtmf(session: Session, buffer: string, ctx: SlotContext): D
   if (target === null || target === 'intent' || target === 'confirm') return { kind: 'no_target' };
   if (!requiredSlots(session).includes(target)) return { kind: 'no_target' };
   const spec = SLOTS[target];
+  if (!spec.dtmf) return { kind: 'no_target' };
   if (buffer.length < spec.dtmf.length) return { kind: 'collecting' };
   const parsed = spec.dtmf.parse(buffer.slice(0, spec.dtmf.length), ctx);
   if (!parsed) return { kind: 'invalid', slot: target };

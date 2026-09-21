@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newSession, bucketAttempt, bucketElapsed, bucketPriorCalls, missingSlots, currentAttempts, setForm, cloneSession } from './session';
+import type { DateWindow } from './extract/date';
 
 describe('session', () => {
   it('starts with no form and empty slots', () => {
@@ -41,9 +42,23 @@ describe('session', () => {
     const s = newSession('s1', 0);
     s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };
     const clone = cloneSession(s);
-    clone.slots.date.window!.label = 'changed';
+    (clone.slots.date.window as DateWindow).label = 'changed';
     expect(s.slots.date.window.label).toBe('next_week');
     expect(clone.slots.date.window).not.toBe(s.slots.date.window);
+  });
+
+  it('has five slots, including name and dob', () => {
+    const s = newSession('s1', 0);
+    expect(Object.keys(s.slots).sort()).toEqual(['date', 'dob', 'memberId', 'name', 'provider']);
+  });
+
+  it('cloneSession copies a dob partial by value', () => {
+    const s = newSession('s1', 0);
+    s.slots.dob.window = { kind: 'dob', month: 3, day: 5 };
+    const clone = cloneSession(s);
+    clone.slots.dob.window = { kind: 'dob', month: 3, day: 6 };
+    expect(s.slots.dob.window).toEqual({ kind: 'dob', month: 3, day: 5 });
+    expect(clone.slots.dob.window).not.toBe(s.slots.dob.window);
   });
 
   it('starts with nothing queued or completed and clones both', () => {

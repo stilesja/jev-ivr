@@ -7,6 +7,7 @@ import { choice, noul, score } from '../testing/answers';
 import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
 import { spokenText } from '../prompts/render';
+import type { DateWindow } from './extract/date';
 
 const tc: TurnContext = { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
 
@@ -53,7 +54,7 @@ describe('turn', () => {
     });
     expect(r.session.form).toBe('reschedule');
     expect(r.session.slots.provider.value).toBe('chen');
-    expect(r.session.slots.date.window?.label).toBe('next_week');
+    expect((r.session.slots.date.window as DateWindow | null)?.label).toBe('next_week');
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId', target: 'memberId', acks: [] });
     expect(r.frames.map((f) => f.type)).toEqual(['text']);
   });
@@ -507,7 +508,8 @@ describe('final confirm', () => {
     const turns = runTurns(HAPPY);
     const r = turns.at(-1)!;
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm', options: ['yes', 'no'] });
-    expect(varsOf(r.decision)).toEqual({ memberId: '4471 8293', provider: 'Dr. Chen', date: 'Tuesday, September 22' });
+    // name and dob are on no form yet (Task 1); they show up as the summary's empty vars.
+    expect(varsOf(r.decision)).toEqual({ name: '', dob: '', memberId: '4471 8293', provider: 'Dr. Chen', date: 'Tuesday, September 22' });
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
     // the ID turn asked the next question directly: no readback, no ack
     expect(turns[1]!.decision).toMatchObject({ promptId: 'date_narrow_window', acks: [] });

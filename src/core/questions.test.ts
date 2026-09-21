@@ -6,7 +6,7 @@ import { FORM_INTENTS } from '../domain/intents';
 import { ALL_SLOTS } from '../domain/forms';
 import type { SlotContext } from '../domain/slots';
 
-const ctx: SlotContext = { text: 'hi', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: 'hi', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
 
 describe('buildQuestions', () => {
   it('always includes the routing, control, caller and guard questions', () => {
@@ -94,6 +94,10 @@ describe('question redesign', () => {
 
   it('orders every slot a form can have, so no form loses one from the question', () => {
     expect([...CHANGE_SLOT_ORDER].sort()).toEqual([...ALL_SLOTS].sort());
+  });
+
+  it('puts name and dob first, ahead of provider, date and memberId', () => {
+    expect(CHANGE_SLOT_ORDER).toEqual(['name', 'dob', 'provider', 'date', 'memberId']);
   });
 
   it('limits changeSlot to the slots on the pending form (cancel has no date)', () => {

@@ -44,6 +44,8 @@ export function outcomeOf(id: string, result: TurnResult): Outcome {
 
 /** Stand-ins for the slots a corpus entry's form has already collected. */
 const PLACEHOLDER_SLOTS: Record<SlotId, SlotCandidate> = {
+  name: { value: 'jason stiles', display: 'Jason Stiles' },
+  dob: { value: '1980-03-05', display: 'March 5th, 1980' },
   memberId: { value: '00000000', display: '0000 0000' },
   provider: { value: 'patel', display: 'Dr. Patel' },
   date: { value: '2026-09-22', display: 'Tuesday, September 22' },

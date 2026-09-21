@@ -5,7 +5,7 @@ import { HeuristicStubClient } from './heuristicStub';
 import { buildQuestions } from '../core/questions';
 import { newSession } from '../core/session';
 import { buildTurnState } from '../core/state';
-import { candidateSpans } from '../core/spans';
+import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { JevClientError, noulValue, type QuestionMap } from './types';
 
@@ -27,7 +27,7 @@ const entries: CorpusEntry[] = [
 function request(text: string) {
   const session = newSession('s', 0);
   const state = buildTurnState(session, { text, isFinal: true, dtmf: null }, 0);
-  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
+  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
   return { state: state as never, questions };
 }
 

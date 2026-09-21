@@ -1,7 +1,7 @@
 import type { FormId } from './intents';
 
-export type SlotId = 'memberId' | 'provider' | 'date';
-export const ALL_SLOTS: readonly SlotId[] = ['memberId', 'provider', 'date'];
+export type SlotId = 'name' | 'dob' | 'memberId' | 'provider' | 'date';
+export const ALL_SLOTS: readonly SlotId[] = ['name', 'dob', 'memberId', 'provider', 'date'];
 
 export type FormCompletion =
   | { kind: 'prompt'; promptId: string }

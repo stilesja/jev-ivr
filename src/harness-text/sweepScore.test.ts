@@ -6,7 +6,7 @@ import type { TraceRecord } from '../trace/types';
 import { CASSETTE_MISS } from '../jev/cassette';
 
 function outcome(id: string, over: Partial<Outcome> = {}): Outcome {
-  return { id, decision: 'prompt', promptId: 'ask_memberId', acks: [], reason: null, decidedGate: 'intent', verdict: 'route', form: 'cancel', slots: { memberId: null, provider: null, date: null }, queued: [], ...over };
+  return { id, decision: 'prompt', promptId: 'ask_memberId', acks: [], reason: null, decidedGate: 'intent', verdict: 'route', form: 'cancel', slots: { name: null, dob: null, memberId: null, provider: null, date: null }, queued: [], ...over };
 }
 function scenario(id: string, pass: boolean, over: Partial<Outcome> = {}): ScenarioOutcome {
   return { ...outcome(id, over), pass, mismatches: pass ? [] : ['x'] };

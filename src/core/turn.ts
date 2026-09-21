@@ -3,9 +3,9 @@ import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
 import { ALL_SLOTS, FORMS } from '../domain/forms';
 import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain/intents';
-import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
-import { describeWindow, type DateWindow } from './extract/date';
-import { candidateSpans } from './spans';
+import { allSlots, slotsFor, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
+import { describeWindow } from './extract/date';
+import { candidateSpans, candidateWordSpans } from './spans';
 import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
@@ -47,6 +47,7 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
   return {
     text,
     candidateSpans: candidateSpans(text),
+    candidateWordSpans: candidateWordSpans(text),
     todayIso: tc.todayIso,
     thresholds: tc.thresholds,
     // A pending window constrains what a bare weekday can mean on the next turn.
@@ -54,9 +55,9 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
   };
 }
 
-/** Gate 8's threshold per slot kind: memberId is detected, the choice slots are picked. */
+/** Gate 8's threshold per slot kind: memberId, name and dob are detected, the choice slots are picked. */
 function slotThreshold(slot: SlotId, t: Thresholds): number {
-  return slot === 'memberId' ? t.SLOT_DETECT : t.SLOT_CHOICE_CONFIRM;
+  return slot === 'memberId' || slot === 'name' || slot === 'dob' ? t.SLOT_DETECT : t.SLOT_CHOICE_CONFIRM;
 }
 
 /** Spec §6 gate 8: one row per slot the turn tried to fill, so the debug table is complete. */
@@ -101,8 +102,9 @@ function handoff(s: Session, reason: string, acks: Ack[] = []): HandoffDecision 
   return { kind: 'handoff', reason, promptId: handoffPromptId(reason), acks, completed: [...s.completed], queued: [...s.queued], slots };
 }
 
-function askSlot(slot: SlotId, window: DateWindow | null, acks: Ack[]): PromptDecision {
-  if (window) return prompt('date_narrow_window', slot, { window: describeWindow(window) }, acks);
+function askSlot(slot: SlotId, window: SlotPartial | null, acks: Ack[]): PromptDecision {
+  if (window && 'kind' in window && window.kind === 'dob') return prompt('ask_dob_year', slot, {}, acks);
+  if (window && !('kind' in window)) return prompt('date_narrow_window', slot, { window: describeWindow(window) }, acks);
   return prompt(`ask_${slot}`, slot, {}, acks);
 }
 
@@ -218,7 +220,9 @@ function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thres
   const window = s.slots[target].window;
   if (step === 'open' && window) return askSlot(target, window, acks);
   if (step === 'open' && plain) return askSlot(target, null, acks);
-  return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
+  // A slot with no keypad rung (spec §2.1) stays on the retry text through the dtmf rung too.
+  const toDtmf = step === 'dtmf' && SLOTS[target].dtmf !== undefined;
+  return prompt(toDtmf ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
 }
 
 /**

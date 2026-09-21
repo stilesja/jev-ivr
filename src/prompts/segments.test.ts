@@ -31,6 +31,13 @@ describe('segmentTemplate', () => {
   });
 });
 
+describe('SPOKEN_VARS', () => {
+  it('includes name and dob', () => {
+    expect(SPOKEN_VARS.has('name')).toBe(true);
+    expect(SPOKEN_VARS.has('dob')).toBe(true);
+  });
+});
+
 describe('joinSpoken', () => {
   it('joins pieces with a single space, no space before punctuation, and skips empty pieces', () => {
     expect(joinSpoken(['With', 'Dr. Chen', '.'])).toBe('With Dr. Chen.');

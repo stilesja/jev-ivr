@@ -46,6 +46,8 @@ describe('formatSlots', () => {
   const empty = { value: null, display: null, confirmed: false, attempts: 0, window: null };
   it('lists only filled slots with value, display and confirmation', () => {
     const text = formatSlots({
+      name: empty,
+      dob: empty,
       memberId: { ...empty, value: '81793314', display: '8179 3314' },
       provider: { ...empty, value: 'chen', display: 'Dr. Chen', confirmed: true },
       date: empty,
@@ -56,6 +58,6 @@ describe('formatSlots', () => {
   });
 
   it('returns an empty string when no slot is filled', () => {
-    expect(formatSlots({ memberId: empty, provider: empty, date: empty })).toBe('');
+    expect(formatSlots({ name: empty, dob: empty, memberId: empty, provider: empty, date: empty })).toBe('');
   });
 });

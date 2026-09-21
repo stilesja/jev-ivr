@@ -32,3 +32,35 @@ export function candidateSpans(text: string): string[] {
   }
   return out;
 }
+
+/** Words that never begin or end a name span; kept small and general, like NUMBER_WORDS. */
+export const FILLER_WORDS: ReadonlySet<string> = new Set([
+  'my', 'name', 'is', "it's", 'its', 'this', 'the', 'a', 'an', 'and', 'um', 'uh', 'i', "i'm", 'im',
+  'for', 'with', 'to', 'of', 'please', 'hi', 'hello', 'hey', 'yes', 'no', 'calling', 'speaking', 'here',
+  // tokenize() strips apostrophes, so "it's" and "I'm" arrive as "it s" and "i m"
+  's', 'm',
+]);
+export const MAX_WORD_NGRAM = 3;
+
+/**
+ * 1..3-token n-grams with no digit or number word, not starting or ending with a filler;
+ * document order; capped at MAX_SPANS.
+ */
+export function candidateWordSpans(text: string): string[] {
+  const tokens = tokenize(text);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const isWord = (tok: string) => !/\d/.test(tok) && !NUMBER_WORDS.has(tok);
+  for (let n = 1; n <= MAX_WORD_NGRAM && out.length < MAX_SPANS; n++) {
+    for (let i = 0; i + n <= tokens.length && out.length < MAX_SPANS; i++) {
+      const slice = tokens.slice(i, i + n);
+      if (!slice.every(isWord)) continue;
+      if (FILLER_WORDS.has(slice[0]!) || FILLER_WORDS.has(slice[n - 1]!)) continue;
+      const span = slice.join(' ');
+      if (seen.has(span)) continue;
+      seen.add(span);
+      out.push(span);
+    }
+  }
+  return out;
+}

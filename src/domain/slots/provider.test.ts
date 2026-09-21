@@ -4,7 +4,7 @@ import type { SlotContext } from './types';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { choice, noul } from '../../testing/answers';
 
-const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
 
 describe('providerSlot', () => {
   it('asks the roster choice plus an unsure question', () => {
@@ -36,8 +36,8 @@ describe('providerSlot', () => {
   });
 
   it('parses a dtmf menu digit', () => {
-    expect(providerSlot.dtmf.parse('3', ctx)).toEqual({ value: 'patel', display: 'Dr. Patel' });
-    expect(providerSlot.dtmf.parse('9', ctx)).toBeNull();
+    expect(providerSlot.dtmf!.parse('3', ctx)).toEqual({ value: 'patel', display: 'Dr. Patel' });
+    expect(providerSlot.dtmf!.parse('9', ctx)).toBeNull();
   });
 
   it('confirms implicitly when the caller is unsure, whatever the probability', () => {
