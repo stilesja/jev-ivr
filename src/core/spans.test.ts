@@ -39,7 +39,7 @@ describe('candidateSpans', () => {
 });
 
 describe('candidateWordSpans', () => {
-  it('keeps 1-3 word spans that carry no number word and do not start or end with a filler', () => {
+  it('keeps 1-4 word spans that carry no number word and do not start or end with a filler', () => {
     const spans = candidateWordSpans('my name is Jason Stiles and I need to reschedule');
     expect(spans).toContain('jason stiles');
     expect(spans).toContain('jason');
@@ -53,5 +53,30 @@ describe('candidateWordSpans', () => {
   it('drops number words and caps the list', () => {
     expect(candidateWordSpans('four four seven one')).toEqual([]);
     expect(candidateWordSpans(Array.from({ length: 200 }, (_, i) => `w${i}`).join(' ')).length).toBeLessThanOrEqual(MAX_SPANS);
+  });
+
+  it('treats a hyphenated, apostrophed name as a plain word span up to four tokens, with o/oh as ordinary words', () => {
+    const spans = candidateWordSpans("this is Mary-Kate O'Neil calling");
+    expect(spans).toContain('mary kate o neil');
+  });
+
+  it('drops apostrophe-contraction fragments rather than offering them as spans', () => {
+    const spans = candidateWordSpans("I'd like to cancel");
+    expect(spans).not.toContain('d');
+    expect(spans).not.toContain('d like');
+    expect(spans).toEqual(['like', 'like to cancel', 'cancel']);
+  });
+
+  it('still surfaces a name said late in a realistic-length opener, emitted position by position so the cap does not spend itself on short spans alone', () => {
+    const opener = [
+      'um', 'so', 'i', 'was', 'wondering', 'if', 'you', 'could', 'help', 'me', 'with', 'something', 'because', 'my',
+      'appointment', 'got', 'moved', 'and', 'i', 'need', 'to', 'talk', 'to', 'someone', 'about', 'it', 'please', 'this',
+      'is', 'regarding', 'a', 'scheduling', 'issue', 'that', 'came', 'up', 'last', 'week', 'when', 'i', 'called', 'the',
+      'office', 'and', 'they', 'said', 'to', 'call', 'back', 'today', 'so', 'here', 'i', 'am', 'calling', 'again', 'and',
+      'i', 'also', 'wanted',
+    ];
+    expect(opener).toHaveLength(60);
+    const spans = candidateWordSpans(`${opener.join(' ')} jason stiles`);
+    expect(spans).toContain('jason stiles');
   });
 });

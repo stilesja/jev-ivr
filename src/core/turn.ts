@@ -50,8 +50,11 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
     candidateWordSpans: candidateWordSpans(text),
     todayIso: tc.todayIso,
     thresholds: tc.thresholds,
-    // A pending window constrains what a bare weekday can mean on the next turn.
-    window: session.slots.date.window,
+    // Never a real slot's window: fillSlots and buildQuestions each substitute a spec's own
+    // slot's pending partial in via slotCtx (fia.ts) before calling fill/questions, so no
+    // slot's fill or questions ever sees another slot's window. applyDtmf shares this base
+    // context unchanged; no spec's dtmf.parse reads window.
+    window: null,
   };
 }
 
@@ -115,9 +118,11 @@ export function summaryVars(s: Session): Record<string, string> {
   return vars;
 }
 
-/** Everything the summary just read back, as one comparable value. */
+/** Everything the summary just read back, as one comparable value: every slot's window too, so a
+ * narrowing (a dob month/day pending its year, a date window pending its day) counts as progress. */
 function summaryState(s: Session): string {
-  return JSON.stringify({ vars: summaryVars(s), window: s.slots.date.window });
+  const windows = ALL_SLOTS.map((id) => [id, s.slots[id].window] as const);
+  return JSON.stringify({ vars: summaryVars(s), windows });
 }
 
 /**

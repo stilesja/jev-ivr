@@ -42,6 +42,16 @@ export interface FillOptions {
   correcting?: boolean;
 }
 
+/**
+ * The context handed to one spec's `questions`/`fill`: that spec's own slot's pending partial
+ * substituted in, never another slot's -- a dob partial must never reach the date slot's `fill`
+ * (or `questions`), nor a date window reach dob's. A pending window constrains what a bare
+ * weekday can mean, or what year is still owed, on the next turn.
+ */
+export function slotCtx(session: Session, ctx: SlotContext, id: SlotId): SlotContext {
+  return { ...ctx, window: session.slots[id].window };
+}
+
 export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext, specs: SlotSpec[], opts: FillOptions = {}): FillResult {
   const events: FillEvent[] = [];
   const acks: Ack[] = [];
@@ -49,7 +59,7 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
   let progress = false;
 
   for (const spec of specs) {
-    const outcome = spec.fill(answers, ctx);
+    const outcome = spec.fill(answers, slotCtx(session, ctx, spec.id));
     if (outcome.kind === 'absent') continue;
     events.push({ slot: spec.id, outcome });
     const slot = session.slots[spec.id];

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf } from './fia';
+import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf, slotCtx } from './fia';
 import { newSession, setForm, type Session } from './session';
 import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
-import { SLOTS, slotsFor, type SlotContext } from '../domain/slots';
-import { ALL_SLOTS, FORMS } from '../domain/forms';
+import { SLOTS, slotsFor, type SlotContext, type SlotSpec } from '../domain/slots';
+import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
 import { choice, noul } from '../testing/answers';
 import { candidateSpans, candidateWordSpans } from './spans';
 import type { DateWindow } from './extract/date';
@@ -87,6 +87,43 @@ describe('fillSlots', () => {
       containsMemberId: noul(0.9), memberIdSpan: choice({ '11112222': 0.9, none: 0.1 }), memberIdComplete: noul(0.9),
     }, ctx('11112222'), slotsFor('billing'));
     expect(r.session.slots.memberId).toMatchObject({ value: '11112222', confirmed: false });
+  });
+});
+
+describe('per-spec context', () => {
+  /** A spec that fills nothing; it only records the window it was handed, for inspection. */
+  function echoSpec(id: SlotId, seen: Record<string, unknown>): SlotSpec {
+    return {
+      id,
+      spokenConfirm: 'summary',
+      questions: () => ({}),
+      fill: (_answers, c) => { seen[id] = c.window; return { kind: 'absent' }; },
+      display: (v) => v,
+    };
+  }
+
+  it('slotCtx substitutes only the named slot\'s own pending partial', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };
+    s.slots.memberId.window = { kind: 'dob', month: 3, day: 5 };
+    const base = ctx('');
+    expect(slotCtx(s, base, 'date').window).toEqual(s.slots.date.window);
+    expect(slotCtx(s, base, 'memberId').window).toEqual(s.slots.memberId.window);
+    expect(slotCtx(s, base, 'provider').window).toBeNull();
+  });
+
+  it('gives each spec in fillSlots its own slot\'s window, never another spec\'s (the Task 1 bug: slotContext always sent the date slot\'s window to every spec)', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };
+    s.slots.dob.window = { kind: 'dob', month: 3, day: 5 };
+    const seen: Record<string, unknown> = {};
+    // The base context's own window is deliberately wrong-looking (the date window), so this
+    // only passes if fillSlots substitutes per spec rather than forwarding the base context.
+    const wrongBase = { ...ctx(''), window: s.slots.date.window };
+    fillSlots(s, {}, wrongBase, [echoSpec('date', seen), echoSpec('dob', seen)]);
+    expect(seen.date).toEqual(s.slots.date.window);
+    expect(seen.dob).toEqual(s.slots.dob.window);
+    expect(seen.dob).not.toEqual(seen.date);
   });
 });
 

@@ -1,3 +1,5 @@
+import { spokenToDigits } from './spokenNumber';
+
 export interface ComponentPick {
   choice: string;
   p: number;
@@ -207,4 +209,33 @@ export function describeDay(iso: string): string {
 export function describeWindow(w: DateWindow): string {
   if ((MONTHS as readonly string[]).includes(w.label)) return `in ${cap(w.label)}`;
   return w.label.replace(/_/g, ' ');
+}
+
+/** "1st", "2nd", "3rd", "4th" ... "11th", "12th", "13th" (teens are always "th"), "21st", "22nd", "23rd", ... */
+export function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'] as const;
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
+}
+
+/** Human-readable form of an ISO date of birth, e.g. "March 5th, 1980". */
+export function describeDob(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  return `${cap(MONTHS[m - 1]!)} ${ordinal(d)}, ${y}`;
+}
+
+/**
+ * A spoken year to a calendar year in the past: "nineteen eighty" -> 1980, "eighty" -> 1980,
+ * "ten" -> 2010; null when the span carries no usable digits ("none", a name, etc).
+ */
+export function normalizeYear(span: string, todayIso: string): number | null {
+  const digits = spokenToDigits(span);
+  if (!/^\d{1,4}$/.test(digits)) return null;
+  const thisYear = Number(todayIso.slice(0, 4));
+  let y = Number(digits);
+  if (digits.length <= 2) {
+    y = 2000 + y;
+    if (y > thisYear) y -= 100;
+  }
+  return y;
 }

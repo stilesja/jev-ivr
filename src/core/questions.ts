@@ -2,6 +2,7 @@ import type { QuestionMap } from '../jev/types';
 import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU, type FormId } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
+import { slotCtx } from './fia';
 import type { Session } from './session';
 
 export const ALWAYS_ON_IDS = [
@@ -198,7 +199,7 @@ function menu(): QuestionMap {
 export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap {
   const q: QuestionMap = { ...alwaysOn() };
   const specs = session.form ? slotsFor(session.form) : allSlots();
-  for (const spec of specs) Object.assign(q, spec.questions(ctx));
+  for (const spec of specs) Object.assign(q, spec.questions(slotCtx(session, ctx, spec.id)));
   if (session.form) Object.assign(q, inForm());
   if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());

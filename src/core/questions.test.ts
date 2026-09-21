@@ -24,6 +24,13 @@ describe('buildQuestions', () => {
     expect(q).toHaveProperty('dateMode');
   });
 
+  it('passes each slot its own pending partial into questions(), not the base context\'s window (which is always null from turn.ts)', () => {
+    const s = newSession('s', 0);
+    s.slots.dob.window = { kind: 'dob', month: 3, day: 5 };
+    const q = buildQuestions(s, ctx);
+    expect((q.dobYear as { instructions: string }).instructions).toMatch(/asked for the year of their birth/);
+  });
+
   it('includes only the active form slots', () => {
     const q = buildQuestions(setForm(newSession('s', 0), 'cancel'), ctx);
     expect(q).toHaveProperty('provider');
