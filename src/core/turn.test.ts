@@ -961,7 +961,7 @@ describe('silence', () => {
   });
 
   // No slot's spokenConfirm policy is `always` in the current domain (date and provider are
-  // `by-confidence`, memberId is `summary`), so a silence during a slot readback confirmation
+  // `by-confidence`, name, dob, and memberId are `summary`), so a silence during a slot readback confirmation
   // (the `pc.target === 'slot'` branch of reaskConfirmation) cannot be driven from a scenario
   // today; there is nothing to add a test for here.
 

@@ -91,8 +91,8 @@ describe('HeuristicStubClient', () => {
   });
 
   it('does not read a marker phrase that introduces a reason as a name', async () => {
-    // "this is" / "it's" introduces a name only when a name is what follows: one to three words
-    // with nothing in them that belongs around a name rather than in it.
+    // "this is" / "it's" introduces a name only when a name is what follows: up to four words
+    // (MAX_WORD_NGRAM) with nothing in them that belongs around a name rather than in it.
     for (const text of ['this is regarding a scheduling issue', 'this is about my bill', 'this is dr chen calling']) {
       const res = await ask(text);
       expect([text, (res.answers.nameGiven as { noul: number }).noul]).toEqual([text, 0.05]);

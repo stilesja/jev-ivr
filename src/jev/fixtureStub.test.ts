@@ -96,7 +96,7 @@ describe('FixtureStubClient', () => {
     expect(none.answers.nameSpan).toMatchObject({ choice: 'none' });
   });
 
-  it('throws when a labeled name span is not a candidate word span', async () => {
+  it('throws when a labeled name span is not a candidate', async () => {
     const badEntries: CorpusEntry[] = [
       { id: 'nm-bad', text: 'my name is Jason Stiles', intent: 'none', context: 'no_form', slots: { name: 'Mary Kate' } },
     ];

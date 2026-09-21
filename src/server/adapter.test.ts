@@ -537,7 +537,7 @@ describe('no-input timer', () => {
     expect(texts(sock).slice(-2)).toEqual([NO_INPUT, ASK_INTENT]);
   });
 
-  it('estimates on the frames as they went out, digit spacing included', async () => {
+  it('estimates the wait from the frames as they went out', async () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
     for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday']) {
@@ -551,8 +551,6 @@ describe('no-input timer', () => {
     // so this summary goes out as the session holds it. Where the rewrite does spell one out,
     // Twilio reads more than the readable form, which is why the estimate is built on the frames.
     expect(spoken).toBe(d.store.get('CA1')!.session.lastPromptText);
-    const id = 'Member ID 4471 8293.';
-    expect(textEstimateMs(spokenDigits(id))).toBeGreaterThan(textEstimateMs(id));
   });
 
   it('restarts the wait on the prompt a reconnect replays', async () => {

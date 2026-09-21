@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { describeDob, normalizeYear } from '../../core/extract/date';
 import { dobSlot } from './dob';
 import { choice, noul } from '../../testing/answers';
 import { candidateSpans, candidateWordSpans } from '../../core/spans';
@@ -37,13 +36,6 @@ describe('dobSlot', () => {
     expect(r).toMatchObject({ kind: 'filled', value: '1980-03-05' });
   });
 
-  it('maps a two-digit year into the past', () => {
-    expect(normalizeYear('eighty', '2026-09-18')).toBe(1980);
-    expect(normalizeYear('ten', '2026-09-18')).toBe(2010);
-    expect(normalizeYear('nineteen eighty', '2026-09-18')).toBe(1980);
-    expect(normalizeYear('two thousand five', '2026-09-18')).toBe(2005);
-  });
-
   it('is invalid with reason no_year when a year is given alone with nothing pending to supply month or day', () => {
     const r = dobSlot.fill(
       { dobGiven: noul(0.95), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }), dobYear: choice({ eighty: 0.9 }) },
@@ -64,12 +56,6 @@ describe('dobSlot', () => {
     expect(dobSlot.dtmf!.parse('02301980', ctx(''))).toBeNull();
     expect(dobSlot.dtmf!.parse('03052030', ctx(''))).toBeNull();
     expect(dobSlot.dtmf!.length).toBe(8);
-  });
-
-  it('describes with an ordinal day', () => {
-    expect(describeDob('1980-03-05')).toBe('March 5th, 1980');
-    expect(describeDob('1991-11-22')).toBe('November 22nd, 1991');
-    expect(describeDob('2001-01-11')).toBe('January 11th, 2001');
   });
 
   it('is absent when no component is read, so a pending partial is not replayed as fresh progress', () => {

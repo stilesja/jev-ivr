@@ -101,7 +101,7 @@ describe('dateSlot', () => {
 });
 
 describe('slot registry', () => {
-  it('exposes all five slots (name and dob are inert placeholders until Tasks 2 and 3)', () => {
+  it('exposes all five slots', () => {
     expect(Object.keys(SLOTS)).toEqual(['name', 'dob', 'memberId', 'provider', 'date']);
   });
   it('returns the slot specs for a form in priority order', () => {
