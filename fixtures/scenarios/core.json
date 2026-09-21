@@ -1709,7 +1709,7 @@
         "say": "Tuesday"
       },
       {
-        "say": "no, it's Jason Styles"
+        "say": "no, it's Jason Miles"
       },
       {
         "say": "yes"
@@ -1720,7 +1720,7 @@
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
       "slots": {
-        "name": "jason styles"
+        "name": "jason miles"
       }
     }
   },

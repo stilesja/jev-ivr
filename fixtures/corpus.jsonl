@@ -188,7 +188,7 @@
 {"id":"fc-10","text":"the day","intent":"none","context":"confirm_reschedule","changeSlot":"date"}
 {"id":"fc-11","text":"the doctor","intent":"none","context":"confirm_cancel","changeSlot":"provider"}
 {"id":"fc-12","text":"my date of birth","intent":"none","context":"confirm_reschedule","changeSlot":"dob"}
-{"id":"fc-13","text":"no, it's Jason Styles","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"name":"Jason Styles"},"tags":["correction_changes_value"]}
+{"id":"fc-13","text":"no, it's Jason Miles","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"name":"Jason Miles"},"tags":["correction_changes_value"]}
 {"id":"fc-15","text":"yes, and can I also ask about my bill","intent":"billing","context":"confirm_reschedule","confirm":"yes","change":"adding"}
 {"id":"fc-16","text":"no, the doctor is wrong","intent":"none","context":"confirm_reschedule","confirm":"no","changeSlot":"provider"}
 {"id":"fc-17","text":"Cheng, not Chen","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}

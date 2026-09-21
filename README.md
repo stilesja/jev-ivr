@@ -302,7 +302,7 @@ finishing outright:
 
 Saying "yes" completes the form with a short line, "Your appointment is
 moved." A correction — "no, Thursday", "no, Thursday with Dr. Alvarez", "no,
-it's Jason Styles", "no, born March 6th 1980", or a bare "Thursday" on its own
+it's Jason Miles", "no, born March 6th 1980", or a bare "Thursday" on its own
 — refills the named slot(s) and asks the summary again with the new values.
 Naming a detail without giving its new value re-asks that detail's own
 question: "the name" is answered with "What's your first and last name?", "the
@@ -313,10 +313,10 @@ as an unanswered turn: a re-ask, then the keypad ("Press 1 to confirm, or 2 to
 change something."), then an agent. An utterance that is neither yes/no nor a
 slot value or name is itself an unanswered turn and follows that same ladder.
 So is a correction to the value the summary just read back: "no, it's Jason
-Styles" changes the name and asks the summary again, while "no, it's Jason
+Miles" changes the name and asks the summary again, while "no, it's Jason
 Stiles" against a summary that already says Jason Stiles changes nothing and
-spends a turn on the ladder — the corpus keeps that one-letter pair as `fc-13`
-and `fc-21`. The name, the date of birth and the member ID all fill silently —
+spends a turn on the ladder — the corpus keeps that pair as `fc-13` and
+`fc-21`. The name, the date of birth and the member ID all fill silently —
 no ack, no readback of their own — and are confirmed only in the summary, where
 they can be corrected like any other slot. A form that ends in a handoff
 (billing) has no summary; the slots collected so far ride along in the handoff
@@ -466,7 +466,7 @@ member IDs and dates as quiet as possible.
     `SessionStatus=ended`.
 15. Call again, repeat through step 9, then say "no, Thursday" instead of
     "yes". Expect the summary question again, now naming Thursday instead of
-    Tuesday. Then try "no, it's Jason Styles": expect the summary again with
+    Tuesday. Then try "no, it's Jason Miles": expect the summary again with
     the new name. Say "yes" to finish.
 16. Call again and say: "I need to reschedule my appointment with Dr.
     Alvarez for next Thursday, and also I have a question about my bill."

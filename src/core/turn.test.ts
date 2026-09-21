@@ -768,10 +768,10 @@ describe('final confirm', () => {
   });
 
   it('corrects the name at the summary', () => {
-    const r = afterTurns([...HAPPY, "no, it's Jason Styles"]);
+    const r = afterTurns([...HAPPY, "no, it's Jason Miles"]);
     expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
-    expect(varsOf(r.decision)).toMatchObject({ name: 'Jason Styles' });
-    expect(r.session.slots.name).toMatchObject({ value: 'jason styles', confirmed: false });
+    expect(varsOf(r.decision)).toMatchObject({ name: 'Jason Miles' });
+    expect(r.session.slots.name).toMatchObject({ value: 'jason miles', confirmed: false });
   });
 
   it('corrects the birthday at the summary', () => {
