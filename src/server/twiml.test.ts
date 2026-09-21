@@ -10,7 +10,7 @@ describe('twiml', () => {
     expect(xml).toContain('url="wss://demo.ngrok.app/conversation?token=abc"');
     for (const attr of [
       'transcriptionProvider="Deepgram"', 'speechModel="flux"', 'partialPrompts="true"', 'dtmfDetection="true"',
-      'interruptible="any"', 'interruptSensitivity="medium"', 'reportInputDuringAgentSpeech="any"',
+      'interruptible="any"', 'interruptSensitivity="low"', 'ignoreBackchannel="true"', 'reportInputDuringAgentSpeech="any"',
       'deepgramSmartFormat="false"', 'hints="Dr. Chen, reschedule"',
     ]) expect(xml).toContain(attr);
     expect(xml.endsWith('</Response>')).toBe(true);

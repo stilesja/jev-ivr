@@ -31,8 +31,11 @@ export function connectRelayTwiml(o: ConnectOptions): string {
     'speechModel="flux"',
     'partialPrompts="true"',
     'dtmfDetection="true"',
+    // On speakerphone, room noise was interrupting prompt playback and leaving the caller in
+    // silence until the no-input timer fired: low needs confident, longer speech to interrupt, and backchannels ("uh-huh") never do.
     'interruptible="any"',
-    'interruptSensitivity="medium"',
+    'interruptSensitivity="low"',
+    'ignoreBackchannel="true"',
     'reportInputDuringAgentSpeech="any"',
     'deepgramSmartFormat="false"',
     `hints="${escapeXml(o.hints)}"`,
