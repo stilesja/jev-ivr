@@ -4,9 +4,9 @@ import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import { FORM_INTENTS } from '../domain/intents';
 import { ALL_SLOTS } from '../domain/forms';
-import type { SlotContext } from '../domain/slots';
+import { EXCLUDED_NAME_TOKENS, type SlotContext } from '../domain/slots';
 
-const ctx: SlotContext = { text: 'hi', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: 'hi', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 
 describe('buildQuestions', () => {
   it('always includes the routing, control, caller and guard questions', () => {

@@ -6,7 +6,7 @@ import { DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS } from
 import { PROVIDERS } from '../domain/slots/provider';
 import { FORM_INTENTS } from '../domain/intents';
 import { ALWAYS_ON_IDS } from '../core/questions';
-import { allSlots, type SlotContext } from '../domain/slots';
+import { allSlots, EXCLUDED_NAME_TOKENS, type SlotContext } from '../domain/slots';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 
 const corpus = loadCorpus('fixtures/corpus.jsonl');
@@ -25,7 +25,7 @@ describe('fixtures/corpus.jsonl', () => {
   });
 
   it('overrides name only questions the schema can ask', () => {
-    const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null };
+    const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
     const askable = new Set<string>([...ALWAYS_ON_IDS, 'confirmsYes', 'confirmsNo', 'menuNumberSaid', 'intentChange']);
     for (const spec of allSlots()) for (const id of Object.keys(spec.questions(ctx))) askable.add(id);
     for (const e of corpus) {

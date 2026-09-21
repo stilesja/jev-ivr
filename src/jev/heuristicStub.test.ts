@@ -7,11 +7,12 @@ import { buildTurnState } from '../core/state';
 import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { isChoice, isNoul, isScore, rankProbabilities } from './types';
+import { EXCLUDED_NAME_TOKENS } from '../domain/slots';
 
 async function ask(text: string, todayIso = '2026-09-18') {
   const session = newSession('s', 0);
   const state = buildTurnState(session, { text, isFinal: true, dtmf: null }, 0);
-  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso, thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
+  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso, thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS });
   const res = await new HeuristicStubClient({ todayIso }).ask({ state: state as never, questions });
   expect(Object.keys(res.answers).sort()).toEqual(Object.keys(questions).sort());
   return res;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf, slotCtx } from './fia';
 import { newSession, setForm, type Session } from './session';
 import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
-import { SLOTS, slotsFor, type SlotContext, type SlotSpec } from '../domain/slots';
+import { EXCLUDED_NAME_TOKENS, SLOTS, slotsFor, type SlotContext, type SlotSpec } from '../domain/slots';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
 import { choice, noul } from '../testing/answers';
 import { candidateSpans, candidateWordSpans } from './spans';
@@ -10,7 +10,7 @@ import type { DateWindow } from './extract/date';
 
 const T = { ...DEFAULT_THRESHOLDS };
 function ctx(text = ''): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: T, window: null };
+  return { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: T, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 }
 
 describe('retryStep', () => {

@@ -4,9 +4,10 @@ import type { SlotContext } from './types';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { candidateSpans, candidateWordSpans } from '../../core/spans';
 import { choice, noul } from '../../testing/answers';
+import { EXCLUDED_NAME_TOKENS } from './index';
 
 function ctx(text: string): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+  return { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 }
 
 describe('memberIdSlot', () => {

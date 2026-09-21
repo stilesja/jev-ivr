@@ -3,8 +3,11 @@ import { nameSlot, titleCase } from './name';
 import { choice, noul } from '../../testing/answers';
 import { candidateSpans, candidateWordSpans } from '../../core/spans';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
+import { EXCLUDED_NAME_TOKENS } from './index';
 
-const ctx = (text: string) => ({ text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null });
+const ctx = (text: string) => ({ text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS });
+
+const spanKeys = (text: string) => Object.keys((nameSlot.questions(ctx(text)).nameSpan as { criteria: Record<string, string | null> }).criteria);
 
 describe('nameSlot', () => {
   it('asks for a name check and a span choice over the word candidates', () => {
@@ -29,6 +32,28 @@ describe('nameSlot', () => {
     const criteria = (q.nameSpan as { criteria: Record<string, string | null> }).criteria;
     expect(candidateWordSpans('none of your business')).toContain('none');
     expect(criteria.none).toMatch(/caller/);
+  });
+  it('never offers a span that contains a provider name', () => {
+    // The whole correction is candidate material -- "not chen cheng", "chen cheng", "cheng" --
+    // and the doctor being corrected is not the caller. Only the leftover "not" survives.
+    expect(candidateWordSpans('not Chen, Cheng')).toEqual(['not', 'not chen', 'not chen cheng', 'chen', 'chen cheng', 'cheng']);
+    expect(spanKeys('not Chen, Cheng')).toEqual(['not', 'none']);
+  });
+  it('keeps the caller\'s own name in an utterance that also names the doctor', () => {
+    const keys = spanKeys('this is Jason Stiles, seeing Dr. Chen');
+    expect(keys).toContain('jason stiles');
+    expect(keys).not.toContain('dr chen');
+    expect(keys).not.toContain('chen');
+    expect(keys.filter((k) => k.split(' ').some((w) => w === 'dr' || w === 'doctor'))).toEqual([]);
+  });
+  it('leaves a caller whose surname is no provider untouched', () => {
+    const text = 'my name is Dana Whitfield';
+    expect(spanKeys(text)).toEqual([...candidateWordSpans(text), 'none']);
+  });
+  it('refuses a chosen span that the criteria never offered', () => {
+    // Defensive: a cassette recorded before the exclusion can still hand back an excluded span.
+    const r = nameSlot.fill({ nameGiven: noul(0.9), nameSpan: choice({ 'chen cheng': 0.8, not: 0.2 }) }, ctx('not Chen, Cheng'));
+    expect(r).toMatchObject({ kind: 'invalid', reason: 'no_span' });
   });
   it('has no keypad rung', () => { expect(nameSlot.dtmf).toBeUndefined(); expect(nameSlot.spokenConfirm).toBe('summary'); });
   it('title-cases each word', () => { expect(titleCase('mary kate o neil')).toBe('Mary Kate O Neil'); });

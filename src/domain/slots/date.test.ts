@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { dateSlot } from './date';
-import { SLOTS, slotsFor } from './index';
+import { EXCLUDED_NAME_TOKENS, SLOTS, slotsFor } from './index';
 import type { SlotContext } from './types';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { choice } from '../../testing/answers';
 import type { AnswerMap } from '../../jev/types';
 
-const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 
 function dateAnswers(picks: Record<string, [string, number]>): AnswerMap {
   const ids = ['dateMode', 'dateMonth', 'dateDay', 'dateWeekday', 'dateWeekdayQualifier', 'dateRelativeDay', 'dateWindow'];

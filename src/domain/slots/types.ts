@@ -21,6 +21,13 @@ export interface SlotContext {
   thresholds: Thresholds;
   /** the slot's own pending partial, null when none is pending */
   window: SlotPartial | null;
+  /**
+   * Normalized tokens no span offered as a person's own name may contain: the deployment's
+   * provider vocabulary and the titles that mark a name as the doctor's. Supplied by whoever
+   * registers the specs (EXCLUDED_NAME_TOKENS in ./index), so a different vocabulary plugs in
+   * without the name slot knowing any names.
+   */
+  excludedNameTokens: ReadonlySet<string>;
 }
 
 export interface SlotCandidate {

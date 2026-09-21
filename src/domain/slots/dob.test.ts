@@ -3,8 +3,9 @@ import { dobSlot } from './dob';
 import { choice, noul } from '../../testing/answers';
 import { candidateSpans, candidateWordSpans } from '../../core/spans';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
+import { EXCLUDED_NAME_TOKENS } from './index';
 
-const ctx = (text: string) => ({ text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null });
+const ctx = (text: string) => ({ text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS });
 
 describe('dobSlot', () => {
   it('asks given, month, day, and a year span over the number candidates', () => {

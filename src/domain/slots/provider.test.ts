@@ -3,8 +3,9 @@ import { providerSlot } from './provider';
 import type { SlotContext } from './types';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { choice, noul } from '../../testing/answers';
+import { EXCLUDED_NAME_TOKENS } from './index';
 
-const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 
 describe('providerSlot', () => {
   it('asks the roster choice plus an unsure question', () => {

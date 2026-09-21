@@ -72,7 +72,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller's birthday, answer none. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
     "type": "choice",
   },
   "dateMode": {
@@ -83,7 +83,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "weekday": null,
       "window": null,
     },
-    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date.",
+    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. One utterance can carry both: a birthday and, separately, the day they want to come in. The appointment day is the one not introduced by born or birthday, so a weekday or a relative day said alongside a birthday is still the appointment day and still names the mode.",
     "type": "choice",
   },
   "dateMonth": {
@@ -102,7 +102,7 @@ exports[`question redesign > pins every question the model sees at the summary (
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
+    "instructions": "Read asr.text. Which month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller's birthday, answer none. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -290,8 +290,8 @@ exports[`question redesign > pins every question the model sees at the summary (
   },
   "nameGiven": {
     "criteria": {
-      "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
-      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to a name just read back to them, as in no, it's Sam Lee",
+      "false": "No personal name, or a name that is not the caller's, such as a doctor's name, or a correction to the doctor's name",
+      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to their own name just read back to them, as in no, it's Sam Lee",
     },
     "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
     "type": "noul",
@@ -300,7 +300,7 @@ exports[`question redesign > pins every question the model sees at the summary (
     "criteria": {
       "none": "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller says a different name, as in no, it's Sam Lee, that different name is the caller's name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller gives a different name for themselves, as in no, it's Sam Lee, choose that span; correcting the doctor's name, as in not Dr. Alder, Dr. Ames, is not the caller's name. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {
@@ -416,7 +416,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller's birthday, answer none. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
     "type": "choice",
   },
   "dateMode": {
@@ -427,7 +427,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "weekday": null,
       "window": null,
     },
-    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date.",
+    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. One utterance can carry both: a birthday and, separately, the day they want to come in. The appointment day is the one not introduced by born or birthday, so a weekday or a relative day said alongside a birthday is still the appointment day and still names the mode.",
     "type": "choice",
   },
   "dateMonth": {
@@ -446,7 +446,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
+    "instructions": "Read asr.text. Which month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller's birthday, answer none. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -634,8 +634,8 @@ exports[`question redesign > pins every question the model sees inside a form (a
   },
   "nameGiven": {
     "criteria": {
-      "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
-      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to a name just read back to them, as in no, it's Sam Lee",
+      "false": "No personal name, or a name that is not the caller's, such as a doctor's name, or a correction to the doctor's name",
+      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to their own name just read back to them, as in no, it's Sam Lee",
     },
     "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
     "type": "noul",
@@ -644,7 +644,7 @@ exports[`question redesign > pins every question the model sees inside a form (a
     "criteria": {
       "none": "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller says a different name, as in no, it's Sam Lee, that different name is the caller's name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller gives a different name for themselves, as in no, it's Sam Lee, choose that span; correcting the doctor's name, as in not Dr. Alder, Dr. Ames, is not the caller's name. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {
@@ -764,7 +764,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "9": null,
       "none": null,
     },
-    "instructions": "Read asr.text. Which day of the month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
+    "instructions": "Read asr.text. Which day of the month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller's birthday, answer none. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I'm not sure" or "either" is not a correction; name the day of the month they mention.",
     "type": "choice",
   },
   "dateMode": {
@@ -775,7 +775,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "weekday": null,
       "window": null,
     },
-    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date.",
+    "instructions": "Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. One utterance can carry both: a birthday and, separately, the day they want to come in. The appointment day is the one not introduced by born or birthday, so a weekday or a relative day said alongside a birthday is still the appointment day and still names the mode.",
     "type": "choice",
   },
   "dateMonth": {
@@ -794,7 +794,7 @@ exports[`question redesign > pins every question the model sees outside a form (
       "october": null,
       "september": null,
     },
-    "instructions": "Read asr.text. Which month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
+    "instructions": "Read asr.text. Which month does the caller name, if any? The caller's date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller's birthday, answer none. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I'm not sure" or "either" is not a correction; name the month they mention.",
     "type": "choice",
   },
   "dateRelativeDay": {
@@ -984,8 +984,8 @@ exports[`question redesign > pins every question the model sees outside a form (
   },
   "nameGiven": {
     "criteria": {
-      "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
-      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to a name just read back to them, as in no, it's Sam Lee",
+      "false": "No personal name, or a name that is not the caller's, such as a doctor's name, or a correction to the doctor's name",
+      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to their own name just read back to them, as in no, it's Sam Lee",
     },
     "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
     "type": "noul",
@@ -994,7 +994,7 @@ exports[`question redesign > pins every question the model sees outside a form (
     "criteria": {
       "none": "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller says a different name, as in no, it's Sam Lee, that different name is the caller's name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller gives a different name for themselves, as in no, it's Sam Lee, choose that span; correcting the doctor's name, as in not Dr. Alder, Dr. Ames, is not the caller's name. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {

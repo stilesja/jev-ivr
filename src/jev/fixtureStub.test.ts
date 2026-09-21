@@ -8,6 +8,7 @@ import { buildTurnState } from '../core/state';
 import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { JevClientError, noulValue, type QuestionMap } from './types';
+import { EXCLUDED_NAME_TOKENS } from '../domain/slots';
 
 const entries: CorpusEntry[] = [
   {
@@ -27,7 +28,7 @@ const entries: CorpusEntry[] = [
 function request(text: string) {
   const session = newSession('s', 0);
   const state = buildTurnState(session, { text, isFinal: true, dtmf: null }, 0);
-  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
+  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS });
   return { state: state as never, questions };
 }
 

@@ -3,7 +3,7 @@ import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
 import { ALL_SLOTS, FORMS } from '../domain/forms';
 import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain/intents';
-import { allSlots, slotsFor, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
+import { allSlots, slotsFor, EXCLUDED_NAME_TOKENS, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
 import { describeWindow } from './extract/date';
 import { candidateSpans, candidateWordSpans } from './spans';
 import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
@@ -50,6 +50,7 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
     candidateWordSpans: candidateWordSpans(text),
     todayIso: tc.todayIso,
     thresholds: tc.thresholds,
+    excludedNameTokens: EXCLUDED_NAME_TOKENS,
     // Never a real slot's window: fillSlots and buildQuestions each substitute a spec's own
     // slot's pending partial in via slotCtx (fia.ts) before calling fill/questions, so no
     // slot's fill or questions ever sees another slot's window. applyDtmf shares this base
