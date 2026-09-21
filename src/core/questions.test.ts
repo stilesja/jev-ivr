@@ -93,7 +93,7 @@ describe('question redesign', () => {
     s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
     const q = buildQuestions(s, ctx);
     expect(q.changeSlot?.type).toBe('choice');
-    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['provider', 'date', 'memberId', 'none']);
+    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['name', 'dob', 'provider', 'date', 'none']);
     expect(q.confirmsYes).toBeDefined();
     expect(q.provider).toBeDefined();
     expect(q.dateMode).toBeDefined();
@@ -107,12 +107,12 @@ describe('question redesign', () => {
     expect(CHANGE_SLOT_ORDER).toEqual(['name', 'dob', 'provider', 'date', 'memberId']);
   });
 
-  it('limits changeSlot to the slots on the pending form (cancel has no date)', () => {
+  it('limits changeSlot to the slots on the pending form (cancel has no date, and no member ID)', () => {
     const s = newSession('s', 0);
     setForm(s, 'cancel');
     s.pendingConfirmation = { target: 'form', form: 'cancel', attempts: 0 };
     const q = buildQuestions(s, ctx);
-    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['provider', 'memberId', 'none']);
+    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['name', 'dob', 'provider', 'none']);
   });
 
   it('does not ask changeSlot for a slot-target confirmation', () => {

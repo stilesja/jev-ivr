@@ -61,6 +61,35 @@ describe('HeuristicStubClient', () => {
     expect((res.answers.memberIdSpan as { choice: string }).choice).toBe('forty four one eighty seven three hundred fifty five');
   });
 
+  it('spots a spoken name and picks the span after the marker', async () => {
+    const res = await ask("it's Jason Stiles");
+    expect((res.answers.nameGiven as { noul: number }).noul).toBeGreaterThan(0.8);
+    expect((res.answers.nameSpan as { choice: string }).choice).toBe('jason stiles');
+    const plain = await ask('Jason Stiles');
+    expect((plain.answers.nameGiven as { noul: number }).noul).toBeGreaterThan(0.8);
+    expect((plain.answers.nameSpan as { choice: string }).choice).toBe('jason stiles');
+    const digits = await ask('four four seven one eight two nine three');
+    expect((digits.answers.nameGiven as { noul: number }).noul).toBeLessThan(0.2);
+    expect((digits.answers.nameSpan as { choice: string }).choice).toBe('none');
+  });
+
+  it('reads a birthday, and a year alone as the answer to the year question', async () => {
+    const res = await ask('March fifth nineteen eighty');
+    expect((res.answers.dobGiven as { noul: number }).noul).toBeGreaterThan(0.8);
+    expect((res.answers.dobMonth as { choice: string }).choice).toBe('march');
+    expect((res.answers.dobDay as { choice: string }).choice).toBe('5');
+    expect((res.answers.dobYear as { choice: string }).choice).toBe('nineteen eighty');
+    const spelledOut = await ask('the fifth of March, 1980');
+    expect((spelledOut.answers.dobDay as { choice: string }).choice).toBe('5');
+    expect((spelledOut.answers.dobYear as { choice: string }).choice).toBe('1980');
+    const yearAlone = await ask('nineteen eighty');
+    expect((yearAlone.answers.dobGiven as { noul: number }).noul).toBeGreaterThan(0.8);
+    expect((yearAlone.answers.dobYear as { choice: string }).choice).toBe('nineteen eighty');
+    // A member ID is a long string of number words, not a birth year said on its own.
+    const id = await ask('four four seven one eight two nine three');
+    expect((id.answers.dobGiven as { noul: number }).noul).toBeLessThan(0.2);
+  });
+
   it('flags a request for a human', async () => {
     const res = await ask('just let me talk to a person');
     expect((res.answers.wantsHuman as { noul: number }).noul).toBeGreaterThan(0.8);

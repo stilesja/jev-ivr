@@ -145,7 +145,8 @@ describe('decisionToFrames with clips', () => {
   const clips = new Map([
     ['greeting.0', 'greeting.0.wav'],
     ['ack_provider.0', 'ack_provider.0.wav'], ['provider.chen', 'provider.chen.wav'],
-    ['confirm_cancel.0', 'confirm_cancel.0.wav'], ['confirm_cancel.1', 'confirm_cancel.1.mp3'], ['confirm_cancel.2', 'confirm_cancel.2.wav'],
+    ['confirm_cancel.0', 'confirm_cancel.0.wav'], ['confirm_cancel.1', 'confirm_cancel.1.mp3'],
+    ['confirm_cancel.2', 'confirm_cancel.2.wav'], ['confirm_cancel.3', 'confirm_cancel.3.wav'],
     ['window.next_week', 'window.next_week.wav'],
     ['goodbye.0', 'goodbye.0.wav'],
   ]);
@@ -160,13 +161,14 @@ describe('decisionToFrames with clips', () => {
 
   it('plays vocabulary clips, speaks composed values, and drops bare punctuation after a clip', () => {
     const frames = decisionToFrames({
-      kind: 'prompt', promptId: 'confirm_cancel', vars: { memberId: '4471 8293', provider: 'Dr. Chen' }, target: 'confirm', options: ['yes', 'no'],
+      kind: 'prompt', promptId: 'confirm_cancel', vars: { name: 'Jason Stiles', dob: 'March 5th, 1980', provider: 'Dr. Chen' }, target: 'confirm', options: ['yes', 'no'],
       acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
     }, ctx);
     expect(frames).toEqual([
       p(`${base}ack_provider.0.wav`, false), p(`${base}provider.chen.wav`, false),
       p(`${base}confirm_cancel.0.wav`, true), p(`${base}provider.chen.wav`, true),
-      p(`${base}confirm_cancel.1.mp3`, true), t('4471 8293', true), p(`${base}confirm_cancel.2.wav`, true),
+      p(`${base}confirm_cancel.1.mp3`, true), t('Jason Stiles', true), p(`${base}confirm_cancel.2.wav`, true),
+      t('March 5th, 1980', true), p(`${base}confirm_cancel.3.wav`, true),
     ]);
   });
 
@@ -209,6 +211,8 @@ describe('decisionToFrames with clips', () => {
       intentLabel: INTENT_LABELS.billing,
       window: 'next week',
       memberId: '4471 8293',
+      name: 'Jason Stiles',
+      dob: 'March 5th, 1980',
       date: 'Tuesday, September 22',
       a: 'Dr. Chen',
       b: 'Dr. Cheng',
@@ -227,6 +231,8 @@ describe('decisionToFrames with clips', () => {
       intentLabel: INTENT_LABELS.billing,
       window: 'next week',
       memberId: '4471 8293',
+      name: 'Jason Stiles',
+      dob: 'March 5th, 1980',
       date: 'Tuesday, September 22',
       a: 'Dr. Chen',
       b: 'Dr. Cheng',
@@ -268,7 +274,7 @@ describe('decisionToFrames with clips', () => {
       return joinSpoken(runs);
     }
 
-    it('plays a clip for every segment that has one, falling back to text only for the two spoken vars', () => {
+    it('plays a clip for every segment that has one, falling back to text only for the spoken vars', () => {
       for (const [id, entry] of Object.entries(manifest)) {
         const frames = promptFrames(id, vars, true, fullCtx);
 
@@ -280,7 +286,7 @@ describe('decisionToFrames with clips', () => {
           // punctuation-only fixed segment glued on (it has nowhere else to attach when
           // nothing plays after it — see the reference model above).
           const bare = token.replace(/[,.?!;:]+$/, '');
-          const isSpokenVarValue = bare === vars.memberId || bare === vars.date;
+          const isSpokenVarValue = [vars.memberId, vars.name, vars.dob, vars.date].includes(bare);
           expect(isSpokenVarValue, `${id}: unexpected text frame ${JSON.stringify(token)}`).toBe(true);
         }
 

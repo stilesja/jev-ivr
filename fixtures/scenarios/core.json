@@ -6,7 +6,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -20,20 +23,24 @@
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "chen",
         "date": "2026-09-22"
       }
     }
   },
   {
-    "id": "schedule-dtmf-id",
+    "id": "schedule-dtmf-dob",
     "steps": [
       {
         "say": "I need to book an appointment with Dr. Patel"
       },
       {
-        "dtmf": "44718293"
+        "say": "Jason Stiles"
+      },
+      {
+        "dtmf": "03051980"
       },
       {
         "say": "next Tuesday"
@@ -47,7 +54,8 @@
       "promptId": "schedule_confirmed",
       "form": "schedule_new",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "patel",
         "date": "2026-09-22"
       }
@@ -60,7 +68,10 @@
         "say": "I need to cancel my appointment with Dr. Okafor"
       },
       {
-        "say": "it's 4471 8293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "yes"
@@ -71,7 +82,8 @@
       "promptId": "cancel_confirmed",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "okafor"
       }
     }
@@ -83,7 +95,10 @@
         "say": "Confirm my appointment with Dr. Okafor"
       },
       {
-        "say": "it's 4471 8293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "yes"
@@ -94,7 +109,8 @@
       "promptId": "appointment_details",
       "form": "confirm_appointment",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "okafor"
       }
     }
@@ -122,7 +138,7 @@
     "id": "over-answer-one-turn",
     "steps": [
       {
-        "say": "Make an appointment with Dr. Okafor, member ID 4471 8293, Friday"
+        "say": "Make an appointment with Dr. Okafor for Jason Stiles, born March fifth nineteen eighty, Friday"
       },
       {
         "say": "yes"
@@ -132,7 +148,8 @@
       "decision": "complete",
       "promptId": "schedule_confirmed",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "okafor",
         "date": "2026-09-25"
       },
@@ -151,7 +168,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "cancel",
       "slots": {
         "provider": "cheng"
@@ -165,7 +182,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "how about Wednesday"
@@ -177,7 +197,8 @@
     "expect": {
       "decision": "complete",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "chen",
         "date": "2026-09-23"
       },
@@ -193,7 +214,10 @@
         "say": "I need a different date for my appointment, something in December"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       }
     ],
     "expect": {
@@ -222,28 +246,25 @@
     }
   },
   {
-    "id": "slot-retry-to-dtmf",
+    "id": "name-retry-to-agent",
     "steps": [
       {
         "say": "Cancel my appointment"
       },
       {
-        "say": "um"
+        "silence": true
       },
       {
-        "say": "um"
+        "silence": true
       },
       {
-        "dtmf": "44718293"
+        "silence": true
       }
     ],
     "expect": {
-      "decision": "prompt",
-      "promptId": "ask_provider",
-      "form": "cancel",
-      "slots": {
-        "memberId": "44718293"
-      }
+      "decision": "handoff",
+      "reason": "max-attempts",
+      "form": "cancel"
     }
   },
   {
@@ -261,7 +282,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "reschedule"
     }
   },
@@ -280,7 +301,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "cancel"
     }
   },
@@ -296,7 +317,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "cancel"
     }
   },
@@ -341,7 +362,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "reschedule",
       "slots": {
         "provider": "cheng"
@@ -411,7 +432,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "reschedule"
     }
   },
@@ -455,7 +476,10 @@
         "say": "I need to reschedule my appointment"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Dr. Chen"
@@ -477,7 +501,10 @@
         "say": "Cancel my appointment"
       },
       {
-        "dtmf": "44718293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "I don't remember the doctor's name"
@@ -497,7 +524,8 @@
       "promptId": "cancel_confirmed",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "okafor"
       }
     }
@@ -509,7 +537,10 @@
         "say": "I need to reschedule my appointment"
       },
       {
-        "dtmf": "44718293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Dr. Chen"
@@ -532,7 +563,8 @@
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "chen",
         "date": "2026-09-22"
       }
@@ -591,7 +623,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "cancel"
     }
   },
@@ -610,7 +642,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "reschedule"
     }
   },
@@ -621,7 +653,10 @@
         "say": "I need a different date for my appointment, something in December"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Dr. Chen"
@@ -659,13 +694,16 @@
     }
   },
   {
-    "id": "summary-reads-back-spoken-id",
+    "id": "summary-reads-back-name-and-dob",
     "steps": [
       {
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -675,7 +713,7 @@
       "decision": "prompt",
       "promptId": "confirm_reschedule",
       "form": "reschedule",
-      "text": "member ID 4471 8293"
+      "text": "for Jason Stiles, born March 5th, 1980"
     }
   },
   {
@@ -685,7 +723,10 @@
         "say": "I need to reschedule my appointment"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Dr. Chen"
@@ -708,7 +749,7 @@
     "id": "weekday-in-window-one-turn",
     "steps": [
       {
-        "say": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My member number is four four seven one eight two nine three"
+        "say": "I'd like to reschedule my appointment with dr chen to tuesday of next week. My name is Jason Stiles and I was born March fifth nineteen eighty"
       },
       {
         "say": "yes"
@@ -719,7 +760,8 @@
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "chen",
         "date": "2026-09-22"
       }
@@ -732,7 +774,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "and can I also ask about my bill"
@@ -745,8 +790,8 @@
       }
     ],
     "expect": {
-      "decision": "handoff",
-      "reason": "billing",
+      "decision": "prompt",
+      "promptId": "ask_memberId",
       "form": "billing",
       "text": "Now, let's ask about billing."
     }
@@ -774,7 +819,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "dtmf": "44718293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "actually forget the reschedule, just cancel it"
@@ -788,7 +836,8 @@
       "promptId": "cancel_confirmed",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "chen"
       }
     }
@@ -800,7 +849,10 @@
         "say": "Cancel my appointment"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "It's with Patel"
@@ -814,7 +866,8 @@
       "promptId": "cancel_confirmed",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "patel"
       }
     }
@@ -826,7 +879,10 @@
         "say": "Cancel my appointment"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "It's with Patel"
@@ -840,7 +896,8 @@
       "promptId": "ask_change",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "patel"
       }
     }
@@ -849,16 +906,16 @@
     "id": "chunked-memberId",
     "steps": [
       {
-        "say": "Cancel my appointment"
+        "say": "I have a question about my bill"
       },
       {
         "say": "forty four one eighty seven three hundred fifty five"
       }
     ],
     "expect": {
-      "decision": "prompt",
-      "promptId": "ask_provider",
-      "form": "cancel",
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing",
       "slots": {
         "memberId": "44187355"
       }
@@ -868,16 +925,16 @@
     "id": "digit-string-memberId",
     "steps": [
       {
-        "say": "Cancel my appointment"
+        "say": "How much do I owe"
       },
       {
         "say": "8 1 7 9 3 3 1 4"
       }
     ],
     "expect": {
-      "decision": "prompt",
-      "promptId": "ask_provider",
-      "form": "cancel",
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing",
       "slots": {
         "memberId": "81793314"
       }
@@ -890,7 +947,10 @@
         "say": "Cancel my appointment"
       },
       {
-        "dtmf": "44718293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "It might be Dr. Kim"
@@ -901,7 +961,8 @@
       "promptId": "confirm_cancel",
       "form": "cancel",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "kim"
       },
       "text": "With Dr. Kim."
@@ -914,7 +975,10 @@
         "say": "I need to reschedule my appointment"
       },
       {
-        "dtmf": "44718293"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "either Dr. Chen or Dr. Cheng, I'm not sure which"
@@ -938,7 +1002,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "ask_memberId",
+      "promptId": "ask_name",
       "form": "cancel",
       "slots": {
         "provider": "chen"
@@ -952,7 +1016,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -975,7 +1042,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1009,7 +1079,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1040,7 +1113,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1068,7 +1144,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1096,7 +1175,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1125,7 +1207,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1150,41 +1235,16 @@
     }
   },
   {
-    "id": "summary-memberId-corrected",
-    "steps": [
-      {
-        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
-      },
-      {
-        "say": "four four seven one eight two nine three"
-      },
-      {
-        "say": "Tuesday"
-      },
-      {
-        "say": "no, my ID is four four seven one eight two nine four"
-      },
-      {
-        "say": "yes"
-      }
-    ],
-    "expect": {
-      "decision": "complete",
-      "promptId": "reschedule_confirmed",
-      "form": "reschedule",
-      "slots": {
-        "memberId": "44718294"
-      }
-    }
-  },
-  {
     "id": "summary-unanswered-reask",
     "steps": [
       {
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1206,7 +1266,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1234,7 +1297,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1274,7 +1340,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1301,7 +1370,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1311,8 +1383,8 @@
       }
     ],
     "expect": {
-      "decision": "handoff",
-      "reason": "billing",
+      "decision": "prompt",
+      "promptId": "ask_memberId",
       "form": "billing"
     }
   },
@@ -1323,16 +1395,25 @@
         "say": "I need to reschedule my appointment with Dr. Alvarez for next Thursday, and also I have a question about my bill"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "yes"
+      },
+      {
+        "say": "my member ID is eight one two zero four four five seven"
       }
     ],
     "expect": {
       "decision": "handoff",
       "reason": "billing",
-      "form": "billing"
+      "form": "billing",
+      "slots": {
+        "memberId": "81204457"
+      }
     }
   },
   {
@@ -1407,7 +1488,10 @@
         "silence": true
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Dr. Chen"
@@ -1421,7 +1505,8 @@
       "promptId": "confirm_reschedule",
       "form": "reschedule",
       "slots": {
-        "memberId": "44718293",
+        "name": "jason stiles",
+        "dob": "1980-03-05",
         "provider": "chen",
         "date": "2026-09-22"
       }
@@ -1434,7 +1519,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1457,7 +1545,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1485,7 +1576,10 @@
         "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
       },
       {
-        "say": "four four seven one eight two nine three"
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
       },
       {
         "say": "Tuesday"
@@ -1504,6 +1598,149 @@
       "decision": "complete",
       "promptId": "reschedule_confirmed",
       "form": "reschedule"
+    }
+  },
+  {
+    "id": "dob-year-followup",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March 5th"
+      },
+      {
+        "say": "nineteen eighty"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider",
+      "form": "reschedule",
+      "slots": {
+        "name": "jason stiles",
+        "dob": "1980-03-05"
+      }
+    }
+  },
+  {
+    "id": "dob-year-prompt",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March 5th"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_dob_year",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "dob-keypad",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      },
+      {
+        "dtmf": "03051980"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider",
+      "form": "cancel",
+      "slots": {
+        "name": "jason stiles",
+        "dob": "1980-03-05"
+      }
+    }
+  },
+  {
+    "id": "dob-future-retry",
+    "steps": [
+      {
+        "say": "Cancel my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "December 25th 2030"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_dob_retry",
+      "form": "cancel"
+    }
+  },
+  {
+    "id": "name-correction-at-summary",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "no, it's Jason Styles"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "slots": {
+        "name": "jason styles"
+      }
+    }
+  },
+  {
+    "id": "billing-still-asks-memberId",
+    "steps": [
+      {
+        "say": "How much do I owe"
+      },
+      {
+        "say": "one two three four five six seven eight"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "billing",
+      "form": "billing",
+      "slots": {
+        "memberId": "12345678"
+      }
     }
   }
 ]

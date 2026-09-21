@@ -13,7 +13,8 @@ exports[`question redesign > pins every question the model sees at the summary (
   "changeSlot": {
     "criteria": {
       "date": "They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong",
-      "memberId": "They name the member ID or member number as the thing to change, without saying the digits",
+      "dob": "They name their date of birth or birthday as the thing to change, without saying the new date, as in the birthday, or my date of birth is wrong",
+      "name": "They name their own name as the thing to change, without saying a new name, as in the name, or you got my name wrong",
       "none": "They say a new value rather than naming which detail is wrong, such as a weekday, a doctor name, or a string of digits; or they only answer yes or no; or they name nothing",
       "provider": "They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor",
     },
@@ -34,10 +35,6 @@ exports[`question redesign > pins every question the model sees at the summary (
   },
   "confusedByPrompt": {
     "instructions": "Read asr.text and node.promptJustPlayed. Does the caller sound confused by what the system just asked?",
-    "type": "noul",
-  },
-  "containsMemberId": {
-    "instructions": "Read asr.text. Does the caller state a member ID number, either as digits or as spoken number words?",
     "type": "noul",
   },
   "dateDay": {
@@ -152,6 +149,78 @@ exports[`question redesign > pins every question the model sees at the summary (
     "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week". A hedge such as "I'm not sure" or "either" is not a correction; name the span they mention.",
     "type": "choice",
   },
+  "dobDay": {
+    "criteria": {
+      "1": null,
+      "10": null,
+      "11": null,
+      "12": null,
+      "13": null,
+      "14": null,
+      "15": null,
+      "16": null,
+      "17": null,
+      "18": null,
+      "19": null,
+      "2": null,
+      "20": null,
+      "21": null,
+      "22": null,
+      "23": null,
+      "24": null,
+      "25": null,
+      "26": null,
+      "27": null,
+      "28": null,
+      "29": null,
+      "3": null,
+      "30": null,
+      "31": null,
+      "4": null,
+      "5": null,
+      "6": null,
+      "7": null,
+      "8": null,
+      "9": null,
+      "none": null,
+    },
+    "instructions": "Read asr.text. Which day of the month is the caller's date of birth, if they say one? This is the birth date, not an appointment date.",
+    "type": "choice",
+  },
+  "dobGiven": {
+    "criteria": {
+      "false": "No birth date. An appointment date, a date they want to be seen on, or someone else's birth date is not the caller's date of birth",
+      "true": "The caller gives their own birth date or part of it: a full date, a month and day, or a year on its own in answer to a question about their birth year",
+    },
+    "instructions": "Read asr.text. Does the caller state their date of birth or birthday, in whole or in part (a month and day, or a year alone when asked for it)?",
+    "type": "noul",
+  },
+  "dobMonth": {
+    "criteria": {
+      "april": null,
+      "august": null,
+      "december": null,
+      "february": null,
+      "january": null,
+      "july": null,
+      "june": null,
+      "march": null,
+      "may": null,
+      "none": null,
+      "november": null,
+      "october": null,
+      "september": null,
+    },
+    "instructions": "Read asr.text. Which month is the caller's date of birth in, if they say one? This is the birth date, not an appointment date.",
+    "type": "choice",
+  },
+  "dobYear": {
+    "criteria": {
+      "none": "No span of asr.text is a year of the caller's birth",
+    },
+    "instructions": "Read asr.text. Which of these spans is the year of the caller's birth, if they say one, as in "nineteen seventy four", "seventy four", or "two thousand one"? Choose none when no year is said.",
+    "type": "choice",
+  },
   "frustration": {
     "instructions": "Read asr.text. How frustrated does the caller sound?",
     "levels": [
@@ -219,15 +288,19 @@ exports[`question redesign > pins every question the model sees at the summary (
     "instructions": "Read asr.text. Which language other than English does the caller ask for or speak, if any?",
     "type": "choice",
   },
-  "memberIdComplete": {
-    "instructions": "Read asr.text. If the caller states a member ID, do they finish saying the whole number rather than trailing off?",
+  "nameGiven": {
+    "criteria": {
+      "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
+      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan",
+    },
+    "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
     "type": "noul",
   },
-  "memberIdSpan": {
+  "nameSpan": {
     "criteria": {
-      "none": "No span of asr.text is a member ID",
+      "none": "No span of asr.text is the caller's name",
     },
-    "instructions": "Read asr.text. Which of these spans is the member ID the caller states? Choose the span that covers the whole number as spoken, including number words like forty-four or three hundred fifty-five and modifiers like double or triple. Do not include words that are not part of the number. Choose none if no span is a member ID.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {
@@ -308,10 +381,6 @@ exports[`question redesign > pins every question the model sees inside a form (a
     "instructions": "Read asr.text and node.promptJustPlayed. Does the caller sound confused by what the system just asked?",
     "type": "noul",
   },
-  "containsMemberId": {
-    "instructions": "Read asr.text. Does the caller state a member ID number, either as digits or as spoken number words?",
-    "type": "noul",
-  },
   "dateDay": {
     "criteria": {
       "1": null,
@@ -424,6 +493,78 @@ exports[`question redesign > pins every question the model sees inside a form (a
     "instructions": "Read asr.text. Does the caller name a span of days such as this week, next week, this month, or next month? When they correct the span, the word not marks the one they are rejecting; choose the other one, as in "not next week, this week". A hedge such as "I'm not sure" or "either" is not a correction; name the span they mention.",
     "type": "choice",
   },
+  "dobDay": {
+    "criteria": {
+      "1": null,
+      "10": null,
+      "11": null,
+      "12": null,
+      "13": null,
+      "14": null,
+      "15": null,
+      "16": null,
+      "17": null,
+      "18": null,
+      "19": null,
+      "2": null,
+      "20": null,
+      "21": null,
+      "22": null,
+      "23": null,
+      "24": null,
+      "25": null,
+      "26": null,
+      "27": null,
+      "28": null,
+      "29": null,
+      "3": null,
+      "30": null,
+      "31": null,
+      "4": null,
+      "5": null,
+      "6": null,
+      "7": null,
+      "8": null,
+      "9": null,
+      "none": null,
+    },
+    "instructions": "Read asr.text. Which day of the month is the caller's date of birth, if they say one? This is the birth date, not an appointment date.",
+    "type": "choice",
+  },
+  "dobGiven": {
+    "criteria": {
+      "false": "No birth date. An appointment date, a date they want to be seen on, or someone else's birth date is not the caller's date of birth",
+      "true": "The caller gives their own birth date or part of it: a full date, a month and day, or a year on its own in answer to a question about their birth year",
+    },
+    "instructions": "Read asr.text. Does the caller state their date of birth or birthday, in whole or in part (a month and day, or a year alone when asked for it)?",
+    "type": "noul",
+  },
+  "dobMonth": {
+    "criteria": {
+      "april": null,
+      "august": null,
+      "december": null,
+      "february": null,
+      "january": null,
+      "july": null,
+      "june": null,
+      "march": null,
+      "may": null,
+      "none": null,
+      "november": null,
+      "october": null,
+      "september": null,
+    },
+    "instructions": "Read asr.text. Which month is the caller's date of birth in, if they say one? This is the birth date, not an appointment date.",
+    "type": "choice",
+  },
+  "dobYear": {
+    "criteria": {
+      "none": "No span of asr.text is a year of the caller's birth",
+    },
+    "instructions": "Read asr.text. Which of these spans is the year of the caller's birth, if they say one, as in "nineteen seventy four", "seventy four", or "two thousand one"? Choose none when no year is said.",
+    "type": "choice",
+  },
   "frustration": {
     "instructions": "Read asr.text. How frustrated does the caller sound?",
     "levels": [
@@ -491,15 +632,19 @@ exports[`question redesign > pins every question the model sees inside a form (a
     "instructions": "Read asr.text. Which language other than English does the caller ask for or speak, if any?",
     "type": "choice",
   },
-  "memberIdComplete": {
-    "instructions": "Read asr.text. If the caller states a member ID, do they finish saying the whole number rather than trailing off?",
+  "nameGiven": {
+    "criteria": {
+      "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
+      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan",
+    },
+    "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
     "type": "noul",
   },
-  "memberIdSpan": {
+  "nameSpan": {
     "criteria": {
-      "none": "No span of asr.text is a member ID",
+      "none": "No span of asr.text is the caller's name",
     },
-    "instructions": "Read asr.text. Which of these spans is the member ID the caller states? Choose the span that covers the whole number as spoken, including number words like forty-four or three hundred fifty-five and modifiers like double or triple. Do not include words that are not part of the number. Choose none if no span is a member ID.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {

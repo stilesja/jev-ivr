@@ -1,8 +1,9 @@
 import { choiceAnswer, choiceLabels, noulAnswer, normalize, scoreAnswer, sharp } from './distributions';
 import { quietAnswer } from './defaults';
 import { estimateTokens, type Answer, type AnswerMap, type JevClient, type JevRequest, type JevResponse, type Question } from './types';
-import { NUMBER_WORDS, spokenToDigits } from '../core/extract/spokenNumber';
-import { MONTHS, WEEKDAYS } from '../core/extract/date';
+import { NUMBER_WORDS, spokenToDigits, tokenize } from '../core/extract/spokenNumber';
+import { MONTHS, WEEKDAYS, normalizeYear } from '../core/extract/date';
+import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { INTENT_MENU } from '../domain/intents';
 import { PROVIDERS } from '../domain/slots/provider';
 
@@ -71,7 +72,110 @@ function bestDigits(text: string): string {
   return spokenToDigits(text);
 }
 
+/**
+ * A caller announcing themselves. The stub sees lowercased raw text; tokenize() splits a
+ * contraction at the apostrophe, so the markers are matched against the token stream
+ * ("it's" -> "it s") rather than the raw string.
+ */
+const NAME_MARKER = /\b(?:my name is|name is|this is|it s|i m)\s+(.+)$/;
+
+/** The span the caller offers as their name, or null: the one right after a marker, else a two-word span. */
+function nameSpanOf(text: string): string | null {
+  const spans = candidateWordSpans(text);
+  const tail = NAME_MARKER.exec(tokenize(text).join(' '))?.[1];
+  // The longest span the text continues with right after "my name is" / "this is" / "it's".
+  if (tail) {
+    const after = [...spans].sort((a, b) => b.length - a.length).find((span) => tail === span || tail.startsWith(`${span} `));
+    if (after) return after;
+  }
+  // No marker: a bare "Jason Stiles", the whole answer and nothing else. A two-word span found
+  // anywhere in a longer sentence is not enough -- "reschedule with Dr. Chen next week" offers
+  // several, and the doctor's name is not the caller's.
+  const whole = tokenize(text).join(' ');
+  return whole.split(' ').length === 2 && spans.includes(whole) ? whole : null;
+}
+
+/** A name is claimed when a marker introduces one, or the whole answer is a two-word name. */
+function saysName(text: string): boolean {
+  return nameSpanOf(text) !== null && !/\d/.test(text);
+}
+
+const ORDINAL_IRREGULAR: Record<string, string> = {
+  first: 'one', second: 'two', third: 'three', fifth: 'five', eighth: 'eight', ninth: 'nine', twelfth: 'twelve',
+};
+
+/** "fifth" -> "five", "twentieth" -> "twenty", "5th" -> "5": an ordinal as the number word it counts. */
+function cardinalWord(tok: string): string {
+  const digits = /^(\d{1,2})(?:st|nd|rd|th)$/.exec(tok);
+  if (digits) return digits[1]!;
+  if (ORDINAL_IRREGULAR[tok]) return ORDINAL_IRREGULAR[tok]!;
+  if (tok.endsWith('ieth')) return `${tok.slice(0, -4)}y`;
+  if (tok.endsWith('th')) return tok.slice(0, -2);
+  return tok;
+}
+
+const DAY_FILLER = new Set(['of', 'the', 'on']);
+
+/** The day of the month said next to `month`: after it ("March fifth") or before it ("the fifth of March"). */
+function dayNearMonth(tokens: string[], at: number): string | null {
+  for (const i of [at + 1, at + 2, at - 1, at - 2, at - 3]) {
+    const tok = tokens[i];
+    if (tok === undefined || DAY_FILLER.has(tok)) continue;
+    const n = Number(spokenToDigits(cardinalWord(tok)));
+    if (Number.isInteger(n) && n >= 1 && n <= 31) return String(n);
+  }
+  return null;
+}
+
+/**
+ * The longest span that reads as a year a living caller could be born in, else null. Only spans
+ * that are nothing but number words count: spokenToDigits reads straight through the words around
+ * them, so "march fifth nineteen eighty" would otherwise normalize to 1980 and outrank the year
+ * itself.
+ */
+function birthYearSpan(spans: string[]): string | null {
+  const thisYear = new Date().getUTCFullYear();
+  const years = spans.filter((span) => {
+    if (numberWordCount(span) !== span.split(' ').length) return false;
+    const y = normalizeYear(span, `${thisYear}-12-31`);
+    return y !== null && y >= 1900 && y <= thisYear;
+  });
+  return years.sort((a, b) => b.split(' ').length - a.split(' ').length)[0] ?? null;
+}
+
+interface DobParts { month: string | null; day: string | null; year: string | null }
+
+function dobParts(text: string): DobParts {
+  const tokens = tokenize(text);
+  const at = tokens.findIndex((t) => (MONTHS as readonly string[]).includes(t));
+  const month = at >= 0 ? tokens[at]! : null;
+  return { month, day: at >= 0 ? dayNearMonth(tokens, at) : null, year: birthYearSpan(candidateSpans(text)) };
+}
+
+/**
+ * A birthday, or a year offered on its own in answer to the year question. Two-digit years mean
+ * almost any number span reads as a year, so a bare year counts only when it is the whole
+ * utterance -- otherwise an eight-digit member ID would look like a date of birth.
+ */
+function saysDob(text: string, parts: DobParts): boolean {
+  if (parts.month !== null && parts.day !== null) return true;
+  return parts.year !== null && parts.year === tokenize(text).join(' ');
+}
+
+/**
+ * An explicit year: four digits, or a spoken year of two or more number words. A bare "12" in
+ * "November 12" normalizes to a year too, so the length is what separates a year from a day.
+ */
+function saysExplicitYear(text: string): boolean {
+  const span = birthYearSpan(candidateSpans(text));
+  if (span === null) return false;
+  return /^\d{4}$/.test(span) || span.split(' ').length >= 2;
+}
+
 function dateAnswers(id: string, text: string, labels: string[]): Answer {
+  // "March fifth nineteen eighty" is a birthday, not a day to be seen on: a month and day said
+  // with a year of birth belong to the dob questions, which ask about the birth date by name.
+  if (saysExplicitYear(text)) return choiceAnswer(sharp(labels, 'none', 0.88));
   const month = MONTHS.find((m) => has(text, new RegExp(`\\b${m}\\b`)));
   const weekday = WEEKDAYS.find((w) => has(text, new RegExp(`\\b${w}\\b`)));
   const window = has(text, /\bnext week\b/) ? 'next_week' : has(text, /\bthis week\b/) ? 'this_week'
@@ -108,6 +212,16 @@ export function answerHeuristically(id: string, q: Question, text: string): Answ
       case 'intent': return intentAnswer(text, labels);
       case 'provider': return providerAnswer(text, labels);
       case 'memberIdSpan': return spanAnswer(labels);
+      case 'nameSpan': {
+        const span = nameSpanOf(text);
+        return choiceAnswer(sharp(labels, span !== null && labels.includes(span) ? span : 'none', 0.9));
+      }
+      case 'dobMonth': return choiceAnswer(sharp(labels, dobParts(text).month ?? 'none', 0.9));
+      case 'dobDay': return choiceAnswer(sharp(labels, dobParts(text).day ?? 'none', 0.9));
+      case 'dobYear': {
+        const year = dobParts(text).year;
+        return choiceAnswer(sharp(labels, year !== null && labels.includes(year) ? year : 'none', 0.9));
+      }
       case 'changeSlot': {
         // A full member ID spoken here is an answer, not a naming of "memberId" as the field to
         // change (that would just say "my member id" or "the number"), so it never wins changeSlot.
@@ -149,6 +263,8 @@ export function answerHeuristically(id: string, q: Question, text: string): Answ
     case 'confusedByPrompt': return noulAnswer(has(text, /\b(what|huh|pardon|sorry)\b\??$/) ? 0.7 : 0.1);
     case 'spokeAMenuNumber': return noulAnswer(/^(press\s+)?(\d|one|two|three|four|five|zero)$/.test(text.trim()) ? 0.9 : 0.05);
     case 'triedSelfService': return noulAnswer(has(text, /\b(website|online|the app|portal)\b/) ? 0.8 : 0.1);
+    case 'nameGiven': return noulAnswer(saysName(text) ? 0.9 : 0.05);
+    case 'dobGiven': return noulAnswer(saysDob(text, dobParts(text)) ? 0.9 : 0.05);
     case 'containsMemberId': return noulAnswer(bestDigits(text).length >= 4 ? 0.9 : 0.05);
     case 'memberIdComplete': return noulAnswer(bestDigits(text).length >= 8 ? 0.9 : 0.4);
     case 'confirmsYes': return noulAnswer(has(text, /\b(yes|yeah|yep|correct|right|sure|that's it)\b/) ? 0.9 : 0.1);

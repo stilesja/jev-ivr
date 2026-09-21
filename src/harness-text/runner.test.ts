@@ -32,8 +32,8 @@ function traceSink(): { trace: TraceWriter; records: () => TraceRecord[] } {
 
 const entries: CorpusEntry[] = [
   { id: 'c1', text: 'cancel my appointment with dr patel', intent: 'cancel', context: 'no_form', slots: { provider: 'patel' } },
-  { id: 'm1', text: 'four four seven one eight two nine three', intent: 'none', context: 'cancel',
-    slots: { memberId: { span: 'four four seven one eight two nine three', value: '44718293' } } },
+  { id: 'm1', text: 'Jason Stiles, born March fifth nineteen eighty', intent: 'none', context: 'cancel',
+    slots: { name: 'Jason Stiles', dob: { month: 'march', day: '5', year: 'nineteen eighty' } } },
 ];
 
 const opts = {
@@ -76,15 +76,16 @@ const partialClient = new FixtureStubClient([
 describe('runCorpusEntry', () => {
   it('runs a first-utterance entry from the greeting', async () => {
     const { outcome } = await runCorpusEntry(entries[0]!, opts);
-    expect(outcome).toMatchObject({ id: 'c1', decision: 'prompt', promptId: 'ask_memberId', form: 'cancel', decidedGate: 'intent' });
+    expect(outcome).toMatchObject({ id: 'c1', decision: 'prompt', promptId: 'ask_name', form: 'cancel', decidedGate: 'intent' });
     expect(outcome.slots.provider).toBe('patel');
   });
 
   it('runs an in-form entry with the form active and the first slot prompted', async () => {
     const { outcome } = await runCorpusEntry(entries[1]!, opts);
-    // The member ID fills silently now, so the turn goes straight on to the next slot.
+    // The name and birthday fill silently, so the turn goes straight on to the next slot.
     expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'ask_provider', form: 'cancel' });
-    expect(outcome.slots.memberId).toBe('44718293');
+    expect(outcome.slots.name).toBe('jason stiles');
+    expect(outcome.slots.dob).toBe('1980-03-05');
   });
 
   it('prompts the requested slot for an in-form entry', async () => {
@@ -92,7 +93,8 @@ describe('runCorpusEntry', () => {
     // The last slot no longer completes the form: it asks the summary.
     expect(outcome).toMatchObject({ decision: 'prompt', promptId: 'confirm_reschedule' });
     expect(outcome.slots.date).toBe('2026-09-19');
-    expect(outcome.slots.memberId).toBe('00000000');
+    expect(outcome.slots.name).toBe('jason stiles');
+    expect(outcome.slots.dob).toBe('1980-03-05');
     expect(outcome.slots.provider).toBe('patel');
   });
 
@@ -100,8 +102,8 @@ describe('runCorpusEntry', () => {
     const sink = traceSink();
     const { run } = await runCorpusEntry(prompted, { ...opts, client: promptedClient, trace: sink.trace });
     const m = summarize(sink.records());
-    expect(run.record.slots.memberId.value).toBe('00000000');
-    // the greeting already showed memberId and provider filled, so only the date counts
+    expect(run.record.slots.name.value).toBe('jason stiles');
+    // the greeting already showed the name, birthday and provider filled, so only the date counts
     expect(m.promptTurns).toBe(1);
     expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
     // a session that started mid-form is not a whole call to compare against the baseline
@@ -124,7 +126,8 @@ describe('seedCorpusSession', () => {
     const entry = parseCorpus('{"id":"fc-1","text":"yes","intent":"none","context":"confirm_reschedule","confirm":"yes"}')[0]!;
     const s = seedCorpusSession(newSession('fc-1', 0), entry);
     expect(s.form).toBe('reschedule');
-    expect(s.slots.memberId.value).not.toBeNull();
+    expect(s.slots.name.value).not.toBeNull();
+    expect(s.slots.dob.value).not.toBeNull();
     expect(s.slots.provider.value).not.toBeNull();
     expect(s.slots.date.value).not.toBeNull();
     expect(s.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
@@ -138,7 +141,8 @@ describe('seedCorpusSession', () => {
   it('seeds a non-confirm context exactly as before: placeholders only up to the prompted slot', () => {
     const entry = prompted;
     const s = seedCorpusSession(newSession('d1', 0), entry);
-    expect(s.slots.memberId.value).toBe('00000000');
+    expect(s.slots.name.value).toBe('jason stiles');
+    expect(s.slots.dob.value).toBe('1980-03-05');
     expect(s.slots.provider.value).toBe('patel');
     expect(s.slots.date.value).toBeNull();
     expect(s.promptedFor).toBe('date');
@@ -154,10 +158,10 @@ describe('seedCorpusSession', () => {
   it('seeds a form context with no prompted at the first missing slot, leaving every slot null', () => {
     const entry: CorpusEntry = { id: 'sn1', text: 'i need a new appointment', intent: 'schedule_new', context: 'schedule_new' };
     const s = seedCorpusSession(newSession('sn1', 0), entry);
-    expect(s.slots.memberId.value).toBeNull();
+    expect(s.slots.name.value).toBeNull();
     expect(s.slots.provider.value).toBeNull();
     expect(s.slots.date.value).toBeNull();
-    expect(s.promptedFor).toBe('memberId');
+    expect(s.promptedFor).toBe('name');
   });
 
   it('yields the same state when the seed is applied twice to the same session, as runCorpusEntry does', () => {
@@ -173,10 +177,10 @@ describe('runScenario', () => {
     id: 'cancel-happy',
     steps: [
       { say: 'cancel my appointment with dr patel' },
-      { say: 'four four seven one eight two nine three' },
+      { say: 'Jason Stiles, born March fifth nineteen eighty' },
       { say: 'yes' },
     ],
-    expect: { decision: 'complete', promptId: 'cancel_confirmed', form: 'cancel', slots: { memberId: '44718293', provider: 'patel' } },
+    expect: { decision: 'complete', promptId: 'cancel_confirmed', form: 'cancel', slots: { name: 'jason stiles', dob: '1980-03-05', provider: 'patel' } },
   };
 
   it('runs steps and checks the expectation', async () => {
@@ -207,7 +211,7 @@ describe('runScenario', () => {
 
   it('checks the spoken text of the last turn', async () => {
     const steps = [{ say: 'cancel my appointment with dr patel' }];
-    const ok = await runScenario({ id: 'text-ok', steps, expect: { decision: 'prompt', text: 'member ID' } }, opts);
+    const ok = await runScenario({ id: 'text-ok', steps, expect: { decision: 'prompt', text: 'first and last name' } }, opts);
     expect(ok.mismatches).toEqual([]);
     const bad = await runScenario({ id: 'text-bad', steps, expect: { decision: 'prompt', text: 'not spoken' } }, opts);
     expect(bad.mismatches[0]).toMatch(/text: expected to contain/);
@@ -238,7 +242,7 @@ describe('runScenario', () => {
       id: 'cancel-happy-trailing',
       steps: [
         { say: 'cancel my appointment with dr patel' },
-        { say: 'four four seven one eight two nine three' },
+        { say: 'Jason Stiles, born March fifth nineteen eighty' },
         { say: 'yes' },
         { say: 'cancel my appointment with dr patel' },
       ],
@@ -287,12 +291,12 @@ describe('outcomeOf', () => {
   it('reads a completed turn', async () => {
     const r = await runScenario({
       id: 'done',
-      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }, { say: 'yes' }],
+      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'Jason Stiles, born March fifth nineteen eighty' }, { say: 'yes' }],
       expect: { decision: 'complete' },
     }, opts);
     const o = outcomeOf('done', r.runs.at(-1)!.result);
     expect(o).toMatchObject({ id: 'done', decision: 'complete', promptId: 'cancel_confirmed', reason: null, form: 'cancel' });
-    expect(o.slots).toEqual({ name: null, dob: null, memberId: '44718293', provider: 'patel', date: null });
+    expect(o.slots).toEqual({ name: 'jason stiles', dob: '1980-03-05', memberId: null, provider: 'patel', date: null });
   });
 
   it('reads an ignored turn as having no prompt, gate or verdict', () => {
@@ -316,7 +320,7 @@ describe('spokenText', () => {
     }, opts);
     const result = r.runs.at(-1)!.result;
     expect(spokenText(result)).toBe(result.frames.filter((f) => f.type === 'text').map((f) => f.token).join(' '));
-    expect(spokenText(result)).toContain('member ID');
+    expect(spokenText(result)).toContain('first and last name');
   });
 });
 
@@ -332,17 +336,18 @@ describe('summarize', () => {
   it('computes completion turns against the baseline and slots per utterance', async () => {
     const r = await runScenario({
       id: 'cancel-happy',
-      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'four four seven one eight two nine three' }, { say: 'yes' }],
+      steps: [{ say: 'cancel my appointment with dr patel' }, { say: 'Jason Stiles, born March fifth nineteen eighty' }, { say: 'yes' }],
       expect: { decision: 'complete' },
     }, opts);
     const records = r.runs.map((x) => x.record);
     const m = summarize(records);
     expect(m.completions).toEqual([{ sessionId: 'cancel-happy', form: 'cancel', turns: 3, baseline: 5 }]);
-    // two slots over three utterances: the confirming "yes" fills nothing
-    expect(m.slotsFilledPerUtterance).toBeCloseTo(2 / 3, 5);
+    // three slots over three utterances: the name and birthday land together, and the
+    // confirming "yes" fills nothing
+    expect(m.slotsFilledPerUtterance).toBeCloseTo(1, 5);
     expect(m.bySource['stub:fixture']).toBe(2);
     // turn 1 routed at the intent gate; turn 2 proceeded to slot filling with no gate
-    // deciding; turn 3 answered the member ID readback at the confirmation gate
+    // deciding; turn 3 answered the summary at the confirmation gate
     expect(m.byDecidingGate).toEqual({ intent: 1, none: 1, confirmation: 1 });
 
     const promptRecord = records.find((rec) => rec.event.type === 'prompt')!;

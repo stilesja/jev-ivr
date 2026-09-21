@@ -50,6 +50,8 @@ describe('joinSpoken', () => {
       intentLabel: 'check on a bill',
       window: 'next week',
       memberId: '4471 8293',
+      name: 'Jason Stiles',
+      dob: 'March 5th, 1980',
       date: 'Tuesday, September 22',
       a: 'Dr. Chen',
       b: 'Dr. Cheng',

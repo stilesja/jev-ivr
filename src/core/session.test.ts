@@ -25,7 +25,7 @@ describe('session', () => {
   it('lists missing slots for the active form in priority order', () => {
     const s = setForm(newSession('s1', 0), 'reschedule');
     s.slots.provider.value = 'chen';
-    expect(missingSlots(s)).toEqual(['memberId', 'date']);
+    expect(missingSlots(s)).toEqual(['name', 'dob', 'date']);
   });
 
   it('reports the attempts of whatever was last prompted', () => {

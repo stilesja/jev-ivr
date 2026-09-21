@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { FORM_INTENTS, INTENTS, isFormIntent, type FormId, type Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
+import { candidateSpans, candidateWordSpans } from '../core/spans';
 
 export interface DateLabel {
   mode?: string;
@@ -12,7 +13,22 @@ export interface DateLabel {
   window?: string;
 }
 
+/**
+ * The caller's birthday as they say it. Every part is optional because a caller gives the parts
+ * they give: a whole date, a month and day with the year still to come, or -- answering the year
+ * question -- a year on its own.
+ */
+export interface DobLabel {
+  month?: string;
+  day?: string;
+  /** the year as spoken ("nineteen eighty", "1980") */
+  year?: string;
+}
+
 export interface CorpusSlots {
+  /** the caller's name as spoken, a span of the text */
+  name?: string;
+  dob?: DobLabel;
   memberId?: { span: string; value: string };
   provider?: string;
   date?: DateLabel;
@@ -143,6 +159,27 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
       }
       if (entry.providerUnsure && !formSlots.includes('provider')) {
         throw new Error(`corpus ${entry.id}: slot provider is not on form ${form}`);
+      }
+    }
+    // The name and the birth year are spans the Choice questions offer, so a label the generator
+    // never produces is one no answer could pick: caught here, at the id, rather than as a quiet
+    // `none` at run time.
+    const name = entry.slots?.name;
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) throw new Error(`corpus ${entry.id}: name must be a non-empty span`);
+      if (!candidateWordSpans(entry.text).includes(normalizeText(name))) {
+        throw new Error(`corpus ${entry.id}: name span "${name}" is not a candidate word span of the text`);
+      }
+    }
+    const dob = entry.slots?.dob;
+    if (dob !== undefined) {
+      if (dob.month === undefined && dob.day === undefined && dob.year === undefined) {
+        throw new Error(`corpus ${entry.id}: dob needs a month and day, a year, or both`);
+      }
+      if (dob.month !== undefined && dob.day === undefined) throw new Error(`corpus ${entry.id}: dob needs a month and day together`);
+      if (dob.day !== undefined && dob.month === undefined) throw new Error(`corpus ${entry.id}: dob needs a month and day together`);
+      if (dob.year !== undefined && !candidateSpans(entry.text).includes(normalizeText(dob.year))) {
+        throw new Error(`corpus ${entry.id}: dob year span "${dob.year}" is not a candidate span of the text`);
       }
     }
     if (seen.has(entry.id)) throw new Error(`corpus ${entry.id}: duplicate id`);

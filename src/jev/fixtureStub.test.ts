@@ -85,6 +85,43 @@ describe('FixtureStubClient', () => {
     expect(res.answers.memberIdComplete).toMatchObject({ noul: 0.9 });
   });
 
+  it('answers the name questions from the labeled span', async () => {
+    const named = parseCorpus('{"id":"nm","text":"my name is Jason Stiles","intent":"none","context":"no_form","slots":{"name":"Jason Stiles"}}\n');
+    const nameClient = new FixtureStubClient(named, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    const res = await nameClient.ask(request('my name is Jason Stiles'));
+    expect(res.answers.nameGiven).toMatchObject({ noul: 0.92 });
+    expect(res.answers.nameSpan).toMatchObject({ choice: 'jason stiles' });
+    const none = await client.ask(request('four four seven one eight two nine three'));
+    expect(none.answers.nameGiven).toMatchObject({ noul: 0.05 });
+    expect(none.answers.nameSpan).toMatchObject({ choice: 'none' });
+  });
+
+  it('throws when a labeled name span is not a candidate word span', async () => {
+    const badEntries: CorpusEntry[] = [
+      { id: 'nm-bad', text: 'my name is Jason Stiles', intent: 'none', context: 'no_form', slots: { name: 'Mary Kate' } },
+    ];
+    const badClient = new FixtureStubClient(badEntries, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    await expect(badClient.ask(request('my name is Jason Stiles'))).rejects.toThrow(/not a candidate span/);
+  });
+
+  it('answers the birthday questions from the labels, with no year when none is said', async () => {
+    const born = parseCorpus([
+      '{"id":"db-y","text":"March fifth nineteen eighty","intent":"none","context":"no_form","slots":{"dob":{"month":"march","day":"5","year":"nineteen eighty"}}}',
+      '{"id":"db-n","text":"March 5th","intent":"none","context":"no_form","slots":{"dob":{"month":"march","day":"5"}}}',
+    ].join('\n'));
+    const dobClient = new FixtureStubClient(born, { sharpness: 0.9, fallback: new HeuristicStubClient() });
+    const full = await dobClient.ask(request('March fifth nineteen eighty'));
+    expect(full.answers.dobGiven).toMatchObject({ noul: 0.92 });
+    expect(full.answers.dobMonth).toMatchObject({ choice: 'march' });
+    expect(full.answers.dobDay).toMatchObject({ choice: '5' });
+    expect(full.answers.dobYear).toMatchObject({ choice: 'nineteen eighty' });
+    const partial = await dobClient.ask(request('March 5th'));
+    expect(partial.answers.dobYear).toMatchObject({ choice: 'none' });
+    const none = await client.ask(request('reschedule with dr chen next week'));
+    expect(none.answers.dobGiven).toMatchObject({ noul: 0.05 });
+    expect(none.answers.dobMonth).toMatchObject({ choice: 'none' });
+  });
+
   it('applies overrides and keeps distributions normalized', async () => {
     const res = await client.ask(request('maybe cancel it'));
     const intent = res.answers.intent as { probabilities: Record<string, number> };

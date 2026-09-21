@@ -21,22 +21,22 @@ export interface FormSpec {
 
 export const FORMS: Record<FormId, FormSpec> = {
   schedule_new: {
-    slots: ['memberId', 'provider', 'date'],
+    slots: ['name', 'dob', 'provider', 'date'],
     completion: { kind: 'prompt', promptId: 'schedule_confirmed' },
     summaryPromptId: 'confirm_schedule',
   },
   reschedule: {
-    slots: ['memberId', 'provider', 'date'],
+    slots: ['name', 'dob', 'provider', 'date'],
     completion: { kind: 'prompt', promptId: 'reschedule_confirmed' },
     summaryPromptId: 'confirm_reschedule',
   },
   cancel: {
-    slots: ['memberId', 'provider'],
+    slots: ['name', 'dob', 'provider'],
     completion: { kind: 'prompt', promptId: 'cancel_confirmed' },
     summaryPromptId: 'confirm_cancel',
   },
   confirm_appointment: {
-    slots: ['memberId', 'provider'],
+    slots: ['name', 'dob', 'provider'],
     completion: { kind: 'prompt', promptId: 'appointment_details' },
     summaryPromptId: 'confirm_appointment_details',
   },

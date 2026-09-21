@@ -130,8 +130,9 @@ describe('per-spec context', () => {
 describe('nextPrompt', () => {
   it('asks for the highest-priority missing slot, narrowing a window', () => {
     const s = setForm(newSession('s', 0), 'reschedule');
-    expect(nextPrompt(s)).toEqual({ kind: 'ask', slot: 'memberId', window: null });
-    s.slots.memberId.value = '44718293';
+    expect(nextPrompt(s)).toEqual({ kind: 'ask', slot: 'name', window: null });
+    s.slots.name.value = 'jason stiles';
+    s.slots.dob.value = '1980-03-05';
     s.slots.provider.value = 'chen';
     s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };
     expect(nextPrompt(s)).toEqual({ kind: 'ask', slot: 'date', window: s.slots.date.window });
@@ -169,22 +170,13 @@ describe('applyDtmf', () => {
   });
 
   it('treats a slot with no dtmf as no_target, distinct from a target that is simply off the form', () => {
-    // `name` (Task 2) has no `dtmf`, but it is also on no FORMS entry yet (Task 5 flips the
-    // forms), so `requiredSlots` already returns `no_target` for it before the `!spec.dtmf`
-    // check ever runs. To observe that check on its own -- and confirm the deferred assertion
-    // from Task 1's plan step -- briefly make `name` required on `billing` so the requiredSlots
-    // gate passes and the missing-`dtmf` branch is what actually produces the result, then
-    // restore FORMS so no other test sees the change.
+    // `name` is on the scheduling forms and has no keypad rung (spec 2026-09-20 2.1), so the
+    // requiredSlots gate passes and the missing-`dtmf` branch is what produces the result.
     expect(SLOTS.name.dtmf).toBeUndefined();
-    const s = setForm(newSession('s', 0), 'billing');
+    const s = setForm(newSession('s', 0), 'cancel');
     s.promptedFor = 'name';
-    expect(FORMS.billing.slots).not.toContain('name');
-    FORMS.billing.slots.push('name');
-    try {
-      expect(applyDtmf(s, '1', ctx())).toEqual({ kind: 'no_target' });
-    } finally {
-      FORMS.billing.slots.pop();
-    }
+    expect(FORMS.cancel.slots).toContain('name');
+    expect(applyDtmf(s, '1', ctx())).toEqual({ kind: 'no_target' });
   });
 });
 
@@ -210,16 +202,16 @@ describe('fillSlots member id policy', () => {
   const spoken = ctx('four four seven one eight two nine three');
 
   it('leaves a spoken member id unconfirmed and silent, for the summary to voice', () => {
-    const s = setForm(newSession('s', 0), 'cancel');
-    const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
+    const s = setForm(newSession('s', 0), 'billing');
+    const r = fillSlots(s, answers, spoken, slotsFor('billing'));
     expect(r.session.slots.memberId).toMatchObject({ value: '44718293', display: '4471 8293', confirmed: false });
     expect(r.acks).toEqual([]);
   });
 
   it('keeps a confirmed member id confirmed when the caller repeats it unchanged', () => {
-    const s = setForm(newSession('s', 0), 'cancel');
+    const s = setForm(newSession('s', 0), 'billing');
     s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: true, attempts: 0, window: null };
-    const r = fillSlots(s, answers, spoken, slotsFor('cancel'));
+    const r = fillSlots(s, answers, spoken, slotsFor('billing'));
     expect(r.session.slots.memberId.confirmed).toBe(true);
     expect(r.acks).toEqual([]);
   });

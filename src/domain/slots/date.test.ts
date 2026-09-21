@@ -105,6 +105,6 @@ describe('slot registry', () => {
     expect(Object.keys(SLOTS)).toEqual(['name', 'dob', 'memberId', 'provider', 'date']);
   });
   it('returns the slot specs for a form in priority order', () => {
-    expect(slotsFor('cancel').map((s) => s.id)).toEqual(['memberId', 'provider']);
+    expect(slotsFor('cancel').map((s) => s.id)).toEqual(['name', 'dob', 'provider']);
   });
 });

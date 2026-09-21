@@ -142,8 +142,10 @@ function armNoInput(deps: AdapterDeps, entry: CallEntry, frames: readonly Outbou
 }
 
 /** Digit runs long enough that TTS would read them as a number ("4471" as "four thousand ..."). */
-// Runs of four or more digits are spelled out for TTS. A four-digit year would be spelled out too; no prompt speaks one today.
-const DIGIT_RUN = /\d{4,}(?: \d{4,})*/g;
+// Five or more digits, or several groups of four: an identifier, spelled out. A lone four-digit
+// run is left alone -- the summary reads a date of birth back ("born March 5th, 1980"), and a
+// year is exactly what TTS reads correctly on its own.
+const DIGIT_RUN = /\d{4,}(?: \d{4,})+|\d{5,}/g;
 
 /**
  * Rewrite long digit runs so Twilio's TTS reads them one digit at a time. "Member ID 4471 8293."

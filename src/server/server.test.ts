@@ -153,7 +153,7 @@ describe('server end to end', () => {
     const { relay, traceDir, callSid } = await connected();
     relay.error('Text-to-speech failed for the previous token');
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your member ID?");
+    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
     const frames = readFileSync(join(traceDir, `${callSid}.frames.jsonl`), 'utf8')
       .trim()
       .split('\n')
@@ -228,12 +228,13 @@ describe('server end to end', () => {
   it('runs the worked example over the socket and ends the call', async () => {
     const { relay, traceDir, callSid } = await connected();
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your member ID?");
-    relay.prompt('four four seven one eight two nine three');
-    expect((await relay.waitForTexts(3)).at(-1)).toBe('next week. Which day works for you?');
+    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+    relay.prompt('Jason Stiles');
+    expect((await relay.waitForTexts(3)).at(-1)).toBe('And your date of birth?');
+    relay.prompt('March fifth nineteen eighty');
+    expect((await relay.waitForTexts(4)).at(-1)).toBe('next week. Which day works for you?');
     relay.prompt('Tuesday');
-    // Twilio's TTS would read "4471 8293" as two numbers, so the wire carries spaced digits.
-    expect((await relay.waitForTexts(4)).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?');
+    expect((await relay.waitForTexts(5)).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980. Shall I make that change?');
     relay.prompt('yes');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
@@ -249,7 +250,7 @@ describe('server end to end', () => {
     expect(running!.store.get(callSid)?.ended).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.jsonl`))).toBe(true);
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
-    expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(5);
+    expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(6);
     relay.assertKnownTypes();
   });
 
@@ -261,10 +262,12 @@ describe('server end to end', () => {
     await relay.waitForTexts(1);
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
     await relay.waitForTexts(2);
-    relay.prompt('four four seven one eight two nine three');
+    relay.prompt('Jason Stiles');
     await relay.waitForTexts(3);
-    relay.prompt('Tuesday');
+    relay.prompt('March fifth nineteen eighty');
     await relay.waitForTexts(4);
+    relay.prompt('Tuesday');
+    await relay.waitForTexts(5);
     relay.prompt('yes');
     await relay.waitFor((m) => m.type === 'end');
     const timedOut = Symbol('timed out');
@@ -306,9 +309,11 @@ describe('server end to end', () => {
     const { relay } = await connected();
     relay.prompt('Cancel my appointment with Dr. Kim please');
     await relay.waitForTexts(2);
-    relay.dtmf('44718293');
-    // The keypad fills the last slot, so the summary is what the digits get back.
+    relay.prompt('Jason Stiles');
     await relay.waitForTexts(3);
+    relay.dtmf('03051980');
+    // The keypad fills the last slot, so the summary is what the digits get back.
+    await relay.waitForTexts(4);
     relay.prompt('yes');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["cancel"]}');
@@ -338,8 +343,9 @@ describe('server end to end', () => {
       relay.setup('CA7');
       await relay.waitForTexts(1);
       relay.prompt('Cancel my appointment with Dr. Kim please');
-      relay.dtmf('44718293');
-      await relay.waitForTexts(3);
+      relay.prompt('Jason Stiles');
+      relay.dtmf('03051980');
+      await relay.waitForTexts(4);
       relay.prompt('yes');
       const end = await relay.waitFor((m) => m.type === 'end', 4000);
       expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["cancel"]}');
@@ -347,8 +353,8 @@ describe('server end to end', () => {
         .trim()
         .split('\n')
         .map((l) => JSON.parse(l));
-      expect(records.map((r) => r.event.type)).toEqual(['setup', 'prompt', ...Array(8).fill('dtmf'), 'prompt']);
-      expect(records[1].decision.promptId).toBe('ask_memberId');
+      expect(records.map((r) => r.event.type)).toEqual(['setup', 'prompt', 'prompt', ...Array(8).fill('dtmf'), 'prompt']);
+      expect(records[1].decision.promptId).toBe('ask_name');
     },
     { timeout: 8000 },
   );
@@ -393,9 +399,11 @@ describe('server end to end', () => {
     const token = /token=([0-9a-f]{32})/.exec(twiml)![1]!;
     const again = await FakeRelay.connect(`${ws}?token=${token}`);
     again.setup(callSid, 'VX-second');
-    expect(await again.waitForTexts(1)).toEqual(["What's your member ID?"]);
-    again.prompt('four four seven one eight two nine three');
-    expect((await again.waitForTexts(2)).at(-1)).toBe('next week. Which day works for you?');
+    expect(await again.waitForTexts(1)).toEqual(["What's your first and last name?"]);
+    again.prompt('Jason Stiles');
+    expect((await again.waitForTexts(2)).at(-1)).toBe('And your date of birth?');
+    again.prompt('March fifth nineteen eighty');
+    expect((await again.waitForTexts(3)).at(-1)).toBe('next week. Which day works for you?');
     const done = await fetch(`${base}/cr-action`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString(),

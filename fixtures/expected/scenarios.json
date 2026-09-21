@@ -9,9 +9,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -19,8 +19,8 @@
     "pass": true,
     "mismatches": []
   },
-  "schedule-dtmf-id": {
-    "id": "schedule-dtmf-id",
+  "schedule-dtmf-dob": {
+    "id": "schedule-dtmf-dob",
     "decision": "complete",
     "promptId": "schedule_confirmed",
     "acks": [],
@@ -29,9 +29,9 @@
     "verdict": "confirmed",
     "form": "schedule_new",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -49,9 +49,9 @@
     "verdict": "confirmed",
     "form": "cancel",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "okafor",
       "date": null
     },
@@ -69,9 +69,9 @@
     "verdict": "confirmed",
     "form": "confirm_appointment",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "okafor",
       "date": null
     },
@@ -109,9 +109,9 @@
     "verdict": "confirmed",
     "form": "schedule_new",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "okafor",
       "date": "2026-09-25"
     },
@@ -122,7 +122,7 @@
   "intent-switch-mid-form": {
     "id": "intent-switch-mid-form",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [
       "ack_intent"
     ],
@@ -151,9 +151,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-23"
     },
@@ -171,9 +171,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -201,19 +201,21 @@
     "pass": true,
     "mismatches": []
   },
-  "slot-retry-to-dtmf": {
-    "id": "slot-retry-to-dtmf",
-    "decision": "prompt",
-    "promptId": "ask_provider",
-    "acks": [],
-    "reason": null,
+  "name-retry-to-agent": {
+    "id": "name-retry-to-agent",
+    "decision": "handoff",
+    "promptId": "handoff_max_attempts",
+    "acks": [
+      "no_input"
+    ],
+    "reason": "max-attempts",
     "decidedGate": null,
     "verdict": null,
     "form": "cancel",
     "slots": {
       "name": null,
       "dob": null,
-      "memberId": "44718293",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -224,7 +226,7 @@
   "dtmf-menu": {
     "id": "dtmf-menu",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -244,7 +246,7 @@
   "spoken-menu-number": {
     "id": "spoken-menu-number",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "menuNumber",
@@ -264,7 +266,7 @@
   "explicit-confirm-yes": {
     "id": "explicit-confirm-yes",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -324,7 +326,7 @@
   "disambiguate-provider": {
     "id": "disambiguate-provider",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": null,
@@ -404,7 +406,7 @@
   "client-failure-once": {
     "id": "client-failure-once",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
@@ -471,9 +473,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -491,9 +493,9 @@
     "verdict": "confirmed",
     "form": "cancel",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "okafor",
       "date": null
     },
@@ -511,9 +513,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -564,7 +566,7 @@
   "switch-confirm-yes-mid-form": {
     "id": "switch-confirm-yes-mid-form",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [
       "ack_intent"
     ],
@@ -586,7 +588,7 @@
   "switch-confirm-no-resumes-form": {
     "id": "switch-confirm-no-resumes-form",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -613,9 +615,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-12-02"
     },
@@ -643,8 +645,8 @@
     "pass": true,
     "mismatches": []
   },
-  "summary-reads-back-spoken-id": {
-    "id": "summary-reads-back-spoken-id",
+  "summary-reads-back-name-and-dob": {
+    "id": "summary-reads-back-name-and-dob",
     "decision": "prompt",
     "promptId": "confirm_reschedule",
     "acks": [],
@@ -653,9 +655,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -673,9 +675,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -693,9 +695,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -705,20 +707,20 @@
   },
   "add-intent-chained": {
     "id": "add-intent-chained",
-    "decision": "handoff",
-    "promptId": "handoff_billing",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
     "acks": [
       "reschedule_confirmed",
       "bridge_next"
     ],
-    "reason": "billing",
+    "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
     "form": "billing",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -758,9 +760,9 @@
     "verdict": "confirmed",
     "form": "cancel",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -778,9 +780,9 @@
     "verdict": "confirmed",
     "form": "cancel",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -798,9 +800,9 @@
     "verdict": "rejected",
     "form": "cancel",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -810,13 +812,13 @@
   },
   "chunked-memberId": {
     "id": "chunked-memberId",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "cancel",
+    "form": "billing",
     "slots": {
       "name": null,
       "dob": null,
@@ -830,13 +832,13 @@
   },
   "digit-string-memberId": {
     "id": "digit-string-memberId",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "cancel",
+    "form": "billing",
     "slots": {
       "name": null,
       "dob": null,
@@ -860,9 +862,9 @@
     "verdict": "proceed",
     "form": "cancel",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "kim",
       "date": null
     },
@@ -880,9 +882,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -893,7 +895,7 @@
   "tentative-carries-slots": {
     "id": "tentative-carries-slots",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -920,9 +922,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -940,9 +942,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-25"
     },
@@ -960,9 +962,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "kim",
       "date": "2026-09-22"
     },
@@ -980,9 +982,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1000,9 +1002,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-24"
     },
@@ -1020,9 +1022,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "alvarez",
       "date": "2026-09-24"
     },
@@ -1040,31 +1042,11 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-23"
-    },
-    "queued": [],
-    "pass": true,
-    "mismatches": []
-  },
-  "summary-memberId-corrected": {
-    "id": "summary-memberId-corrected",
-    "decision": "complete",
-    "promptId": "reschedule_confirmed",
-    "acks": [],
-    "reason": null,
-    "decidedGate": "confirmation",
-    "verdict": "confirmed",
-    "form": "reschedule",
-    "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718294",
-      "provider": "chen",
-      "date": "2026-09-22"
     },
     "queued": [],
     "pass": true,
@@ -1080,9 +1062,9 @@
     "verdict": "confirm_unanswered",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1100,9 +1082,9 @@
     "verdict": null,
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1120,9 +1102,9 @@
     "verdict": "confirmed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "kim",
       "date": "2026-09-22"
     },
@@ -1140,9 +1122,9 @@
     "verdict": "confirm_unanswered",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1152,20 +1134,20 @@
   },
   "summary-yes-adds-billing": {
     "id": "summary-yes-adds-billing",
-    "decision": "handoff",
-    "promptId": "handoff_billing",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
     "acks": [
       "reschedule_confirmed",
       "bridge_next"
     ],
-    "reason": "billing",
+    "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
     "form": "billing",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -1177,18 +1159,15 @@
     "id": "second-intent-first-utterance",
     "decision": "handoff",
     "promptId": "handoff_billing",
-    "acks": [
-      "reschedule_confirmed",
-      "bridge_next"
-    ],
+    "acks": [],
     "reason": "billing",
-    "decidedGate": "confirmation",
-    "verdict": "confirmed",
+    "decidedGate": null,
+    "verdict": "proceed",
     "form": "billing",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": "81204457",
       "provider": null,
       "date": null
     },
@@ -1292,9 +1271,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1314,9 +1293,9 @@
     "verdict": null,
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1336,9 +1315,9 @@
     "verdict": null,
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -1356,11 +1335,131 @@
     "verdict": null,
     "form": "reschedule",
     "slots": {
-      "name": null,
-      "dob": null,
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "dob-year-followup": {
+    "id": "dob-year-followup",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "dob-year-prompt": {
+    "id": "dob-year-prompt",
+    "decision": "prompt",
+    "promptId": "ask_dob_year",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "dob-keypad": {
+    "id": "dob-keypad",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "dob-future-retry": {
+    "id": "dob-future-retry",
+    "decision": "prompt",
+    "promptId": "ask_dob_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "name-correction-at-summary": {
+    "id": "name-correction-at-summary",
+    "decision": "complete",
+    "promptId": "reschedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason styles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "billing-still-asks-memberId": {
+    "id": "billing-still-asks-memberId",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
+    "acks": [],
+    "reason": "billing",
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "billing",
+    "slots": {
+      "name": null,
+      "dob": null,
+      "memberId": "12345678",
+      "provider": null,
+      "date": null
     },
     "queued": [],
     "pass": true,

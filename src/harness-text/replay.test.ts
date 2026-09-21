@@ -35,12 +35,15 @@ describe('replayFrameLog', () => {
     await handleSocketMessage(deps, sock, ctx, JSON.stringify({ type: 'setup', sessionId: 'VX1', callSid: 'CA1', from: '+1', to: '+2', customParameters: {} }));
     await say("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
     await handleSocketMessage(deps, sock, ctx, JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'x', durationUntilInterruptMs: 10 }));
-    for (const d of '44718293') await handleSocketMessage(deps, sock, ctx, JSON.stringify({ type: 'dtmf', digit: d }));
+    await say('Jason Stiles');
+    for (const d of '03051980') await handleSocketMessage(deps, sock, ctx, JSON.stringify({ type: 'dtmf', digit: d }));
     await say('Tuesday');
     await say('yes');
 
     const live = readFileSync(join(dir, 'CA1.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    const replay = await replayFrameLog(join(dir, 'CA1.frames.jsonl'), { ...opts, trace: null });
+    // The frame log's clock is pinned to the epoch, so the date it would replay under is 1970;
+    // the birthday slot is date-sensitive, so replay gets the date the live run used.
+    const replay = await replayFrameLog(join(dir, 'CA1.frames.jsonl'), { ...opts, trace: null }, undefined, { todayIso: opts.todayIso });
     const shape = (r: { event: { type: string }; decision: { kind: string; promptId?: string } }) => [r.event.type, r.decision.kind, r.decision.promptId ?? null];
     expect(replay.records.map(shape)).toEqual(live.map(shape));
     expect(replay.records.at(-1)!.decision.kind).toBe('complete');
