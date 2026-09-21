@@ -7,7 +7,7 @@
 {"id":"sn-07","text":"I'd like to see Dr. Alvarez sometime this month","intent":"schedule_new","context":"no_form","slots":{"provider":"alvarez","date":{"mode":"window","window":"this_month"}}}
 {"id":"sn-08","text":"Schedule an appointment for next Tuesday with Dr. Rossi","intent":"schedule_new","context":"no_form","slots":{"provider":"rossi","date":{"mode":"weekday","weekday":"tuesday","weekdayQualifier":"next"}}}
 {"id":"sn-09","text":"I need to get in to see somebody about my knee","intent":"schedule_new","context":"no_form"}
-{"id":"sn-10","text":"Make an appointment with Dr. Okafor for Jason Stiles, born March fifth nineteen eighty, Friday","intent":"schedule_new","context":"no_form","slots":{"provider":"okafor","name":"Jason Stiles","dob":{"month":"march","day":"5","year":"nineteen eighty"},"date":{"mode":"weekday","weekday":"friday"}},"tags":["over_answer","all_slots"]}
+{"id":"sn-10","text":"Make an appointment with Dr. Okafor, this is Jason Stiles, born March fifth nineteen eighty, Friday","intent":"schedule_new","context":"no_form","slots":{"provider":"okafor","name":"Jason Stiles","dob":{"month":"march","day":"5","year":"nineteen eighty"},"date":{"mode":"weekday","weekday":"friday"}},"tags":["over_answer","all_slots"]}
 
 {"id":"rs-01","text":"I need to reschedule my appointment","intent":"reschedule","context":"no_form"}
 {"id":"rs-02","text":"I need to reschedule my appointment, it's with Dr. Chen sometime next week","intent":"reschedule","context":"no_form","slots":{"provider":"chen","date":{"mode":"window","window":"next_week"}},"tags":["over_answer","window","handoff_example"]}

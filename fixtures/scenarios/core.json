@@ -138,7 +138,7 @@
     "id": "over-answer-one-turn",
     "steps": [
       {
-        "say": "Make an appointment with Dr. Okafor for Jason Stiles, born March fifth nineteen eighty, Friday"
+        "say": "Make an appointment with Dr. Okafor, this is Jason Stiles, born March fifth nineteen eighty, Friday"
       },
       {
         "say": "yes"

@@ -62,15 +62,62 @@ function windowKey(w: SlotPartial | null): string {
   return `date:${w.start}:${w.end}:${w.label}`;
 }
 
+const ISO_DAY = /^\d{4}-(\d{1,2})-(\d{1,2})$/;
+
+/**
+ * The one calendar day an outcome asserts, as `month-day`, or null when it asserts none.
+ * A rejected value still says which day was heard (`invalid.raw` for a birthday in the
+ * future), and a dob partial is a month and day with the year still owed; a date window is
+ * a span of days rather than one, so it asserts none.
+ */
+function monthDayOf(outcome: SlotOutcome): string | null {
+  const iso = outcome.kind === 'filled' ? outcome.value : outcome.kind === 'invalid' ? outcome.raw : null;
+  if (iso !== null) {
+    const m = ISO_DAY.exec(iso);
+    return m ? `${Number(m[1])}-${Number(m[2])}` : null;
+  }
+  if (outcome.kind === 'window' && 'kind' in outcome.window) return `${outcome.window.month}-${outcome.window.day}`;
+  return null;
+}
+
+/**
+ * One calendar day heard twice. Every slot reads every turn, so a day spoken in answer to one
+ * slot's question is offered to the others as well: "March fifth" at ask_dob is a birthday, and
+ * the appointment date the date slot builds out of it (the next March 5th) is an artifact of
+ * asking two questions of one sentence, not something the caller said. The slot that was asked
+ * owns the day; any other slot that resolves the same month and day on that turn is dropped,
+ * fill and window alike. A different day in the same breath ("March fifth, and I want to come in
+ * next Tuesday") is a real over-answer and stands, and a turn that prompted no slot -- the intent
+ * question, a summary -- has no owner to decide with, so nothing is dropped.
+ */
+function sameDayAsPrompted(session: Session, results: { spec: SlotSpec; outcome: SlotOutcome }[]): Set<SlotId> {
+  const dropped = new Set<SlotId>();
+  const asked = session.promptedFor;
+  if (asked === null || asked === 'intent' || asked === 'confirm') return dropped;
+  const day = results.find((r) => r.spec.id === asked)?.outcome;
+  const key = day ? monthDayOf(day) : null;
+  if (key === null) return dropped;
+  for (const r of results) {
+    if (r.spec.id === asked) continue;
+    if ((r.outcome.kind === 'filled' || r.outcome.kind === 'window') && monthDayOf(r.outcome) === key) dropped.add(r.spec.id);
+  }
+  return dropped;
+}
+
 export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext, specs: SlotSpec[], opts: FillOptions = {}): FillResult {
   const events: FillEvent[] = [];
   const acks: Ack[] = [];
   let disambiguate: FillResult['disambiguate'] = null;
   let progress = false;
 
-  for (const spec of specs) {
-    const outcome = spec.fill(answers, slotCtx(session, ctx, spec.id));
-    if (outcome.kind === 'absent') continue;
+  // Read every spec before applying any of it: the same-day rule compares the slots against each
+  // other. Each spec sees only its own slot's pending partial, which no other spec's fill touches,
+  // so reading them all up front says exactly what reading them one at a time did.
+  const results = specs.map((spec) => ({ spec, outcome: spec.fill(answers, slotCtx(session, ctx, spec.id)) }));
+  const dropped = sameDayAsPrompted(session, results);
+
+  for (const { spec, outcome } of results) {
+    if (outcome.kind === 'absent' || dropped.has(spec.id)) continue;
     events.push({ slot: spec.id, outcome });
     const slot = session.slots[spec.id];
     switch (outcome.kind) {

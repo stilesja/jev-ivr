@@ -47,7 +47,7 @@ export const dobSlot: SlotSpec = {
       },
       dobMonth: {
         type: 'choice',
-        instructions: "Read asr.text. Which month is the caller's date of birth in, if they say one? This is the birth date, not an appointment date.",
+        instructions: "Read asr.text. Which month is the caller's date of birth in, if they say one? This is the birth date, not an appointment date. A month may be said as a number rather than a name; answer with the month that number means, as in seven two sixty five, which is July 2nd, 1965.",
         criteria: criteriaOf(MONTHS),
       },
       dobDay: {

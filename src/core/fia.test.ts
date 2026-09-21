@@ -90,6 +90,89 @@ describe('fillSlots', () => {
   });
 });
 
+describe('one calendar day heard twice', () => {
+  /** What the dob questions come back with for a spoken month and day, with or without a year. */
+  function dobAnswers(year?: string): Record<string, ReturnType<typeof choice> | ReturnType<typeof noul>> {
+    return {
+      dobGiven: noul(0.9),
+      dobMonth: choice({ march: 0.9, none: 0.1 }),
+      dobDay: choice({ '5': 0.9, none: 0.1 }),
+      dobYear: year ? choice({ [year]: 0.9, none: 0.1 }) : choice({ none: 0.9 }),
+    };
+  }
+
+  /** What the date questions come back with when they read the same "march fifth" as a day to be seen on. */
+  const dateMarchFifth = {
+    dateMode: choice({ absolute: 0.9, none: 0.1 }),
+    dateMonth: choice({ march: 0.9, none: 0.1 }),
+    dateDay: choice({ '5': 0.9, none: 0.1 }),
+  };
+
+  it('drops an appointment date that repeats the birthday the caller was just asked for', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'dob';
+    const r = fillSlots(s, { ...dobAnswers(), ...dateMarchFifth }, ctx('march fifth'), slotsFor('reschedule'));
+    expect(r.session.slots.dob.window).toEqual({ kind: 'dob', month: 3, day: 5 });
+    expect(r.session.slots.date).toMatchObject({ value: null, window: null });
+    expect(r.events.map((e) => e.slot)).toEqual(['dob']);
+  });
+
+  it('drops it when the birthday is complete, year and all', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'dob';
+    const r = fillSlots(s, { ...dobAnswers('nineteen eighty'), ...dateMarchFifth }, ctx('march fifth nineteen eighty'), slotsFor('reschedule'));
+    expect(r.session.slots.dob.value).toBe('1980-03-05');
+    expect(r.session.slots.date.value).toBeNull();
+  });
+
+  it('drops it when the birthday itself was rejected (a birthday in the future is still a birthday)', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'dob';
+    const r = fillSlots(s, {
+      dobGiven: noul(0.9),
+      dobMonth: choice({ december: 0.9, none: 0.1 }),
+      dobDay: choice({ '25': 0.9, none: 0.1 }),
+      dobYear: choice({ 'twenty thirty': 0.9, none: 0.1 }),
+      dateMode: choice({ absolute: 0.9, none: 0.1 }),
+      dateMonth: choice({ december: 0.9, none: 0.1 }),
+      dateDay: choice({ '25': 0.9, none: 0.1 }),
+    }, ctx('december twenty fifth twenty thirty'), slotsFor('reschedule'));
+    expect(r.events).toEqual([{ slot: 'dob', outcome: { kind: 'invalid', reason: 'future', raw: '2030-12-25' } }]);
+    expect(r.session.slots.date.value).toBeNull();
+  });
+
+  it('keeps an appointment date that is a different day (a real over-answer)', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'dob';
+    const r = fillSlots(s, {
+      ...dobAnswers(),
+      dateMode: choice({ weekday: 0.9, none: 0.1 }),
+      dateWeekday: choice({ tuesday: 0.9, none: 0.1 }),
+      dateWeekdayQualifier: choice({ next: 0.9, none: 0.1 }),
+    }, ctx('march fifth and i want to come in next tuesday'), slotsFor('reschedule'));
+    expect(r.session.slots.dob.window).toEqual({ kind: 'dob', month: 3, day: 5 });
+    expect(r.session.slots.date.value).toBe('2026-09-22');
+  });
+
+  it('fills the date when the date is what was asked: the prompted slot is the one that wins', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.slots.dob.value = '1980-03-05';
+    s.slots.dob.display = 'March 5th, 1980';
+    s.promptedFor = 'date';
+    const r = fillSlots(s, { ...dobAnswers(), ...dateMarchFifth }, ctx('march fifth'), slotsFor('reschedule'));
+    expect(r.session.slots.date.value).toBe('2027-03-05');
+    expect(r.session.slots.dob.value).toBe('1980-03-05');
+  });
+
+  it('leaves both alone when the prompt was not a slot\'s', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'intent';
+    const r = fillSlots(s, { ...dobAnswers(), ...dateMarchFifth }, ctx('march fifth'), slotsFor('reschedule'));
+    expect(r.session.slots.dob.window).toEqual({ kind: 'dob', month: 3, day: 5 });
+    expect(r.session.slots.date.value).toBe('2027-03-05');
+  });
+});
+
 describe('per-spec context', () => {
   /** A spec that fills nothing; it only records the window it was handed, for inspection. */
   function echoSpec(id: SlotId, seen: Record<string, unknown>): SlotSpec {

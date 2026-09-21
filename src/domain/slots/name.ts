@@ -20,11 +20,11 @@ export const nameSlot: SlotSpec = {
       nameGiven: {
         type: 'noul',
         instructions: "Read asr.text. Does the caller state their own name, first name alone or first and last?",
-        criteria: { true: 'The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan', false: "No personal name, or a name that is not the caller's, such as a doctor's name" },
+        criteria: { true: 'The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan, including a correction to a name just read back to them, as in no, it\'s Sam Lee', false: "No personal name, or a name that is not the caller's, such as a doctor's name" },
       },
       nameSpan: {
         type: 'choice',
-        instructions: 'Read asr.text. Which of these spans is the caller\'s own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider\'s name or anyone else\'s. Choose none if no span is the caller\'s name.',
+        instructions: 'Read asr.text. Which of these spans is the caller\'s own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider\'s name or anyone else\'s. A single word can be the whole name, as in Prince. Choose none if no span is the caller\'s name.',
         criteria,
       },
     };
