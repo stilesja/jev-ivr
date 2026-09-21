@@ -85,7 +85,7 @@ export const dobSlot: SlotSpec = {
     const used = [month, day, year].filter((c) => c.label !== 'none' && c.p >= t.SLOT_CHOICE_CONFIRM);
     if (used.length === 0) return { kind: 'absent' };
     const confidence = Math.min(...used.map((c) => c.p));
-    if (m === null || d === null) return { kind: 'invalid', reason: 'no_date', raw: '' };
+    if (m === null || d === null) return { kind: 'invalid', reason: 'no_year', raw: '' };
     if (y === null) return { kind: 'window', window: { kind: 'dob', month: m, day: d }, confidence };
     if (y < MIN_YEAR) return { kind: 'invalid', reason: 'impossible', raw: `${y}` };
     const iso = isoOf(y, m, d);

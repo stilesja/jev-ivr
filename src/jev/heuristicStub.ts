@@ -98,6 +98,7 @@ const MAX_NAME_WORDS = MAX_WORD_NGRAM;
  */
 const NON_NAME_WORDS: ReadonlySet<string> = new Set([
   ...FILLER_WORDS, 'about', 'regarding', 'member', 'id', 'number', 'dr', 'doctor',
+  'born', 'birthday', 'birth', ...MONTHS,
 ]);
 
 function looksLikeName(span: string): boolean {

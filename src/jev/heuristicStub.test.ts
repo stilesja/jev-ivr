@@ -109,6 +109,13 @@ describe('HeuristicStubClient', () => {
     expect((res.answers.nameSpan as { choice: string }).choice).toBe('mary kate o neil');
   });
 
+  it('excludes "born" and a month name from a name span', async () => {
+    // Without those words in NON_NAME_WORDS, the four-token span right after "this is" --
+    // "jason stiles born march" -- looked name-shaped and won over the correct two-token span.
+    const res = await ask("I need to reschedule my appointment with Dr. Chen next week, this is Jason Stiles, born March 5th 1980");
+    expect((res.answers.nameSpan as { choice: string }).choice).toBe('jason stiles');
+  });
+
   it('reads a name said in the same breath as a member id', async () => {
     const res = await ask('my name is Jason Stiles, member 4471 8293');
     expect((res.answers.nameGiven as { noul: number }).noul).toBeGreaterThan(0.8);

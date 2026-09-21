@@ -453,7 +453,9 @@ member IDs and dates as quiet as possible.
 12. Call again and say all of it at once: "I need to reschedule my appointment
     with Dr. Chen next week, this is Jason Stiles, born March 5th 1980."
     Expect the day question directly — "next week. Which day works for you?" —
-    with neither the name nor the birthday asked.
+    with neither the name nor the birthday asked. (This narrowed phrasing holds
+    on the live line. Typed into the REPL, the heuristic stub drops the window
+    once a year is present and asks the plain day question instead.)
 13. Call again, repeat through step 9, then stay quiet at the summary
     question: expect "I didn't hear anything." then the summary question
     again, then the keypad offer ("Press 1 to confirm, or 2 to change

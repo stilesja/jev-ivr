@@ -44,6 +44,14 @@ describe('dobSlot', () => {
     expect(normalizeYear('two thousand five', '2026-09-18')).toBe(2005);
   });
 
+  it('is invalid with reason no_year when a year is given alone with nothing pending to supply month or day', () => {
+    const r = dobSlot.fill(
+      { dobGiven: noul(0.95), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }), dobYear: choice({ eighty: 0.9 }) },
+      ctx('eighty'),
+    );
+    expect(r).toMatchObject({ kind: 'invalid', reason: 'no_year' });
+  });
+
   it('rejects a future date, an impossible date, and a year before 1900', () => {
     const f = (m: string, d: string, y: string) => dobSlot.fill({ dobGiven: noul(0.95), dobMonth: choice({ [m]: 0.9 }), dobDay: choice({ [d]: 0.9 }), dobYear: choice({ [y]: 0.9 }) }, ctx(`${m} ${d} ${y}`));
     expect(f('december', '25', 'twenty thirty')).toMatchObject({ kind: 'invalid', reason: 'future' });
