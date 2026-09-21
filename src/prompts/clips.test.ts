@@ -85,7 +85,7 @@ describe('recordableClips', () => {
     const rows = recordableClips();
     const ids = rows.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(rows.find((r) => r.id === 'greeting.0')).toMatchObject({ text: 'Thanks for calling the clinic. How can I help you today?', note: 'closed' });
+    expect(rows.find((r) => r.id === 'greeting.0')).toMatchObject({ text: 'Thanks for calling Stiles Family Medical Practice. How can I help you today?', note: 'closed' });
     expect(rows.find((r) => r.id === 'ack_provider.0')).toMatchObject({ text: 'With', note: 'open' });
     expect(rows.find((r) => r.id === 'date_narrow_window.0')).toMatchObject({ text: 'Which day works for you?', note: 'closed' });
     expect(rows.find((r) => r.id === 'provider.chen')).toMatchObject({ text: 'Dr. Chen', note: 'closed' });

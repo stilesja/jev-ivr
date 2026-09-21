@@ -105,7 +105,7 @@ describe('adapter', () => {
     const ctx = newConnectionContext(tok, sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     expect(ctx.callSid).toBe('CA1');
-    expect(texts(sock)).toEqual(['Thanks for calling the clinic. How can I help you today?']);
+    expect(texts(sock)).toEqual(['Thanks for calling Stiles Family Medical Practice. How can I help you today?']);
     expect(d.store.get('CA1')?.session.lastPromptId).toBe('greeting');
     expect(existsSync(join(d.dir, 'CA1.frames.jsonl'))).toBe(true);
   });

@@ -343,9 +343,9 @@ describe('turn', () => {
     const r = resolve(newSession('s', 0), setupFrame('s'), null, { ...tc, render: ctx });
     expect(r.frames).toEqual([{ type: 'play', source: 'https://h/audio/greeting.0.wav', loop: 1, preemptible: false, interruptible: true }]);
     expect(resolve(newSession('s', 0), setupFrame('s'), null, tc).frames[0]).toEqual({
-      type: 'text', token: 'Thanks for calling the clinic. How can I help you today?', last: true, lang: 'en-US', interruptible: true, preemptible: false,
+      type: 'text', token: 'Thanks for calling Stiles Family Medical Practice. How can I help you today?', last: true, lang: 'en-US', interruptible: true, preemptible: false,
     });
-    expect(r.session.lastPromptText).toBe('Thanks for calling the clinic. How can I help you today?');
+    expect(r.session.lastPromptText).toBe('Thanks for calling Stiles Family Medical Practice. How can I help you today?');
   });
 
   describe('member id', () => {

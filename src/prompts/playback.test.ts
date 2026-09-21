@@ -45,7 +45,7 @@ describe('wavDurationMs', () => {
 
 describe('textEstimateMs', () => {
   it('estimates 2.5 words per second, at least half a second', () => {
-    expect(textEstimateMs('Thanks for calling the clinic. How can I help you today?')).toBe(4400);
+    expect(textEstimateMs('Thanks for calling Stiles Family Medical Practice. How can I help you today?')).toBe(5200);
     expect(textEstimateMs('Goodbye.')).toBe(500);
   });
 });

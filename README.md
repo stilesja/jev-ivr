@@ -11,7 +11,7 @@ labeled corpus.
 
 ## A call, end to end
 
-    System   Thanks for calling the clinic. How can I help you today?
+    System   Thanks for calling Stiles Family Medical Practice. How can I help you today?
     Caller   I need to reschedule my appointment, it's with Dr. Chen sometime next week.
     System   What's your first and last name?
     Caller   Jason Stiles.

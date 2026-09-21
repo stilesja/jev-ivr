@@ -126,12 +126,12 @@ describe('server end to end', () => {
     const token = running.tokens.mint('CA1');
     const relay = await FakeRelay.connect(`${ws}?token=${token}`);
     relay.setup('CA1');
-    expect(await relay.waitForTexts(1)).toEqual(['Thanks for calling the clinic. How can I help you today?']);
+    expect(await relay.waitForTexts(1)).toEqual(['Thanks for calling Stiles Family Medical Practice. How can I help you today?']);
   });
 
   it('greets on setup and refuses a well-shaped token that was never minted', async () => {
     const { relay, ws } = await connected();
-    expect(relay.texts()).toEqual(['Thanks for calling the clinic. How can I help you today?']);
+    expect(relay.texts()).toEqual(['Thanks for calling Stiles Family Medical Practice. How can I help you today?']);
     // The upgrade knows the token but not the call SID, and this one is live for no call at all,
     // so it never gets a socket to send setup on.
     await expect(FakeRelay.connect(`${ws}?token=${UNMINTED_TOKEN}`)).rejects.toThrow(/401/);

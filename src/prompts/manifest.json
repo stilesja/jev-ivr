@@ -1,5 +1,5 @@
 {
-  "greeting": { "text": "Thanks for calling the clinic. How can I help you today?", "interruptible": true },
+  "greeting": { "text": "Thanks for calling Stiles Family Medical Practice. How can I help you today?", "interruptible": true },
   "nomatch_open": { "text": "Sorry, I didn't catch that. You can say things like reschedule, cancel, or check an appointment. How can I help?", "interruptible": true },
   "nomatch_dtmf_menu": { "text": "Let's try the keypad. For a new appointment press 1. To reschedule press 2. To cancel press 3. To confirm an appointment press 4. For billing press 5. For an agent press 0.", "interruptible": true },
   "ask_intent": { "text": "How can I help you today?", "interruptible": true },
