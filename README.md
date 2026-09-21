@@ -263,7 +263,11 @@ long menu does not put the re-ask on top of the rest of it.
 `partialPrompts="true"` for this and only this: a partial tells the server the
 caller has started speaking so the wait stops at the first syllable, but a
 turn still runs only on the final transcript. A reconnect that replays the
-last prompt starts a wait on it too. If three turns in a row throw, the
+last prompt starts a wait on it too. `interruptSensitivity="low"` and
+`ignoreBackchannel="true"` are set because speakerphone room noise was
+interrupting prompt playback and leaving the caller in silence until the
+no-input timer fired; low sensitivity requires confident, longer speech to
+interrupt, and backchannels never do. If three turns in a row throw, the
 apology is still spoken but the wait stops re-arming, so a model that is down
 cannot leave the line apologizing every few seconds; the server log says
 `N consecutive turn failures, no-input wait stopped`.
