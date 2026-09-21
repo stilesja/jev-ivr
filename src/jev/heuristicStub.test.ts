@@ -100,6 +100,15 @@ describe('HeuristicStubClient', () => {
     }
   });
 
+  it('takes a four-token name whole, as the span generator offers it', async () => {
+    // tokenize() strips the hyphen and the apostrophe, so "Mary-Kate O'Neil" is four tokens and
+    // candidateWordSpans emits it as one span (MAX_WORD_NGRAM is 4). A shorter cap here would
+    // take the longest accepted prefix instead and fill the name with "mary kate o".
+    const res = await ask("this is Mary-Kate O'Neil");
+    expect((res.answers.nameGiven as { noul: number }).noul).toBeGreaterThan(0.8);
+    expect((res.answers.nameSpan as { choice: string }).choice).toBe('mary kate o neil');
+  });
+
   it('reads a name said in the same breath as a member id', async () => {
     const res = await ask('my name is Jason Stiles, member 4471 8293');
     expect((res.answers.nameGiven as { noul: number }).noul).toBeGreaterThan(0.8);

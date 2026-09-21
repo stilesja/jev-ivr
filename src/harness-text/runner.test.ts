@@ -37,7 +37,7 @@ const entries: CorpusEntry[] = [
 ];
 
 const opts = {
-  client: new FixtureStubClient(entries, { sharpness: 0.9, fallback: new HeuristicStubClient() }),
+  client: new FixtureStubClient(entries, { sharpness: 0.9, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) }),
   thresholds: { ...DEFAULT_THRESHOLDS },
   todayIso: '2026-09-18',
   now: () => 1_000,
@@ -65,13 +65,13 @@ const prompted: CorpusEntry = {
   id: 'd1', text: 'tomorrow', intent: 'none', context: 'reschedule', prompted: 'date',
   slots: { date: { mode: 'relative_day', relativeDay: 'tomorrow' } },
 };
-const promptedClient = new FixtureStubClient([prompted], { sharpness: 0.9, fallback: new HeuristicStubClient() });
+const promptedClient = new FixtureStubClient([prompted], { sharpness: 0.9, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) });
 
 /** The second entry is a trailing-off utterance the complete gate should hold on. */
 const partialClient = new FixtureStubClient([
   entries[0]!,
   { id: 'p1', text: 'four four seven one', intent: 'none', context: 'cancel', answers: { utteranceComplete: { noul: 0.25 } } },
-], { sharpness: 0.9, fallback: new HeuristicStubClient() });
+], { sharpness: 0.9, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) });
 
 describe('runCorpusEntry', () => {
   it('runs a first-utterance entry from the greeting', async () => {
@@ -225,7 +225,7 @@ describe('runScenario', () => {
     // an intent in the implicit band is acknowledged before the next prompt
     const implicitClient = new FixtureStubClient(
       [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.65, reschedule: 0.2 } } } }],
-      { sharpness: 0.9, fallback: new HeuristicStubClient() },
+      { sharpness: 0.9, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) },
     );
     const acked = await runScenario({ id: 'acks-implicit', steps, expect: { decision: 'prompt' } }, { ...opts, client: implicitClient });
     expect(acked.outcome.acks).toEqual(['ack_intent']);

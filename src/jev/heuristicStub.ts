@@ -3,7 +3,7 @@ import { quietAnswer } from './defaults';
 import { estimateTokens, type Answer, type AnswerMap, type JevClient, type JevRequest, type JevResponse, type Question } from './types';
 import { NUMBER_WORDS, spokenToDigits, tokenize } from '../core/extract/spokenNumber';
 import { MONTHS, WEEKDAYS, normalizeYear } from '../core/extract/date';
-import { candidateSpans, candidateWordSpans, FILLER_WORDS } from '../core/spans';
+import { candidateSpans, candidateWordSpans, FILLER_WORDS, MAX_WORD_NGRAM } from '../core/spans';
 import { INTENT_MENU } from '../domain/intents';
 import { PROVIDERS } from '../domain/slots/provider';
 
@@ -79,8 +79,14 @@ function bestDigits(text: string): string {
  */
 const NAME_MARKER = /\b(?:my name is|name is|this is|it s|i m)\s+(.+)$/;
 
-/** Names are short: "Anna", "Jason Stiles", "Maria de Luca". Four words is a sentence. */
-const MAX_NAME_WORDS = 3;
+/**
+ * Names are short: "Anna", "Jason Stiles", "Mary Kate O Neil". The cap is the span generator's
+ * own MAX_WORD_NGRAM, so the stub can accept every span candidateWordSpans offers it: a shorter
+ * cap silently took the longest accepted prefix instead, filling "Mary-Kate O'Neil" (four tokens
+ * once tokenize strips the hyphen and the apostrophe) with "mary kate o". NON_NAME_WORDS is what
+ * keeps a four-word reason for calling out, not the length.
+ */
+const MAX_NAME_WORDS = MAX_WORD_NGRAM;
 
 /**
  * Words a name span may not contain anywhere. FILLER_WORDS only keeps a candidate span from

@@ -52,7 +52,7 @@ export async function runSweep(cfg: SweepConfig): Promise<SweepRun> {
   const model = first?.model;
   const recorded = new CassetteClient({ path: cfg.cassette, mode: 'replay', ...(model === JEV_MODEL ? { expectModel: JEV_MODEL } : {}) });
   recorded.preload();
-  const stubFor = (t: Thresholds) => new FixtureStubClient(corpus, { sharpness: t.STUB_SHARPNESS, fallback: new HeuristicStubClient() });
+  const stubFor = (t: Thresholds) => new FixtureStubClient(corpus, { sharpness: t.STUB_SHARPNESS, fallback: new HeuristicStubClient({ todayIso: REGRESS_TODAY }) });
   const opts = (client: RunOptions['client'], thresholds: Thresholds): RunOptions => ({ client, thresholds, todayIso: REGRESS_TODAY, now: () => 0 });
 
   const evaluate = async (candidate: Thresholds) => {
