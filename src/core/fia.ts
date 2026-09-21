@@ -52,6 +52,16 @@ export function slotCtx(session: Session, ctx: SlotContext, id: SlotId): SlotCon
   return { ...ctx, window: session.slots[id].window };
 }
 
+/**
+ * A pending narrowing as one comparable value, field by field rather than by object identity or
+ * key order: `dob:3-5` for a month/day partial, `date:<start>:<end>:<label>` for a date window.
+ */
+function windowKey(w: SlotPartial | null): string {
+  if (w === null) return 'none';
+  if ('kind' in w) return `dob:${w.month}-${w.day}`;
+  return `date:${w.start}:${w.end}:${w.label}`;
+}
+
 export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext, specs: SlotSpec[], opts: FillOptions = {}): FillResult {
   const events: FillEvent[] = [];
   const acks: Ack[] = [];
@@ -81,15 +91,25 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
         progress = true;
         break;
       }
-      case 'window':
+      case 'window': {
         if (slot.value === null || opts.correcting === true) {
+          // Only a window that differs from the one already pending is progress: a partial that
+          // gained a component, or a different partial altogether. Re-speaking the partial the
+          // caller was just asked to complete ("march fifth" again at ask_dob_year, "next week"
+          // again at date_narrow_window) answers nothing, and counting it as progress would hold
+          // `attempts` at zero and re-ask the same question forever. turn.ts' `case 'proceed'`
+          // turns a turn without progress into failAttempt, so the ladder walks to the keypad
+          // rung and then to an agent -- the same reading correctingFill/summaryState give an
+          // unchanged fill on the summary's own ladder.
+          const changed = windowKey(slot.window) !== windowKey(outcome.window);
           slot.value = null;
           slot.display = null;
           slot.confirmed = false;
           slot.window = outcome.window;
-          progress = true;
+          if (changed) progress = true;
         }
         break;
+      }
       case 'disambiguate':
         if (!disambiguate) disambiguate = { slot: spec.id, a: outcome.a, b: outcome.b };
         progress = true;

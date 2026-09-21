@@ -75,8 +75,10 @@ export const dobSlot: SlotSpec = {
     const y = year.label !== 'none' && year.p >= t.SLOT_CHOICE_CONFIRM ? normalizeYear(year.label, ctx.todayIso) : null;
     // Only the components this turn actually read count. Without this, an answer the components
     // cannot read at all ("uh, let me think") rebuilds the pending partial as a fresh `window`
-    // outcome; fillSlots reads any window as progress, so the attempt is never counted and the
-    // caller loops on ask_dob_year forever. It also kept Math.min of an empty list (Infinity) and
+    // outcome rather than reporting that nothing was heard. fillSlots no longer takes that for
+    // progress -- an unchanged window counts an attempt -- but the honest outcome still belongs
+    // here, at the source: absent is what "nothing readable was said" means, and it keeps the
+    // slot off the gate table entirely. It also kept Math.min of an empty list (Infinity) and
     // averaged in components below the choice threshold that were never used. dateSlot returns
     // absent the same way when its mode is none.
     const used = [month, day, year].filter((c) => c.label !== 'none' && c.p >= t.SLOT_CHOICE_CONFIRM);

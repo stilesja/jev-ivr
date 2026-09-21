@@ -141,10 +141,22 @@ function armNoInput(deps: AdapterDeps, entry: CallEntry, frames: readonly Outbou
   if (frames.length > 0) entry.frames.write('log', { noInputArmedMs: delay });
 }
 
-/** Digit runs long enough that TTS would read them as a number ("4471" as "four thousand ..."). */
-// Five or more digits, or several groups of four: an identifier, spelled out. A lone four-digit
-// run is left alone -- the summary reads a date of birth back ("born March 5th, 1980"), and a
-// year is exactly what TTS reads correctly on its own.
+/**
+ * Digit runs that must be spelled out rather than left to TTS, and the invariant the rule rests
+ * on: every identifier that reaches TTS is spoken as groups of four. The only one is the member
+ * ID, which `formatMemberId` (src/domain/slots/memberId.ts) always renders from its mask-
+ * guaranteed 8 digits as "4471 8293". So five or more digits, or two or more adjacent groups of
+ * four, is an identifier; a lone four-digit run cannot be one, and is a year -- exactly what TTS
+ * reads correctly on its own ("born March 5th, 1980").
+ *
+ * After this branch no summary speaks the member ID at all: the slot's policy is 'summary' and
+ * billing has no summary prompt, so the `ack_memberId` prompt is unreachable and the spelled-out
+ * branch has no production caller today. It stays because the keypad and prompt manifest can
+ * still put an ID on the wire, and because the rule is cheap to keep true.
+ *
+ * Framework seam: a slot declaring how its own value is spoken would replace this regex sniffing
+ * at the wire, and would not need the groups-of-four convention to hold across every slot.
+ */
 const DIGIT_RUN = /\d{4,}(?: \d{4,})+|\d{5,}/g;
 
 /**

@@ -230,6 +230,77 @@ describe('turn', () => {
     expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
   });
 
+
+  it('counts a repeated dob partial as a failed answer instead of re-asking forever', () => {
+    // Month and day with no year: the same outcome the caller's first answer produced, so the
+    // slot's pending partial is rebuilt unchanged every time it is said again.
+    const marchFifth = {
+      dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+    };
+    let r = say(started(), 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    r = say(r.session, 'jason stiles', NAME_ANSWERS);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob' });
+
+    // The partial itself is progress: it narrows an empty slot, so no attempt is counted.
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+    expect(r.session.slots.dob.attempts).toBe(0);
+
+    // Repeating it answers the year question with nothing new. failAttempt's open rung re-asks
+    // the window question (not ask_dob_retry) because that is what went unanswered -- but the
+    // attempt is counted, so the ladder walks to the keypad and then to an agent.
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+    expect(r.session.slots.dob.attempts).toBe(1);
+
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_dtmf' });
+    expect(r.session.slots.dob.attempts).toBe(2);
+
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('completes a dob partial when the next answer carries the year alone', () => {
+    let r = say(started(), 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    r = say(r.session, 'jason stiles', NAME_ANSWERS);
+    r = say(r.session, 'march fifth', {
+      dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+    });
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+
+    r = say(r.session, 'nineteen eighty', {
+      dobGiven: noul(0.95), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }),
+      dobYear: choice({ 'nineteen eighty': 0.9, none: 0.1 }),
+    });
+    expect(r.session.slots.dob.value).toBe('1980-03-05');
+    expect(r.session.slots.dob.attempts).toBe(0);
+  });
+
+  it('counts a repeated date window as a failed answer on the narrow question', () => {
+    const nextWeek = {
+      dateMode: choice({ window: 0.9, none: 0.1 }), dateWindow: choice({ next_week: 0.88, none: 0.12 }),
+    };
+    let r = say(started(), 'reschedule with dr chen', {
+      intent: choice({ reschedule: 0.94, none: 0.06 }), provider: choice({ chen: 0.91, none: 0.09 }),
+    });
+    r = identify(r.session);
+    expect(r.decision).toMatchObject({ promptId: 'ask_date' });
+
+    r = say(r.session, 'next week', { intentChange: ANSWERING, ...nextWeek });
+    expect(r.decision).toMatchObject({ promptId: 'date_narrow_window', vars: { window: 'next week' } });
+    expect(r.session.slots.date.attempts).toBe(0);
+
+    // "Next week" again narrows nothing: the same window question, but an attempt spent.
+    r = say(r.session, 'next week', { intentChange: ANSWERING, ...nextWeek });
+    expect(r.decision).toMatchObject({ promptId: 'date_narrow_window', vars: { window: 'next week' } });
+    expect(r.session.slots.date.attempts).toBe(1);
+  });
+
   it('reports a barge-in to the model on the next prompt turn only', () => {
     const interrupt: InterruptFrame = { type: 'interrupt', utteranceUntilInterrupt: 'wait no', durationUntilInterruptMs: 420 };
     const i = resolve(started(), interrupt, null, tc);

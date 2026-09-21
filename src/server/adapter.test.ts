@@ -764,6 +764,14 @@ describe('spokenDigits', () => {
     expect(spokenDigits('1980')).toBe('1980');
   });
 
+  it('spells an ID group out beside a year without touching the year', () => {
+    expect(spokenDigits('born 1980, member 4471 8293')).toBe('born 1980, member 4 4 7 1, 8 2 9 3');
+    // Latent, and no prompt writes it today: a year separated from an ID group by nothing but a
+    // space reads to the regex as one three-group identifier, so the year is spelled out too.
+    // A slot that declared how its value is spoken would not have to guess from the text.
+    expect(spokenDigits('born 1980 4471 8293')).toBe('born 1 9 8 0, 4 4 7 1, 8 2 9 3');
+  });
+
   it('leaves short numbers alone', () => {
     expect(spokenDigits('Your appointment with Dr. Chen is moved to Tuesday, September 22.')).toBe(
       'Your appointment with Dr. Chen is moved to Tuesday, September 22.',
