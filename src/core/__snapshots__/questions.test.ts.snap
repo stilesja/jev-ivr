@@ -765,6 +765,21 @@ exports[`question redesign > pins every question the model sees outside a form (
     "instructions": "Read asr.text. Which of these spans is the member ID the caller states? Choose the span that covers the whole number as spoken, including number words like forty-four or three hundred fifty-five and modifiers like double or triple. Do not include words that are not part of the number. Choose none if no span is a member ID.",
     "type": "choice",
   },
+  "nameGiven": {
+    "criteria": {
+      "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
+      "true": "The caller gives their own name, as in my name is Jason Stiles, this is Cher, or Jason Stiles",
+    },
+    "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
+    "type": "noul",
+  },
+  "nameSpan": {
+    "criteria": {
+      "none": "No span of asr.text is the caller's name",
+    },
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is. Choose none if no span is the caller's name.",
+    "type": "choice",
+  },
   "provider": {
     "criteria": {
       "alvarez": "Dr. Alvarez, also said as just Alvarez",

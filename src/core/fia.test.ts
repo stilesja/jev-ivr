@@ -3,7 +3,7 @@ import { fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, applyDtmf } 
 import { newSession, setForm, type Session } from './session';
 import { DEFAULT_THRESHOLDS, withOverrides } from './thresholds';
 import { SLOTS, slotsFor, type SlotContext } from '../domain/slots';
-import { ALL_SLOTS } from '../domain/forms';
+import { ALL_SLOTS, FORMS } from '../domain/forms';
 import { choice, noul } from '../testing/answers';
 import { candidateSpans, candidateWordSpans } from './spans';
 import type { DateWindow } from './extract/date';
@@ -129,6 +129,25 @@ describe('applyDtmf', () => {
     const s = setForm(newSession('s', 0), 'cancel');
     s.promptedFor = 'confirm';
     expect(applyDtmf(s, '1', ctx())).toEqual({ kind: 'no_target' });
+  });
+
+  it('treats a slot with no dtmf as no_target, distinct from a target that is simply off the form', () => {
+    // `name` (Task 2) has no `dtmf`, but it is also on no FORMS entry yet (Task 5 flips the
+    // forms), so `requiredSlots` already returns `no_target` for it before the `!spec.dtmf`
+    // check ever runs. To observe that check on its own -- and confirm the deferred assertion
+    // from Task 1's plan step -- briefly make `name` required on `billing` so the requiredSlots
+    // gate passes and the missing-`dtmf` branch is what actually produces the result, then
+    // restore FORMS so no other test sees the change.
+    expect(SLOTS.name.dtmf).toBeUndefined();
+    const s = setForm(newSession('s', 0), 'billing');
+    s.promptedFor = 'name';
+    expect(FORMS.billing.slots).not.toContain('name');
+    FORMS.billing.slots.push('name');
+    try {
+      expect(applyDtmf(s, '1', ctx())).toEqual({ kind: 'no_target' });
+    } finally {
+      FORMS.billing.slots.pop();
+    }
   });
 });
 
