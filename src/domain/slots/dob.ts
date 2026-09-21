@@ -27,18 +27,22 @@ export const dobSlot: SlotSpec = {
   questions(ctx) {
     const years: Record<string, string | null> = {};
     for (const span of ctx.candidateSpans) years[span] = null;
-    years.none = 'No span is a year of birth';
+    years.none = "No span of asr.text is a year of the caller's birth";
     // A month/day partial pending means the caller was just asked for the year alone, but they
     // may restate the whole date instead -- all four questions stay asked either way; only the
     // year instruction changes to reflect what was actually asked.
     const pending = ctx.window && 'kind' in ctx.window && ctx.window.kind === 'dob' ? ctx.window : null;
     const dobYearInstructions = pending
-      ? 'Read asr.text. The caller was asked for the year of their birth. Which of these spans is that year, as in "nineteen eighty", "eighty", or "two thousand one"? Choose none when no year is said.'
-      : 'Read asr.text. Which of these spans is the year of the caller\'s birth, if they say one, as in "nineteen eighty", "eighty", or "two thousand one"? Choose none when no year is said.';
+      ? 'Read asr.text. The caller was asked for the year of their birth. Which of these spans is that year, as in "nineteen seventy four", "seventy four", or "two thousand one"? Choose none when no year is said.'
+      : 'Read asr.text. Which of these spans is the year of the caller\'s birth, if they say one, as in "nineteen seventy four", "seventy four", or "two thousand one"? Choose none when no year is said.';
     return {
       dobGiven: {
         type: 'noul',
         instructions: "Read asr.text. Does the caller state their date of birth or birthday, in whole or in part (a month and day, or a year alone when asked for it)?",
+        criteria: {
+          true: "The caller gives their own birth date or part of it: a full date, a month and day, or a year on its own in answer to a question about their birth year",
+          false: "No birth date. An appointment date, a date they want to be seen on, or someone else's birth date is not the caller's date of birth",
+        },
       },
       dobMonth: {
         type: 'choice',
@@ -69,7 +73,15 @@ export const dobSlot: SlotSpec = {
       : pending?.month ?? null;
     const d = day.label !== 'none' && day.p >= t.SLOT_CHOICE_CONFIRM ? Number(day.label) : pending?.day ?? null;
     const y = year.label !== 'none' && year.p >= t.SLOT_CHOICE_CONFIRM ? normalizeYear(year.label, ctx.todayIso) : null;
-    const confidence = Math.min(...[month, day, year].filter((c) => c.label !== 'none').map((c) => c.p));
+    // Only the components this turn actually read count. Without this, an answer the components
+    // cannot read at all ("uh, let me think") rebuilds the pending partial as a fresh `window`
+    // outcome; fillSlots reads any window as progress, so the attempt is never counted and the
+    // caller loops on ask_dob_year forever. It also kept Math.min of an empty list (Infinity) and
+    // averaged in components below the choice threshold that were never used. dateSlot returns
+    // absent the same way when its mode is none.
+    const used = [month, day, year].filter((c) => c.label !== 'none' && c.p >= t.SLOT_CHOICE_CONFIRM);
+    if (used.length === 0) return { kind: 'absent' };
+    const confidence = Math.min(...used.map((c) => c.p));
     if (m === null || d === null) return { kind: 'invalid', reason: 'no_date', raw: '' };
     if (y === null) return { kind: 'window', window: { kind: 'dob', month: m, day: d }, confidence };
     if (y < MIN_YEAR) return { kind: 'invalid', reason: 'impossible', raw: `${y}` };

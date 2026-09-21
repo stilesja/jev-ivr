@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { plan, resolve, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
+import { FORMS } from '../domain/forms';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import { promptFrame, dtmfFrames, setupFrame, silenceFrame, type InterruptFrame } from '../channel/frames';
 import { choice, noul, score } from '../testing/answers';
@@ -197,6 +198,41 @@ describe('turn', () => {
     });
     for (const d of dtmfFrames('44718293')) r = resolve(r.session, d, null, tc);
     expect(r.rows).toEqual([{ gate: 'slot:memberId', value: null, threshold: null, passed: true, outcome: 'dtmf', decided: false }]);
+  });
+
+  it('walks the dob ladder when the answer carries nothing the components can read', () => {
+    // `dob` is on no form until the flip, so put it on `cancel` for this test only, then restore
+    // FORMS so no other test sees the change.
+    FORMS.cancel.slots.unshift('dob');
+    try {
+      const nothing = { dobGiven: noul(0.9), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }), dobYear: choice({ none: 0.9 }) };
+      let r = say(started(), 'cancel with dr patel', {
+        intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+      });
+      expect(r.decision).toMatchObject({ promptId: 'ask_dob' });
+
+      // No partial pending: the plain retry text, and the attempt is counted.
+      r = say(r.session, 'uh let me think', nothing);
+      expect(r.decision).toMatchObject({ promptId: 'ask_dob_retry' });
+      expect(r.session.slots.dob.attempts).toBe(1);
+
+      // A month and day narrow the slot; the year question is what the caller then fails to answer.
+      r = say(r.session, 'march fifth', {
+        dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+      });
+      expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+      expect(r.session.slots.dob.attempts).toBe(1);
+
+      // The pending partial must not be replayed as progress: the ladder keeps walking.
+      r = say(r.session, 'uh let me think', nothing);
+      expect(r.decision).toMatchObject({ promptId: 'ask_dob_dtmf' });
+      expect(r.session.slots.dob.attempts).toBe(2);
+      expect(r.rows.find((g) => g.gate === 'slot:dob')).toBeUndefined();
+      r = say(r.session, 'uh let me think', nothing);
+      expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+    } finally {
+      FORMS.cancel.slots.shift();
+    }
   });
 
   it('reports a barge-in to the model on the next prompt turn only', () => {

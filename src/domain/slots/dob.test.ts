@@ -64,6 +64,23 @@ describe('dobSlot', () => {
     expect(describeDob('2001-01-11')).toBe('January 11th, 2001');
   });
 
+  it('is absent when no component is read, so a pending partial is not replayed as fresh progress', () => {
+    // dobGiven can run high on an answer the components cannot read ("uh, let me think"). Rebuilding
+    // the pending partial as a window outcome would count as progress every turn, and the caller
+    // would loop on ask_dob_year with the attempt counter stuck at zero.
+    const c = { ...ctx('uh let me think'), window: { kind: 'dob' as const, month: 3, day: 5 } };
+    const r = dobSlot.fill({ dobGiven: noul(0.9), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }), dobYear: choice({ none: 0.9 }) }, c);
+    expect(r).toEqual({ kind: 'absent' });
+  });
+
+  it('ignores a component below the choice threshold rather than averaging it into the confidence', () => {
+    const r = dobSlot.fill(
+      { dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.88 }), dobYear: choice({ 'nineteen eighty': 0.3, none: 0.7 }) },
+      { ...ctx('march fifth'), window: { kind: 'dob' as const, month: 3, day: 5 } },
+    );
+    expect(r).toMatchObject({ kind: 'window', confidence: 0.88 });
+  });
+
   it('has an eight-digit keypad rung and no confirm-always policy', () => {
     expect(dobSlot.spokenConfirm).toBe('summary');
     expect(dobSlot.dtmf?.length).toBe(8);

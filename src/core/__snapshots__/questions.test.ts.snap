@@ -735,6 +735,10 @@ exports[`question redesign > pins every question the model sees outside a form (
     "type": "choice",
   },
   "dobGiven": {
+    "criteria": {
+      "false": "No birth date. An appointment date, a date they want to be seen on, or someone else's birth date is not the caller's date of birth",
+      "true": "The caller gives their own birth date or part of it: a full date, a month and day, or a year on its own in answer to a question about their birth year",
+    },
     "instructions": "Read asr.text. Does the caller state their date of birth or birthday, in whole or in part (a month and day, or a year alone when asked for it)?",
     "type": "noul",
   },
@@ -759,9 +763,9 @@ exports[`question redesign > pins every question the model sees outside a form (
   },
   "dobYear": {
     "criteria": {
-      "none": "No span is a year of birth",
+      "none": "No span of asr.text is a year of the caller's birth",
     },
-    "instructions": "Read asr.text. Which of these spans is the year of the caller's birth, if they say one, as in "nineteen eighty", "eighty", or "two thousand one"? Choose none when no year is said.",
+    "instructions": "Read asr.text. Which of these spans is the year of the caller's birth, if they say one, as in "nineteen seventy four", "seventy four", or "two thousand one"? Choose none when no year is said.",
     "type": "choice",
   },
   "frustration": {
@@ -836,7 +840,7 @@ exports[`question redesign > pins every question the model sees outside a form (
   "nameGiven": {
     "criteria": {
       "false": "No personal name, or a name that is not the caller's, such as a doctor's name",
-      "true": "The caller gives their own name, as in my name is Jason Stiles, this is Cher, or Jason Stiles",
+      "true": "The caller gives their own name, as in my name is Anna Petrov, this is Sam, or Priya Raghunathan",
     },
     "instructions": "Read asr.text. Does the caller state their own name, first name alone or first and last?",
     "type": "noul",
@@ -845,7 +849,7 @@ exports[`question redesign > pins every question the model sees outside a form (
     "criteria": {
       "none": "No span of asr.text is the caller's name",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {

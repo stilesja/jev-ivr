@@ -1,6 +1,14 @@
 import { MULTIPLIER_WORDS, NUMBER_WORDS, tokenize } from './extract/spokenNumber';
 
 export const MAX_SPANS = 120;
+/**
+ * Word spans get a larger cap than number spans. A number is said in one dense burst, so 120
+ * candidates always reach it; a name can come after a hundred words of preamble, and the word
+ * generator emits several spans per content position, so the number cap would truncate the text
+ * long before the name. No cap survives an unbounded opener: this one reaches roughly a hundred
+ * content positions, which covers the openers a caller actually speaks.
+ */
+export const MAX_WORD_SPANS = 320;
 export const MAX_NGRAM = 10;
 
 // A multiplier word alone ("hundred", "thousand") must not qualify a span on
@@ -52,15 +60,15 @@ export const MAX_WORD_NGRAM = 4;
  * within a name span "o"/"oh" is an ordinary word (so "O'Neil" tokenizes to "o neil" and
  * survives), not the digit zero the number-span reader takes it for. Emitted a position at a
  * time, shortest n first, so a long opener cannot exhaust the cap on 1-grams alone and push a
- * later multi-word name out from under it; document order within that; capped at MAX_SPANS.
+ * later multi-word name out from under it; document order within that; capped at MAX_WORD_SPANS.
  */
 export function candidateWordSpans(text: string): string[] {
   const tokens = tokenize(text);
   const seen = new Set<string>();
   const out: string[] = [];
   const isWord = (tok: string) => !/\d/.test(tok) && (tok === 'o' || tok === 'oh' || !NUMBER_WORDS.has(tok));
-  for (let i = 0; i < tokens.length && out.length < MAX_SPANS; i++) {
-    for (let n = 1; n <= MAX_WORD_NGRAM && i + n <= tokens.length && out.length < MAX_SPANS; n++) {
+  for (let i = 0; i < tokens.length && out.length < MAX_WORD_SPANS; i++) {
+    for (let n = 1; n <= MAX_WORD_NGRAM && i + n <= tokens.length && out.length < MAX_WORD_SPANS; n++) {
       const slice = tokens.slice(i, i + n);
       if (!slice.every(isWord)) continue;
       if (FILLER_WORDS.has(slice[0]!) || FILLER_WORDS.has(slice[n - 1]!)) continue;

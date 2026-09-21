@@ -24,6 +24,12 @@ describe('nameSlot', () => {
     expect(nameSlot.fill({ nameGiven: noul(0.2), nameSpan: choice({ none: 1 }) }, ctx('x')).kind).toBe('absent');
     expect(nameSlot.fill({ nameGiven: noul(0.9), nameSpan: choice({ none: 0.9, x: 0.1 }) }, ctx('x'))).toMatchObject({ kind: 'invalid', reason: 'no_span' });
   });
+  it('does not let a literal "none" word span collide with the sentinel', () => {
+    const q = nameSlot.questions(ctx('none of your business'));
+    const criteria = (q.nameSpan as { criteria: Record<string, string | null> }).criteria;
+    expect(candidateWordSpans('none of your business')).toContain('none');
+    expect(criteria.none).toMatch(/caller/);
+  });
   it('has no keypad rung', () => { expect(nameSlot.dtmf).toBeUndefined(); expect(nameSlot.spokenConfirm).toBe('summary'); });
   it('title-cases each word', () => { expect(titleCase('mary kate o neil')).toBe('Mary Kate O Neil'); });
 });
