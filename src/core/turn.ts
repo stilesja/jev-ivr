@@ -3,9 +3,9 @@ import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
 import { ALL_SLOTS, FORMS } from '../domain/forms';
 import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain/intents';
-import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
-import { describeWindow, type DateWindow } from './extract/date';
-import { candidateSpans } from './spans';
+import { allSlots, slotsFor, EXCLUDED_NAME_TOKENS, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
+import { describeWindow } from './extract/date';
+import { candidateSpans, candidateWordSpans } from './spans';
 import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
@@ -47,16 +47,21 @@ function slotContext(session: Session, text: string, tc: TurnContext): SlotConte
   return {
     text,
     candidateSpans: candidateSpans(text),
+    candidateWordSpans: candidateWordSpans(text),
     todayIso: tc.todayIso,
     thresholds: tc.thresholds,
-    // A pending window constrains what a bare weekday can mean on the next turn.
-    window: session.slots.date.window,
+    excludedNameTokens: EXCLUDED_NAME_TOKENS,
+    // Never a real slot's window: fillSlots and buildQuestions each substitute a spec's own
+    // slot's pending partial in via slotCtx (fia.ts) before calling fill/questions, so no
+    // slot's fill or questions ever sees another slot's window. applyDtmf shares this base
+    // context unchanged; no spec's dtmf.parse reads window.
+    window: null,
   };
 }
 
-/** Gate 8's threshold per slot kind: memberId is detected, the choice slots are picked. */
+/** Gate 8's threshold per slot kind: memberId, name and dob are detected, the choice slots are picked. */
 function slotThreshold(slot: SlotId, t: Thresholds): number {
-  return slot === 'memberId' ? t.SLOT_DETECT : t.SLOT_CHOICE_CONFIRM;
+  return slot === 'memberId' || slot === 'name' || slot === 'dob' ? t.SLOT_DETECT : t.SLOT_CHOICE_CONFIRM;
 }
 
 /** Spec §6 gate 8: one row per slot the turn tried to fill, so the debug table is complete. */
@@ -101,8 +106,9 @@ function handoff(s: Session, reason: string, acks: Ack[] = []): HandoffDecision 
   return { kind: 'handoff', reason, promptId: handoffPromptId(reason), acks, completed: [...s.completed], queued: [...s.queued], slots };
 }
 
-function askSlot(slot: SlotId, window: DateWindow | null, acks: Ack[]): PromptDecision {
-  if (window) return prompt('date_narrow_window', slot, { window: describeWindow(window) }, acks);
+function askSlot(slot: SlotId, window: SlotPartial | null, acks: Ack[]): PromptDecision {
+  if (window && 'kind' in window && window.kind === 'dob') return prompt('ask_dob_year', slot, {}, acks);
+  if (window && !('kind' in window)) return prompt('date_narrow_window', slot, { window: describeWindow(window) }, acks);
   return prompt(`ask_${slot}`, slot, {}, acks);
 }
 
@@ -113,9 +119,11 @@ export function summaryVars(s: Session): Record<string, string> {
   return vars;
 }
 
-/** Everything the summary just read back, as one comparable value. */
+/** Everything the summary just read back, as one comparable value: every slot's window too, so a
+ * narrowing (a dob month/day pending its year, a date window pending its day) counts as progress. */
 function summaryState(s: Session): string {
-  return JSON.stringify({ vars: summaryVars(s), window: s.slots.date.window });
+  const windows = ALL_SLOTS.map((id) => [id, s.slots[id].window] as const);
+  return JSON.stringify({ vars: summaryVars(s), windows });
 }
 
 /**
@@ -218,7 +226,9 @@ function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thres
   const window = s.slots[target].window;
   if (step === 'open' && window) return askSlot(target, window, acks);
   if (step === 'open' && plain) return askSlot(target, null, acks);
-  return prompt(step === 'dtmf' ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
+  // A slot with no keypad rung (spec §2.1) stays on the retry text through the dtmf rung too.
+  const toDtmf = step === 'dtmf' && SLOTS[target].dtmf !== undefined;
+  return prompt(toDtmf ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
 }
 
 /**

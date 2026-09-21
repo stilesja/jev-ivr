@@ -7,6 +7,7 @@ import { choice, noul, score } from '../testing/answers';
 import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
 import { spokenText } from '../prompts/render';
+import type { DateWindow } from './extract/date';
 
 const tc: TurnContext = { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
 
@@ -23,6 +24,13 @@ function answers(over: AnswerMap = {}): AnswerMap {
   };
 }
 
+const ANSWERING = choice({ answering: 0.95, adding: 0.03, replacing: 0.02 });
+const NAME_ANSWERS: AnswerMap = { nameGiven: noul(0.95), nameSpan: choice({ 'jason stiles': 0.9, none: 0.1 }) };
+const DOB_ANSWERS: AnswerMap = {
+  dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }),
+  dobYear: choice({ 'nineteen eighty': 0.9, none: 0.1 }),
+};
+
 function started(): Session {
   return resolve(newSession('s', 0), setupFrame('s'), null, tc).session;
 }
@@ -32,6 +40,12 @@ function say(session: Session, text: string, over: AnswerMap) {
   const p = plan(session, event, tc);
   expect(p.needsModel).toBe(true);
   return resolve(session, event, answers(over), tc);
+}
+
+/** Says the name, then the birthday: what every scheduling form asks for before its own slots. */
+function identify(session: Session) {
+  const named = say(session, 'jason stiles', { intentChange: ANSWERING, ...NAME_ANSWERS });
+  return say(named.session, 'march fifth nineteen eighty', { intentChange: ANSWERING, ...DOB_ANSWERS });
 }
 
 describe('turn', () => {
@@ -53,8 +67,8 @@ describe('turn', () => {
     });
     expect(r.session.form).toBe('reschedule');
     expect(r.session.slots.provider.value).toBe('chen');
-    expect(r.session.slots.date.window?.label).toBe('next_week');
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId', target: 'memberId', acks: [] });
+    expect((r.session.slots.date.window as DateWindow | null)?.label).toBe('next_week');
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', target: 'name', acks: [] });
     expect(r.frames.map((f) => f.type)).toEqual(['text']);
   });
 
@@ -65,12 +79,9 @@ describe('turn', () => {
       dateMode: choice({ window: 0.9, none: 0.1 }),
       dateWindow: choice({ next_week: 0.88, none: 0.12 }),
     });
-    r = say(r.session, 'four four seven one eight two nine three', {
-      containsMemberId: noul(0.95),
-      memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
-      memberIdComplete: noul(0.9),
-    });
-    expect(r.session.slots.memberId.value).toBe('44718293');
+    r = identify(r.session);
+    expect(r.session.slots.name.value).toBe('jason stiles');
+    expect(r.session.slots.dob.value).toBe('1980-03-05');
     expect(r.decision).toMatchObject({
       kind: 'prompt', promptId: 'date_narrow_window', target: 'date', vars: { window: 'next week' }, acks: [],
     });
@@ -80,8 +91,8 @@ describe('turn', () => {
     let r = say(started(), 'cancel with dr patel', {
       intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
     });
-    r = resolve(r.session, dtmfFrames('44718293')[0]!, null, tc);
-    for (const d of dtmfFrames('4718293')) r = resolve(r.session, d, null, tc);
+    r = say(r.session, 'jason stiles', { intentChange: ANSWERING, ...NAME_ANSWERS });
+    for (const d of dtmfFrames('03051980')) r = resolve(r.session, d, null, tc);
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', target: 'confirm' });
     r = say(r.session, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02) });
     expect(r.decision).toMatchObject({ kind: 'complete', form: 'cancel', promptId: 'cancel_confirmed' });
@@ -104,7 +115,7 @@ describe('turn', () => {
     r = say(r.session, 'blah', { intent: choice({ none: 0.7, other: 0.3 }) });
     r = resolve(r.session, dtmfFrames('3')[0]!, null, tc);
     expect(r.session.form).toBe('cancel');
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name' });
   });
 
   it('asks an explicit confirmation and acts on yes', () => {
@@ -113,7 +124,7 @@ describe('turn', () => {
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
     r = say(r.session, 'yes', { confirmsYes: noul(0.9), confirmsNo: noul(0.1) });
     expect(r.session.form).toBe('cancel');
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name' });
   });
 
   it('re-asks an unanswered confirmation and counts an attempt', () => {
@@ -129,12 +140,8 @@ describe('turn', () => {
       intent: choice({ reschedule: 0.94, none: 0.06 }),
       provider: choice({ chen: 0.91, none: 0.09 }),
     });
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
-    r = say(r.session, 'four four seven one eight two nine three', {
-      containsMemberId: noul(0.95),
-      memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
-      memberIdComplete: noul(0.9),
-    });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name' });
+    r = identify(r.session);
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date' });
 
     r = say(r.session, 'actually cancel', { intent: choice({ cancel: 0.7, none: 0.3 }), intentChange: choice({ replacing: 0.9, answering: 0.05, adding: 0.05 }) });
@@ -179,9 +186,7 @@ describe('turn', () => {
   });
 
   it('traces a failed mask as an invalid slot row', () => {
-    let r = say(started(), 'cancel with dr patel', {
-      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
-    });
+    let r = say(started(), 'i have a question about my bill', { intent: choice({ billing: 0.95, none: 0.05 }) });
     r = say(r.session, 'four four seven', {
       containsMemberId: noul(0.95),
       memberIdSpan: choice({ 'four four seven': 0.9, none: 0.1 }),
@@ -191,11 +196,109 @@ describe('turn', () => {
   });
 
   it('traces a dtmf fill as a slot row', () => {
+    let r = say(started(), 'i have a question about my bill', { intent: choice({ billing: 0.95, none: 0.05 }) });
+    for (const d of dtmfFrames('44718293')) r = resolve(r.session, d, null, tc);
+    expect(r.rows).toEqual([{ gate: 'slot:memberId', value: null, threshold: null, passed: true, outcome: 'dtmf', decided: false }]);
+  });
+
+  it('walks the dob ladder when the answer carries nothing the components can read', () => {
+    const nothing = { dobGiven: noul(0.9), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }), dobYear: choice({ none: 0.9 }) };
     let r = say(started(), 'cancel with dr patel', {
       intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
     });
-    for (const d of dtmfFrames('44718293')) r = resolve(r.session, d, null, tc);
-    expect(r.rows).toEqual([{ gate: 'slot:memberId', value: null, threshold: null, passed: true, outcome: 'dtmf', decided: false }]);
+    r = say(r.session, 'jason stiles', NAME_ANSWERS);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob' });
+
+    // No partial pending: the plain retry text, and the attempt is counted.
+    r = say(r.session, 'uh let me think', nothing);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_retry' });
+    expect(r.session.slots.dob.attempts).toBe(1);
+
+    // A month and day narrow the slot; the year question is what the caller then fails to answer.
+    r = say(r.session, 'march fifth', {
+      dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+    });
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+    expect(r.session.slots.dob.attempts).toBe(1);
+
+    // The pending partial must not be replayed as progress: the ladder keeps walking.
+    r = say(r.session, 'uh let me think', nothing);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_dtmf' });
+    expect(r.session.slots.dob.attempts).toBe(2);
+    expect(r.rows.find((g) => g.gate === 'slot:dob')).toBeUndefined();
+    r = say(r.session, 'uh let me think', nothing);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+
+  it('counts a repeated dob partial as a failed answer instead of re-asking forever', () => {
+    // Month and day with no year: the same outcome the caller's first answer produced, so the
+    // slot's pending partial is rebuilt unchanged every time it is said again.
+    const marchFifth = {
+      dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+    };
+    let r = say(started(), 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    r = say(r.session, 'jason stiles', NAME_ANSWERS);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob' });
+
+    // The partial itself is progress: it narrows an empty slot, so no attempt is counted.
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+    expect(r.session.slots.dob.attempts).toBe(0);
+
+    // Repeating it answers the year question with nothing new. failAttempt's open rung re-asks
+    // the window question (not ask_dob_retry) because that is what went unanswered -- but the
+    // attempt is counted, so the ladder walks to the keypad and then to an agent.
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+    expect(r.session.slots.dob.attempts).toBe(1);
+
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_dtmf' });
+    expect(r.session.slots.dob.attempts).toBe(2);
+
+    r = say(r.session, 'march fifth', marchFifth);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
+  });
+
+  it('completes a dob partial when the next answer carries the year alone', () => {
+    let r = say(started(), 'cancel with dr patel', {
+      intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
+    });
+    r = say(r.session, 'jason stiles', NAME_ANSWERS);
+    r = say(r.session, 'march fifth', {
+      dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+    });
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+
+    r = say(r.session, 'nineteen eighty', {
+      dobGiven: noul(0.95), dobMonth: choice({ none: 0.9 }), dobDay: choice({ none: 0.9 }),
+      dobYear: choice({ 'nineteen eighty': 0.9, none: 0.1 }),
+    });
+    expect(r.session.slots.dob.value).toBe('1980-03-05');
+    expect(r.session.slots.dob.attempts).toBe(0);
+  });
+
+  it('counts a repeated date window as a failed answer on the narrow question', () => {
+    const nextWeek = {
+      dateMode: choice({ window: 0.9, none: 0.1 }), dateWindow: choice({ next_week: 0.88, none: 0.12 }),
+    };
+    let r = say(started(), 'reschedule with dr chen', {
+      intent: choice({ reschedule: 0.94, none: 0.06 }), provider: choice({ chen: 0.91, none: 0.09 }),
+    });
+    r = identify(r.session);
+    expect(r.decision).toMatchObject({ promptId: 'ask_date' });
+
+    r = say(r.session, 'next week', { intentChange: ANSWERING, ...nextWeek });
+    expect(r.decision).toMatchObject({ promptId: 'date_narrow_window', vars: { window: 'next week' } });
+    expect(r.session.slots.date.attempts).toBe(0);
+
+    // "Next week" again narrows nothing: the same window question, but an attempt spent.
+    r = say(r.session, 'next week', { intentChange: ANSWERING, ...nextWeek });
+    expect(r.decision).toMatchObject({ promptId: 'date_narrow_window', vars: { window: 'next week' } });
+    expect(r.session.slots.date.attempts).toBe(1);
   });
 
   it('reports a barge-in to the model on the next prompt turn only', () => {
@@ -230,7 +333,7 @@ describe('turn', () => {
       confirmsYes: noul(0.95), confirmsNo: noul(0.02), intent: choice({ none: 0.95, cancel: 0.05 }),
       provider: choice({ patel: 0.95, chen: 0.03, none: 0.02 }),
     });
-    expect(yes.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+    expect(yes.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name' });
     expect(yes.session.form).toBe('cancel');
     expect(yes.session.slots.provider.value).toBe('chen');
   });
@@ -246,39 +349,39 @@ describe('turn', () => {
   });
 
   describe('member id', () => {
-    const inCancel = () => say(started(), 'cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }) }).session;
+    const inBilling = () => say(started(), 'i have a question about my bill', { intent: choice({ billing: 0.95, none: 0.05 }) }).session;
     const idAnswers = {
       intent: choice({ none: 0.95, cancel: 0.05 }), intentChange: choice({ answering: 0.95, adding: 0.03, replacing: 0.02 }),
       containsMemberId: noul(0.95), memberIdComplete: noul(0.95),
       memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
     };
 
-    it('fills a spoken id silently and goes straight on to the next slot', () => {
-      const r = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
-      expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', target: 'provider', acks: [] });
-      // Unconfirmed until the summary reads it back, and silent on the way there.
+    it('fills a spoken id silently and hands the form off with nothing else to ask', () => {
+      const r = say(inBilling(), 'four four seven one eight two nine three', idAnswers);
+      expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'billing', acks: [] });
+      // Never read back: billing hands off instead of asking a summary.
       expect(r.session.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
       expect(r.session.pendingConfirmation).toBeNull();
     });
 
     it('says the new task out loud when a switch follows the id', () => {
-      const asked = say(inCancel(), 'four four seven one eight two nine three', idAnswers);
-      const r = say(asked.session, 'actually reschedule it instead', {
+      // Said before the form hands off, so the switch lands on a billing form that has its ID.
+      const asked = say(inBilling(), 'actually reschedule it instead', {
         intent: choice({ reschedule: 0.95, cancel: 0.03, none: 0.02 }),
         intentChange: choice({ replacing: 0.9, answering: 0.07, adding: 0.03 }),
       });
-      expect(r.session.form).toBe('reschedule');
-      expect(r.decision).toMatchObject({
-        kind: 'prompt', promptId: 'ask_provider',
+      expect(asked.session.form).toBe('reschedule');
+      expect(asked.decision).toMatchObject({
+        kind: 'prompt', promptId: 'ask_name',
         acks: [{ promptId: 'ack_intent', vars: { intentLabel: 'reschedule an appointment' } }],
       });
     });
 
     it('takes keypad digits as confirmed without a readback', () => {
-      let s = inCancel();
+      let s = inBilling();
       let r;
       for (const f of dtmfFrames('81793314')) { r = resolve(s, f, null, tc); s = r.session; }
-      expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
+      expect(r!.decision).toMatchObject({ kind: 'handoff', reason: 'billing' });
       expect(s.slots.memberId).toMatchObject({ value: '81793314', confirmed: true });
       expect(s.pendingConfirmation).toBeNull();
     });
@@ -287,45 +390,46 @@ describe('turn', () => {
     const answering = choice({ answering: 0.95, adding: 0.03, replacing: 0.02 });
     const adding = choice({ adding: 0.9, answering: 0.05, replacing: 0.05 });
 
-    it('queues an added intent, acks it once, re-asks the current slot without counting an attempt, and chains into a handoff after completion', () => {
+    it('queues an added intent, acks it once, re-asks the current slot without counting an attempt, and bridges into it after completion', () => {
       const routed = say(started(), 'reschedule with dr chen next tuesday', {
         intent: choice({ reschedule: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }),
         dateMode: choice({ weekday: 0.9, none: 0.1 }), dateWeekday: choice({ tuesday: 0.95, none: 0.05 }), dateWeekdayQualifier: choice({ next: 0.9, none: 0.1 }),
       });
-      expect(routed.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+      expect(routed.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name' });
       const added = say(routed.session, 'and can i also ask about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
-      expect(added.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId', acks: [{ promptId: 'ack_queued', vars: { intentLabel: 'ask about billing' } }] });
+      expect(added.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', acks: [{ promptId: 'ack_queued', vars: { intentLabel: 'ask about billing' } }] });
       expect(added.session.queued).toEqual(['billing']);
-      expect(added.session.slots.memberId.attempts).toBe(0);
+      expect(added.session.slots.name.attempts).toBe(0);
       const again = say(added.session, 'and can i also ask about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
-      expect(again.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId', acks: [] });
+      expect(again.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', acks: [] });
       expect(again.session.queued).toEqual(['billing']);
-      let s = again.session;
-      let r;
-      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      let r = identify(again.session);
+      let s = r.session;
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
       r = say(s, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       s = r.session;
+      // Billing asks for the member ID itself: a scheduling form leaves none behind to carry over.
       expect(r!.decision).toMatchObject({
-        kind: 'handoff', reason: 'billing', completed: ['reschedule'],
+        kind: 'prompt', promptId: 'ask_memberId',
         acks: [{ promptId: 'reschedule_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }],
       });
+      expect(s.form).toBe('billing');
       expect(s.completed).toEqual(['reschedule']);
-      expect(s.ended).toBe(true);
+      expect(s.ended).toBe(false);
     });
 
-    it('chains into a slot form with the member id carried over and the rest cleared', () => {
+    it('chains into a slot form with the name and birthday carried over and the rest cleared', () => {
       const routed = say(started(), 'cancel with dr chen', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ chen: 0.95, none: 0.05 }) });
       const added = say(routed.session, 'also book a new one', { intent: choice({ schedule_new: 0.95, none: 0.05 }), intentChange: adding });
-      let s = added.session;
-      let r;
-      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      let r = identify(added.session);
+      let s = r.session;
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', target: 'confirm' });
       r = say(s, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       s = r.session;
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next' }] });
       expect(s.form).toBe('schedule_new');
-      expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: true });
+      expect(s.slots.name).toMatchObject({ value: 'jason stiles', confirmed: true });
+      expect(s.slots.dob).toMatchObject({ value: '1980-03-05', confirmed: true });
       expect(s.slots.provider.value).toBeNull();
       expect(s.completed).toEqual(['cancel']);
       expect(s.queued).toEqual([]);
@@ -343,9 +447,8 @@ describe('turn', () => {
       });
       expect(switched.session.form).toBe('cancel');
       expect(switched.session.queued).toEqual([]);
-      let s = switched.session;
-      let r;
-      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      let r = identify(switched.session);
+      let s = r.session;
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', target: 'confirm' });
       r = say(s, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       s = r.session;
@@ -359,9 +462,8 @@ describe('turn', () => {
       const bill = say(routed.session, 'i also have a billing question', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
       const book = say(bill.session, 'and also book a new one', { intent: choice({ schedule_new: 0.95, none: 0.05 }), intentChange: adding });
       expect(book.session.queued).toEqual(['billing', 'schedule_new']);
-      let s = book.session;
-      let r;
-      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      let r = identify(book.session);
+      let s = r.session;
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', target: 'confirm' });
       r = say(s, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       s = r.session;
@@ -385,10 +487,9 @@ describe('turn', () => {
 
     it('bridges without promising a request the caller added on the completing turn', () => {
       const routed = say(started(), 'cancel my appointment', { intent: choice({ cancel: 0.95, none: 0.05 }) });
-      let s = routed.session;
-      let r;
-      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
-      expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
+      const r = identify(routed.session);
+      const s = r.session;
+      expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider' });
       // The last slot and the added request land together, so the summary carries the promise.
       const full = say(s, 'doctor kim, and also i have a billing question', {
         intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding, provider: choice({ kim: 0.95, none: 0.05 }),
@@ -396,9 +497,10 @@ describe('turn', () => {
       expect(full.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', acks: [{ promptId: 'ack_queued' }] });
       const done = say(full.session, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       expect(done.decision).toMatchObject({
-        kind: 'handoff', reason: 'billing', completed: ['cancel'],
+        kind: 'prompt', promptId: 'ask_memberId',
         acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }],
       });
+      expect(done.session.completed).toEqual(['cancel']);
       expect((done.decision as { acks: { promptId: string }[] }).acks).toHaveLength(2);
     });
 
@@ -410,9 +512,8 @@ describe('turn', () => {
       const cancel = say(routed.session, 'also cancel my other appointment', { intent: choice({ cancel: 0.95, none: 0.05 }), intentChange: adding });
       const bill = say(cancel.session, 'and i have a question about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding });
       expect(bill.session.queued).toEqual(['cancel', 'billing']);
-      let s = bill.session;
-      let r;
-      for (const f of dtmfFrames('44718293')) { r = resolve(s, f, null, tc); s = r.session; }
+      let r = identify(bill.session);
+      let s = r.session;
       expect(r!.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
       r = say(s, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       s = r.session;
@@ -425,9 +526,10 @@ describe('turn', () => {
       expect(full.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel' });
       const last = say(full.session, 'yes', { confirmsYes: noul(0.95), confirmsNo: noul(0.02), intentChange: answering });
       expect(last.decision).toMatchObject({
-        kind: 'handoff', reason: 'billing', completed: ['reschedule', 'cancel'],
+        kind: 'prompt', promptId: 'ask_memberId',
         acks: [{ promptId: 'cancel_confirmed' }, { promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }],
       });
+      expect(last.session.completed).toEqual(['reschedule', 'cancel']);
       expect(last.session.queued).toEqual([]);
     });
 
@@ -435,11 +537,7 @@ describe('turn', () => {
       const inCancel = say(started(), 'cancel my appointment with dr patel', {
         intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
       }).session;
-      const asked = say(inCancel, 'four four seven one eight two nine three', {
-        intent: choice({ none: 0.95, cancel: 0.05 }), intentChange: answering,
-        containsMemberId: noul(0.95), memberIdComplete: noul(0.95),
-        memberIdSpan: choice({ 'four four seven one eight two nine three': 0.9, none: 0.1 }),
-      });
+      const asked = identify(inCancel);
       expect(asked.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', target: 'confirm' });
       const added = say(asked.session, 'and can i also ask about my bill', { intent: choice({ billing: 0.95, none: 0.05 }), intentChange: adding, confirmsYes: noul(0.1), confirmsNo: noul(0.1) });
       expect(added.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel', acks: [{ promptId: 'ack_queued' }] });
@@ -464,7 +562,7 @@ type Turn = string | { say: string; over: AnswerMap };
 function heuristicAnswers(session: Session, text: string, over: AnswerMap): AnswerMap {
   const questions = plan(session, promptFrame(text), tc).questions ?? {};
   const out: AnswerMap = {};
-  for (const [id, q] of Object.entries(questions)) out[id] = answerHeuristically(id, q, text.toLowerCase());
+  for (const [id, q] of Object.entries(questions)) out[id] = answerHeuristically(id, q, text.toLowerCase(), tc.todayIso);
   return { ...out, ...over };
 }
 
@@ -495,28 +593,32 @@ function varsOf(decision: TurnResult['decision']): Record<string, string> {
   return 'vars' in decision ? decision.vars : {};
 }
 
-/** Reschedule, filled to the last slot: provider and window, the member ID, then the day. */
+/** Reschedule, filled to the last slot: provider and window, the name, the birthday, then the day. */
 const HAPPY: Turn[] = [
   'I need to reschedule my appointment with Dr. Chen next week',
-  'four four seven one eight two nine three',
+  'Jason Stiles',
+  'March fifth nineteen eighty',
   'Tuesday',
 ];
 
 describe('final confirm', () => {
-  it('asks the summary instead of completing, with the member ID filled silently', () => {
+  it('asks the summary instead of completing, with the name and birthday filled silently', () => {
     const turns = runTurns(HAPPY);
     const r = turns.at(-1)!;
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm', options: ['yes', 'no'] });
-    expect(varsOf(r.decision)).toEqual({ memberId: '4471 8293', provider: 'Dr. Chen', date: 'Tuesday, September 22' });
+    // The member ID is on the billing form only, so it is the summary's one empty var.
+    expect(varsOf(r.decision)).toEqual({ name: 'Jason Stiles', dob: 'March 5th, 1980', memberId: '', provider: 'Dr. Chen', date: 'Tuesday, September 22' });
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
-    // the ID turn asked the next question directly: no readback, no ack
-    expect(turns[1]!.decision).toMatchObject({ promptId: 'date_narrow_window', acks: [] });
+    // the name and birthday turns asked the next question directly: no readback, no ack
+    expect(turns[1]!.decision).toMatchObject({ promptId: 'ask_dob', acks: [] });
+    expect(turns[2]!.decision).toMatchObject({ promptId: 'date_narrow_window', acks: [] });
   });
 
   it('completes on yes with the short completion line and confirmed slots', () => {
     const r = afterTurns([...HAPPY, 'yes']);
     expect(r.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
-    expect(r.session.slots.memberId.confirmed).toBe(true);
+    expect(r.session.slots.name.confirmed).toBe(true);
+    expect(r.session.slots.dob.confirmed).toBe(true);
     expect(r.session.slots.provider.confirmed).toBe(true);
     expect(r.session.slots.date.confirmed).toBe(true);
     expect(spokenText(r.decision)).toBe('Your appointment is moved. Goodbye.');
@@ -665,11 +767,18 @@ describe('final confirm', () => {
     expect(third.session.slots.provider.value).toBeNull();
   });
 
-  it('corrects the member ID at the summary', () => {
-    const r = afterTurns([...HAPPY, 'no, my ID is four four seven one eight two nine four']);
+  it('corrects the name at the summary', () => {
+    const r = afterTurns([...HAPPY, "no, it's Jason Miles"]);
     expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
-    expect(varsOf(r.decision)).toMatchObject({ memberId: '4471 8294' });
-    expect(r.session.slots.memberId).toMatchObject({ value: '44718294', confirmed: false });
+    expect(varsOf(r.decision)).toMatchObject({ name: 'Jason Miles' });
+    expect(r.session.slots.name).toMatchObject({ value: 'jason miles', confirmed: false });
+  });
+
+  it('corrects the birthday at the summary', () => {
+    const r = afterTurns([...HAPPY, 'no, born March 6th 1980']);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(varsOf(r.decision)).toMatchObject({ dob: 'March 6th, 1980' });
+    expect(r.session.slots.dob).toMatchObject({ value: '1980-03-06', confirmed: false });
   });
 
   it('walks the unanswered ladder: re-ask, keypad, agent', () => {
@@ -718,8 +827,8 @@ describe('final confirm', () => {
     // "adding" label this utterance needs is given directly; the rest is the heuristic's.
     const adding = { intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }) };
     const r = afterTurns([...HAPPY, { say: 'yes, and also my bill', over: adding }]);
-    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'billing' });
-    expect(r.decision).toMatchObject({ completed: ['reschedule'] });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_memberId' });
+    expect(r.session.completed).toEqual(['reschedule']);
     expect(spokenText(r.decision)).toContain("Now, let's ask about billing.");
   });
 
@@ -743,9 +852,9 @@ describe('final confirm', () => {
   it('hands the agent what the call collected', () => {
     const r = afterTurns([...HAPPY, 'get me a person']);
     expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'live-agent' });
-    expect(r.decision).toMatchObject({ slots: { memberId: '4471 8293', provider: 'Dr. Chen', date: 'Tuesday, September 22' } });
+    expect(r.decision).toMatchObject({ slots: { name: 'Jason Stiles', dob: 'March 5th, 1980', provider: 'Dr. Chen', date: 'Tuesday, September 22' } });
     const end = r.frames.at(-1)!;
-    expect(end.type === 'end' && end.handoffData).toContain('"slots":{"memberId":"4471 8293"');
+    expect(end.type === 'end' && end.handoffData).toContain('"slots":{"name":"Jason Stiles"');
   });
 
   it('confirms only the slots the completed form asked for', () => {
@@ -764,7 +873,8 @@ describe('final confirm', () => {
     switched.session.slots.date.confirmed = false;
     const r = heuristicTurn(switched.session, 'yes');
     expect(r.decision).toMatchObject({ kind: 'complete', form: 'cancel' });
-    expect(r.session.slots.memberId.confirmed).toBe(true);
+    expect(r.session.slots.name.confirmed).toBe(true);
+    expect(r.session.slots.dob.confirmed).toBe(true);
     expect(r.session.slots.provider.confirmed).toBe(true);
     expect(r.session.slots.date).toMatchObject({ value: '2026-09-22', confirmed: false });
   });
@@ -810,15 +920,17 @@ describe('silence', () => {
     expect(three.decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts', acks: [{ promptId: 'no_input', vars: {} }] });
   });
 
-  it('re-asks the plain slot question on silence (not the ask_memberId_retry apology), then the keypad, and clears a half-typed keypad buffer', () => {
-    const s = afterTurns(['I need to reschedule my appointment']).session; // at ask_memberId
-    s.dtmfBuffer = '4471';
+  it('re-asks the plain slot question on silence (not the ask_dob_retry apology), then the keypad, and clears a half-typed keypad buffer', () => {
+    // At ask_dob: the birthday is the first slot on a scheduling form that has a keypad rung.
+    const s = afterTurns(['I need to reschedule my appointment', 'Jason Stiles']).session;
+    expect(s.promptedFor).toBe('dob');
+    s.dtmfBuffer = '0305';
     const one = resolve(s, silenceFrame(), null, tc);
-    expect(one.decision).toMatchObject({ promptId: 'ask_memberId', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.decision).toMatchObject({ promptId: 'ask_dob', acks: [{ promptId: 'no_input', vars: {} }] });
     expect(one.session.dtmfBuffer).toBe('');
-    expect(one.session.slots.memberId.attempts).toBe(1);
+    expect(one.session.slots.dob.attempts).toBe(1);
     const two = resolve(one.session, silenceFrame(), null, tc);
-    expect(two.decision).toMatchObject({ promptId: 'ask_memberId_dtmf', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(two.decision).toMatchObject({ promptId: 'ask_dob_dtmf', acks: [{ promptId: 'no_input', vars: {} }] });
   });
 
   it('re-asks a pending window question on silence, unaffected by the plain-question change since the window branch already ran first', () => {
@@ -849,7 +961,7 @@ describe('silence', () => {
   });
 
   // No slot's spokenConfirm policy is `always` in the current domain (date and provider are
-  // `by-confidence`, memberId is `summary`), so a silence during a slot readback confirmation
+  // `by-confidence`, name, dob, and memberId are `summary`), so a silence during a slot readback confirmation
   // (the `pc.target === 'slot'` branch of reaskConfirmation) cannot be driven from a scenario
   // today; there is nothing to add a test for here.
 

@@ -5,7 +5,7 @@ export type Segment =
   | { kind: 'var'; name: string };
 
 /** Variables that are always spoken by TTS (composed values with no clip). */
-export const SPOKEN_VARS: ReadonlySet<string> = new Set(['memberId', 'date']);
+export const SPOKEN_VARS: ReadonlySet<string> = new Set(['memberId', 'date', 'name', 'dob']);
 
 /** Variables with a fixed vocabulary of display values, each recordable as a clip. */
 export const VOCAB_VARS: ReadonlySet<string> = new Set(['provider', 'intentLabel', 'window', 'a', 'b']);

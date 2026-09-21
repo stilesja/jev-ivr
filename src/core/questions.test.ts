@@ -4,9 +4,9 @@ import { newSession, setForm } from './session';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import { FORM_INTENTS } from '../domain/intents';
 import { ALL_SLOTS } from '../domain/forms';
-import type { SlotContext } from '../domain/slots';
+import { EXCLUDED_NAME_TOKENS, type SlotContext } from '../domain/slots';
 
-const ctx: SlotContext = { text: 'hi', candidateSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+const ctx: SlotContext = { text: 'hi', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 
 describe('buildQuestions', () => {
   it('always includes the routing, control, caller and guard questions', () => {
@@ -22,6 +22,13 @@ describe('buildQuestions', () => {
     expect(q).toHaveProperty('containsMemberId');
     expect(q).toHaveProperty('provider');
     expect(q).toHaveProperty('dateMode');
+  });
+
+  it('passes each slot its own pending partial into questions(), not the base context\'s window (which is always null from turn.ts)', () => {
+    const s = newSession('s', 0);
+    s.slots.dob.window = { kind: 'dob', month: 3, day: 5 };
+    const q = buildQuestions(s, ctx);
+    expect((q.dobYear as { instructions: string }).instructions).toMatch(/asked for the year of their birth/);
   });
 
   it('includes only the active form slots', () => {
@@ -86,7 +93,7 @@ describe('question redesign', () => {
     s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
     const q = buildQuestions(s, ctx);
     expect(q.changeSlot?.type).toBe('choice');
-    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['provider', 'date', 'memberId', 'none']);
+    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['name', 'dob', 'provider', 'date', 'none']);
     expect(q.confirmsYes).toBeDefined();
     expect(q.provider).toBeDefined();
     expect(q.dateMode).toBeDefined();
@@ -96,12 +103,16 @@ describe('question redesign', () => {
     expect([...CHANGE_SLOT_ORDER].sort()).toEqual([...ALL_SLOTS].sort());
   });
 
-  it('limits changeSlot to the slots on the pending form (cancel has no date)', () => {
+  it('puts name and dob first, ahead of provider, date and memberId', () => {
+    expect(CHANGE_SLOT_ORDER).toEqual(['name', 'dob', 'provider', 'date', 'memberId']);
+  });
+
+  it('limits changeSlot to the slots on the pending form (cancel has no date, and no member ID)', () => {
     const s = newSession('s', 0);
     setForm(s, 'cancel');
     s.pendingConfirmation = { target: 'form', form: 'cancel', attempts: 0 };
     const q = buildQuestions(s, ctx);
-    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['provider', 'memberId', 'none']);
+    expect(Object.keys((q.changeSlot as { criteria: Record<string, unknown> }).criteria)).toEqual(['name', 'dob', 'provider', 'none']);
   });
 
   it('does not ask changeSlot for a slot-target confirmation', () => {

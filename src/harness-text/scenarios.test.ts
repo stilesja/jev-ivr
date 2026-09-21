@@ -9,7 +9,7 @@ const corpus = loadCorpus('fixtures/corpus.jsonl');
 const scenarios = loadScenarios('fixtures/scenarios');
 const known = new Set(corpus.map((e) => normalizeText(e.text)));
 const opts = {
-  client: new FixtureStubClient(corpus, { sharpness: DEFAULT_THRESHOLDS.STUB_SHARPNESS, fallback: new HeuristicStubClient() }),
+  client: new FixtureStubClient(corpus, { sharpness: DEFAULT_THRESHOLDS.STUB_SHARPNESS, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) }),
   thresholds: { ...DEFAULT_THRESHOLDS },
   todayIso: '2026-09-18',
   now: () => 0,

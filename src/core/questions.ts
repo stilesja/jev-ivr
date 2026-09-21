@@ -2,6 +2,7 @@ import type { QuestionMap } from '../jev/types';
 import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU, type FormId } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
+import { slotCtx } from './fia';
 import type { Session } from './session';
 
 export const ALWAYS_ON_IDS = [
@@ -154,9 +155,11 @@ function noForm(): QuestionMap {
  * label. The order is pinned only so the wire order, and any option-order bias in the model's answer,
  * stay stable across runs. Every slot is listed; formConfirmation keeps the ones its form has.
  */
-export const CHANGE_SLOT_ORDER: readonly SlotId[] = ['provider', 'date', 'memberId'];
+export const CHANGE_SLOT_ORDER: readonly SlotId[] = ['name', 'dob', 'provider', 'date', 'memberId'];
 
 const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
+  name: 'They name their own name as the thing to change, without saying a new name, as in the name, or you got my name wrong',
+  dob: 'They name their date of birth or birthday as the thing to change, without saying the new date, as in the birthday, or my date of birth is wrong',
   provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',
   date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong',
   memberId: 'They name the member ID or member number as the thing to change, without saying the digits',
@@ -196,7 +199,7 @@ function menu(): QuestionMap {
 export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap {
   const q: QuestionMap = { ...alwaysOn() };
   const specs = session.form ? slotsFor(session.form) : allSlots();
-  for (const spec of specs) Object.assign(q, spec.questions(ctx));
+  for (const spec of specs) Object.assign(q, spec.questions(slotCtx(session, ctx, spec.id)));
   if (session.form) Object.assign(q, inForm());
   if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());

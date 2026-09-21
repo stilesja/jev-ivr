@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { memberIdSlot } from './memberId';
 import type { SlotContext } from './types';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
-import { candidateSpans } from '../../core/spans';
+import { candidateSpans, candidateWordSpans } from '../../core/spans';
 import { choice, noul } from '../../testing/answers';
+import { EXCLUDED_NAME_TOKENS } from './index';
 
 function ctx(text: string): SlotContext {
-  return { text, candidateSpans: candidateSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null };
+  return { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
 }
 
 describe('memberIdSlot', () => {
@@ -61,7 +62,7 @@ describe('memberIdSlot', () => {
   });
 
   it('parses eight dtmf digits', () => {
-    expect(memberIdSlot.dtmf.parse('44718293', ctx(''))).toEqual({ value: '44718293', display: '4471 8293' });
-    expect(memberIdSlot.dtmf.parse('4471829#', ctx(''))).toBeNull();
+    expect(memberIdSlot.dtmf!.parse('44718293', ctx(''))).toEqual({ value: '44718293', display: '4471 8293' });
+    expect(memberIdSlot.dtmf!.parse('4471829#', ctx(''))).toBeNull();
   });
 });

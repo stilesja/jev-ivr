@@ -23,6 +23,36 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "How can I help you today?",
   },
   {
+    "id": "ask_name.0",
+    "note": "closed",
+    "text": "What's your first and last name?",
+  },
+  {
+    "id": "ask_name_retry.0",
+    "note": "closed",
+    "text": "Sorry, I need your first and last name.",
+  },
+  {
+    "id": "ask_dob.0",
+    "note": "closed",
+    "text": "And your date of birth?",
+  },
+  {
+    "id": "ask_dob_retry.0",
+    "note": "closed",
+    "text": "Sorry, I need your date of birth: month, day, and year.",
+  },
+  {
+    "id": "ask_dob_year.0",
+    "note": "closed",
+    "text": "And what year?",
+  },
+  {
+    "id": "ask_dob_dtmf.0",
+    "note": "closed",
+    "text": "Please enter your date of birth on the keypad: two digits for the month, two for the day, and four for the year.",
+  },
+  {
     "id": "ask_memberId.0",
     "note": "closed",
     "text": "What's your member ID?",
@@ -125,10 +155,15 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_schedule.2",
     "note": "open",
-    "text": "member ID",
+    "text": "for",
   },
   {
     "id": "confirm_schedule.3",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_schedule.4",
     "note": "closed",
     "text": "Shall I book that?",
   },
@@ -145,10 +180,15 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_reschedule.2",
     "note": "open",
-    "text": "member ID",
+    "text": "for",
   },
   {
     "id": "confirm_reschedule.3",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_reschedule.4",
     "note": "closed",
     "text": "Shall I make that change?",
   },
@@ -160,10 +200,15 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_cancel.1",
     "note": "open",
-    "text": "would be cancelled, member ID",
+    "text": "would be cancelled, for",
   },
   {
     "id": "confirm_cancel.2",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_cancel.3",
     "note": "closed",
     "text": "Shall I cancel it?",
   },
@@ -175,10 +220,15 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_appointment_details.1",
     "note": "open",
-    "text": "member ID",
+    "text": "for",
   },
   {
     "id": "confirm_appointment_details.2",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_appointment_details.3",
     "note": "closed",
     "text": "Is that the one?",
   },

@@ -29,6 +29,15 @@ function textOf(state: unknown): string {
   return s?.asr?.text ?? '';
 }
 
+/** A span label the question must be able to offer: exact after normalization, or the entry is wrong. */
+function pickSpan(labels: string[], raw: string | undefined, entryId: string, what: string, sharpness: number): Answer {
+  const span = raw === undefined ? undefined : normalizeText(raw);
+  if (span !== undefined && !labels.includes(span)) {
+    throw new Error(`corpus ${entryId}: ${what} span "${raw}" is not a candidate span of the text`);
+  }
+  return choiceAnswer(sharp(labels, span ?? 'none', sharpness));
+}
+
 function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: number): Answer {
   const slots = entry.slots ?? {};
   if (q.type === 'choice') {
@@ -36,6 +45,12 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
     const pick = (v: string | undefined) => choiceAnswer(sharp(labels, v && labels.includes(v) ? v : 'none', sharpness));
     if (id === 'intent') return pick(entry.intent);
     if (id === 'provider') return pick(slots.provider);
+    // Same rule as the member ID's span: a label the text cannot offer is a corpus bug, not a
+    // quiet `none`, so it throws with the entry id.
+    if (id === 'nameSpan') return pickSpan(labels, slots.name, entry.id, 'name', sharpness);
+    if (id === 'dobMonth') return pick(slots.dob?.month);
+    if (id === 'dobDay') return pick(slots.dob?.day);
+    if (id === 'dobYear') return pickSpan(labels, slots.dob?.year, entry.id, 'dob year', sharpness);
     if (id === 'memberIdSpan') {
       const rawSpan = slots.memberId?.span;
       const span = rawSpan ? normalizeText(rawSpan) : undefined;
@@ -52,6 +67,8 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
     return quietAnswer(id, q, sharpness);
   }
   if (q.type === 'noul') {
+    if (id === 'nameGiven') return noulAnswer(slots.name ? 0.92 : 0.05);
+    if (id === 'dobGiven') return noulAnswer(slots.dob ? 0.92 : 0.05);
     if (id === 'containsMemberId') return noulAnswer(slots.memberId ? 0.92 : 0.05);
     if (id === 'memberIdComplete') return noulAnswer(slots.memberId ? 0.9 : 0.4);
     if (id === 'wantsHuman') return noulAnswer(entry.intent === 'agent' ? 0.9 : 0.04);

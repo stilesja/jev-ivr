@@ -3,13 +3,31 @@ import type { Thresholds } from '../../core/thresholds';
 import type { DateWindow } from '../../core/extract/date';
 import type { SlotId } from '../forms';
 
+/** A partial dob: month and day heard, year still owed. */
+export interface DobPartial {
+  kind: 'dob';
+  month: number;
+  day: number;
+}
+
+/** A slot's own pending narrowing: a date window for `date`, a month/day partial for `dob`. */
+export type SlotPartial = DateWindow | DobPartial;
+
 export interface SlotContext {
   text: string;
   candidateSpans: string[];
+  candidateWordSpans: string[];
   todayIso: string;
   thresholds: Thresholds;
-  /** the date window the caller already narrowed to, null when none is pending */
-  window: DateWindow | null;
+  /** the slot's own pending partial, null when none is pending */
+  window: SlotPartial | null;
+  /**
+   * Normalized tokens no span offered as a person's own name may contain: the deployment's
+   * provider vocabulary and the titles that mark a name as the doctor's. Supplied by whoever
+   * registers the specs (EXCLUDED_NAME_TOKENS in ./index), so a different vocabulary plugs in
+   * without the name slot knowing any names.
+   */
+  excludedNameTokens: ReadonlySet<string>;
 }
 
 export interface SlotCandidate {
@@ -21,7 +39,7 @@ export type SlotOutcome =
   | { kind: 'absent' }
   | { kind: 'filled'; value: string; display: string; confidence: number; confirm: 'none' | 'implicit' }
   | { kind: 'disambiguate'; a: SlotCandidate; b: SlotCandidate }
-  | { kind: 'window'; window: DateWindow; confidence: number }
+  | { kind: 'window'; window: SlotPartial; confidence: number }
   | { kind: 'invalid'; reason: string; raw: string };
 
 export interface SlotSpec {
@@ -34,8 +52,9 @@ export interface SlotSpec {
   questions(ctx: SlotContext): QuestionMap;
   /** Interpret the answers to those questions. */
   fill(answers: AnswerMap, ctx: SlotContext): SlotOutcome;
-  /** DTMF fallback: how many digits to collect and how to parse them. */
-  dtmf: {
+  /** DTMF fallback: how many digits to collect and how to parse them. Absent: the slot has no
+   * keypad rung; its retry ladder is retry, retry, agent. */
+  dtmf?: {
     length: number;
     parse(digits: string, ctx: SlotContext): SlotCandidate | null;
   };

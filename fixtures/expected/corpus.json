@@ -2,13 +2,15 @@
   "sn-01": {
     "id": "sn-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -18,13 +20,15 @@
   "sn-02": {
     "id": "sn-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "patel",
       "date": null
@@ -34,13 +38,15 @@
   "sn-03": {
     "id": "sn-03",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "nguyen",
       "date": null
@@ -50,13 +56,15 @@
   "sn-04": {
     "id": "sn-04",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": "2026-09-19"
@@ -66,13 +74,15 @@
   "sn-05": {
     "id": "sn-05",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "kim",
       "date": "2026-10-05"
@@ -82,14 +92,16 @@
   "sn-06": {
     "id": "sn-06",
     "decision": "prompt",
-    "promptId": "ask_provider",
+    "promptId": "ask_dob",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -98,13 +110,15 @@
   "sn-07": {
     "id": "sn-07",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "alvarez",
       "date": null
@@ -114,13 +128,15 @@
   "sn-08": {
     "id": "sn-08",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "rossi",
       "date": "2026-09-22"
@@ -130,13 +146,15 @@
   "sn-09": {
     "id": "sn-09",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -153,7 +171,9 @@
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "okafor",
       "date": "2026-09-25"
     },
@@ -162,13 +182,15 @@
   "rs-01": {
     "id": "rs-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -178,13 +200,15 @@
   "rs-02": {
     "id": "rs-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "chen",
       "date": null
@@ -194,13 +218,15 @@
   "rs-03": {
     "id": "rs-03",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "patel",
       "date": "2026-09-24"
@@ -210,13 +236,15 @@
   "rs-04": {
     "id": "rs-04",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -226,13 +254,15 @@
   "rs-05": {
     "id": "rs-05",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": "2026-09-19"
@@ -242,13 +272,15 @@
   "rs-06": {
     "id": "rs-06",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "kim",
       "date": null
@@ -258,13 +290,15 @@
   "rs-07": {
     "id": "rs-07",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": "2026-11-12"
@@ -274,13 +308,15 @@
   "rs-08": {
     "id": "rs-08",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "cheng",
       "date": null
@@ -290,14 +326,16 @@
   "rs-09": {
     "id": "rs-09",
     "decision": "prompt",
-    "promptId": "ask_provider",
+    "promptId": "ask_dob",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -306,13 +344,15 @@
   "rs-10": {
     "id": "rs-10",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "nguyen",
       "date": "2026-09-18"
@@ -322,13 +362,15 @@
   "rs-11": {
     "id": "rs-11",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "rossi",
       "date": "2026-09-20"
@@ -338,13 +380,15 @@
   "rs-12": {
     "id": "rs-12",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -354,13 +398,15 @@
   "cn-01": {
     "id": "cn-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -370,13 +416,15 @@
   "cn-02": {
     "id": "cn-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "okafor",
       "date": null
@@ -386,13 +434,15 @@
   "cn-03": {
     "id": "cn-03",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -402,14 +452,16 @@
   "cn-04": {
     "id": "cn-04",
     "decision": "prompt",
-    "promptId": "confirm_cancel",
+    "promptId": "ask_dob",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -418,13 +470,15 @@
   "cn-05": {
     "id": "cn-05",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "alvarez",
       "date": null
@@ -434,13 +488,15 @@
   "cn-06": {
     "id": "cn-06",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -450,13 +506,15 @@
   "cn-07": {
     "id": "cn-07",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "kim",
       "date": null
@@ -466,13 +524,15 @@
   "cn-08": {
     "id": "cn-08",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -482,14 +542,16 @@
   "cn-09": {
     "id": "cn-09",
     "decision": "prompt",
-    "promptId": "ask_provider",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
-      "memberId": "81204457",
+      "name": null,
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -498,13 +560,15 @@
   "cn-10": {
     "id": "cn-10",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "patel",
       "date": null
@@ -514,13 +578,15 @@
   "cf-01": {
     "id": "cf-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -530,13 +596,15 @@
   "cf-02": {
     "id": "cf-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "rossi",
       "date": null
@@ -546,13 +614,15 @@
   "cf-03": {
     "id": "cf-03",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "nguyen",
       "date": null
@@ -562,13 +632,15 @@
   "cf-04": {
     "id": "cf-04",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "chen",
       "date": null
@@ -578,13 +650,15 @@
   "cf-05": {
     "id": "cf-05",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -594,14 +668,16 @@
   "cf-06": {
     "id": "cf-06",
     "decision": "prompt",
-    "promptId": "ask_provider",
+    "promptId": "ask_dob",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
-      "memberId": "44718293",
+      "name": "mary kate o neil",
+      "dob": null,
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -610,13 +686,15 @@
   "cf-07": {
     "id": "cf-07",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "kim",
       "date": null
@@ -626,13 +704,15 @@
   "cf-08": {
     "id": "cf-08",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "okafor",
       "date": null
@@ -649,6 +729,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -665,6 +747,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -681,6 +765,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -697,6 +783,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -713,6 +801,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -729,6 +819,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44718293",
       "provider": null,
       "date": null
@@ -745,6 +837,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -761,6 +855,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -777,6 +873,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -793,6 +891,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -809,6 +909,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -825,6 +927,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -841,6 +945,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -857,6 +963,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -873,6 +981,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -889,6 +999,8 @@
     "verdict": "handoff",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -905,6 +1017,8 @@
     "verdict": "replay",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -921,6 +1035,8 @@
     "verdict": "replay",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -937,6 +1053,8 @@
     "verdict": "replay",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -953,6 +1071,8 @@
     "verdict": "replay",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -969,6 +1089,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -985,6 +1107,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1001,6 +1125,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1017,6 +1143,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1033,6 +1161,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1049,6 +1179,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1065,6 +1197,8 @@
     "verdict": "ignore",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1081,6 +1215,8 @@
     "verdict": "ignore",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1097,6 +1233,8 @@
     "verdict": "ignore",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1113,6 +1251,8 @@
     "verdict": "ignore",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1129,6 +1269,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1145,6 +1287,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1161,6 +1305,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1177,6 +1323,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1193,6 +1341,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1202,13 +1352,15 @@
   "lc-02": {
     "id": "lc-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "chen",
       "date": null
@@ -1225,6 +1377,8 @@
     "verdict": "route",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1241,6 +1395,8 @@
     "verdict": "route",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1257,6 +1413,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1273,6 +1431,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1282,13 +1442,15 @@
   "lc-07": {
     "id": "lc-07",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "chen",
       "date": null
@@ -1298,13 +1460,15 @@
   "lc-08": {
     "id": "lc-08",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "schedule_new",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1314,13 +1478,15 @@
   "lc-09": {
     "id": "lc-09",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "confirm_appointment",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1337,6 +1503,8 @@
     "verdict": "route",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1355,7 +1523,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "rossi",
       "date": null
     },
@@ -1373,7 +1543,9 @@
     "verdict": "proceed",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "kim",
       "date": null
     },
@@ -1382,13 +1554,15 @@
   "fr-01": {
     "id": "fr-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1398,13 +1572,15 @@
   "fr-02": {
     "id": "fr-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1414,13 +1590,15 @@
   "fr-03": {
     "id": "fr-03",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1437,7 +1615,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -1453,6 +1633,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1462,13 +1644,15 @@
   "fr-06": {
     "id": "fr-06",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1485,6 +1669,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1501,6 +1687,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1517,6 +1705,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1533,6 +1723,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1549,6 +1741,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1565,6 +1759,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1581,6 +1777,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1597,6 +1795,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1613,6 +1813,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1629,6 +1831,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1645,6 +1849,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1661,6 +1867,8 @@
     "verdict": "intent_failed",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1669,14 +1877,16 @@
   },
   "mi-01": {
     "id": "mi-01",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "reschedule",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44718293",
       "provider": null,
       "date": null
@@ -1685,14 +1895,16 @@
   },
   "mi-02": {
     "id": "mi-02",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "cancel",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44718293",
       "provider": null,
       "date": null
@@ -1709,6 +1921,8 @@
     "verdict": "proceed",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "81204457",
       "provider": null,
       "date": null
@@ -1717,14 +1931,16 @@
   },
   "mi-04": {
     "id": "mi-04",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "schedule_new",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44718293",
       "provider": null,
       "date": null
@@ -1733,14 +1949,16 @@
   },
   "mi-05": {
     "id": "mi-05",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "confirm_appointment",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44718293",
       "provider": null,
       "date": null
@@ -1749,14 +1967,16 @@
   },
   "mi-06": {
     "id": "mi-06",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "reschedule",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "22059138",
       "provider": null,
       "date": null
@@ -1771,8 +1991,10 @@
     "reason": null,
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "cancel",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -1787,40 +2009,28 @@
     "reason": null,
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "cancel",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
     },
     "queued": []
   },
-  "mi-09": {
-    "id": "mi-09",
-    "decision": "prompt",
-    "promptId": "ask_date",
-    "acks": [],
-    "reason": null,
-    "decidedGate": null,
-    "verdict": "proceed",
-    "form": "reschedule",
-    "slots": {
-      "memberId": "44718293",
-      "provider": "chen",
-      "date": null
-    },
-    "queued": []
-  },
   "mi-10": {
     "id": "mi-10",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "schedule_new",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44718293",
       "provider": null,
       "date": null
@@ -1837,6 +2047,8 @@
     "verdict": "proceed",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "12345678",
       "provider": null,
       "date": null
@@ -1845,14 +2057,16 @@
   },
   "mi-12": {
     "id": "mi-12",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "reschedule",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "09331276",
       "provider": null,
       "date": null
@@ -1869,7 +2083,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -1885,7 +2101,9 @@
     "verdict": "proceed",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -1901,7 +2119,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "nguyen",
       "date": null
     },
@@ -1917,7 +2137,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "cheng",
       "date": null
     },
@@ -1933,7 +2155,9 @@
     "verdict": "proceed",
     "form": "confirm_appointment",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "okafor",
       "date": null
     },
@@ -1949,7 +2173,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "kim",
       "date": "2026-09-21"
     },
@@ -1965,7 +2191,9 @@
     "verdict": "proceed",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -1981,7 +2209,9 @@
     "verdict": "proceed",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "alvarez",
       "date": null
     },
@@ -1997,7 +2227,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-19"
     },
@@ -2013,7 +2245,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -2029,7 +2263,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-10-05"
     },
@@ -2045,7 +2281,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-11-12"
     },
@@ -2061,7 +2299,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2077,7 +2317,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-24"
     },
@@ -2093,7 +2335,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-18"
     },
@@ -2109,7 +2353,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2125,7 +2371,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-28"
     },
@@ -2141,7 +2389,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-18"
     },
@@ -2157,7 +2407,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2173,7 +2425,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -2189,7 +2443,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-20"
     },
@@ -2205,7 +2461,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2027-03-03"
     },
@@ -2221,7 +2479,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-23"
     },
@@ -2237,7 +2497,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-23"
     },
@@ -2253,7 +2515,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -2269,7 +2533,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2278,7 +2544,7 @@
   "sw-01": {
     "id": "sw-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [
       "ack_intent"
     ],
@@ -2287,6 +2553,8 @@
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2296,7 +2564,7 @@
   "sw-02": {
     "id": "sw-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [
       "ack_intent"
     ],
@@ -2305,6 +2573,8 @@
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2321,6 +2591,8 @@
     "verdict": "handoff",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2337,6 +2609,8 @@
     "verdict": "handoff",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2353,6 +2627,8 @@
     "verdict": "replay",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2369,6 +2645,8 @@
     "verdict": "replay",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2387,7 +2665,9 @@
     "verdict": "queue",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2405,6 +2685,8 @@
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2421,7 +2703,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2437,7 +2721,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-21"
     },
@@ -2453,7 +2739,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -2469,7 +2757,9 @@
     "verdict": "route",
     "form": "reschedule",
     "slots": {
-      "memberId": "44718293",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": "2026-09-22"
     },
@@ -2477,14 +2767,16 @@
   },
   "mi-13": {
     "id": "mi-13",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "schedule_new",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44187355",
       "provider": null,
       "date": null
@@ -2493,14 +2785,16 @@
   },
   "mi-14": {
     "id": "mi-14",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "cancel",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44187305",
       "provider": null,
       "date": null
@@ -2509,14 +2803,16 @@
   },
   "mi-15": {
     "id": "mi-15",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "reschedule",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "44187355",
       "provider": null,
       "date": null
@@ -2525,14 +2821,16 @@
   },
   "mi-16": {
     "id": "mi-16",
-    "decision": "prompt",
-    "promptId": "ask_provider",
+    "decision": "handoff",
+    "promptId": "handoff_billing",
     "acks": [],
-    "reason": null,
+    "reason": "billing",
     "decidedGate": null,
     "verdict": "proceed",
-    "form": "reschedule",
+    "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": "81793314",
       "provider": null,
       "date": null
@@ -2551,7 +2849,9 @@
     "verdict": "queue",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -2562,7 +2862,7 @@
   "sw-10": {
     "id": "sw-10",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_dob",
     "acks": [
       "ack_queued"
     ],
@@ -2571,6 +2871,8 @@
     "verdict": "queue",
     "form": "cancel",
     "slots": {
+      "name": "jason stiles",
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2591,6 +2893,8 @@
     "verdict": "route",
     "form": "billing",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2609,7 +2913,9 @@
     "verdict": "route",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2627,7 +2933,9 @@
     "verdict": "proceed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2643,7 +2951,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -2659,6 +2969,8 @@
     "verdict": "route",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2675,7 +2987,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "chen",
       "date": null
     },
@@ -2691,7 +3005,9 @@
     "verdict": "confirmed",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2707,7 +3023,9 @@
     "verdict": "confirmed",
     "form": "schedule_new",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -2723,7 +3041,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-24"
     },
@@ -2739,7 +3059,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "alvarez",
       "date": "2026-09-24"
     },
@@ -2755,7 +3077,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "cheng",
       "date": "2026-09-22"
     },
@@ -2771,7 +3095,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2787,7 +3113,9 @@
     "verdict": "change_slot",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": null
     },
@@ -2803,7 +3131,9 @@
     "verdict": "change_slot",
     "form": "cancel",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -2812,13 +3142,15 @@
   "fc-12": {
     "id": "fc-12",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_dob",
     "acks": [],
     "reason": null,
     "decidedGate": "changeSlot",
     "verdict": "change_slot",
     "form": "reschedule",
     "slots": {
+      "name": "jason stiles",
+      "dob": null,
       "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
@@ -2835,7 +3167,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "44718294",
+      "name": "jason miles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-22"
     },
@@ -2843,18 +3177,20 @@
   },
   "fc-15": {
     "id": "fc-15",
-    "decision": "handoff",
-    "promptId": "handoff_billing",
+    "decision": "prompt",
+    "promptId": "ask_memberId",
     "acks": [
       "reschedule_confirmed",
       "bridge_next"
     ],
-    "reason": "billing",
+    "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
     "form": "billing",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },
@@ -2870,7 +3206,9 @@
     "verdict": "change_slot",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": "2026-09-22"
     },
@@ -2886,7 +3224,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "cheng",
       "date": "2026-09-22"
     },
@@ -2902,7 +3242,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-24"
     },
@@ -2918,7 +3260,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "cheng",
       "date": "2026-09-22"
     },
@@ -2934,7 +3278,9 @@
     "verdict": "rejected",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "cheng",
       "date": "2026-09-22"
     },
@@ -2943,7 +3289,7 @@
   "si-01": {
     "id": "si-01",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [
       "ack_queued"
     ],
@@ -2952,6 +3298,8 @@
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": "alvarez",
       "date": "2026-09-24"
@@ -2963,7 +3311,7 @@
   "si-02": {
     "id": "si-02",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [
       "ack_queued"
     ],
@@ -2972,6 +3320,8 @@
     "verdict": "route",
     "form": "cancel",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -2983,13 +3333,15 @@
   "si-03": {
     "id": "si-03",
     "decision": "prompt",
-    "promptId": "ask_memberId",
+    "promptId": "ask_name",
     "acks": [],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
     "form": "reschedule",
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -3006,6 +3358,8 @@
     "verdict": "route",
     "form": null,
     "slots": {
+      "name": null,
+      "dob": null,
       "memberId": null,
       "provider": null,
       "date": null
@@ -3022,7 +3376,9 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "patel",
       "date": "2026-09-25"
     },
@@ -3038,8 +3394,442 @@
     "verdict": "proceed",
     "form": "reschedule",
     "slots": {
-      "memberId": "00000000",
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": "kim",
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-01": {
+    "id": "nm-01",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-02": {
+    "id": "nm-02",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-03": {
+    "id": "nm-03",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-04": {
+    "id": "nm-04",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "confirm_appointment",
+    "slots": {
+      "name": "cher",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-05": {
+    "id": "nm-05",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "mary kate o neil",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-06": {
+    "id": "nm-06",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-07": {
+    "id": "nm-07",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "cancel",
+    "slots": {
+      "name": "cher",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-08": {
+    "id": "nm-08",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "nm-09": {
+    "id": "nm-09",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": "chen",
+      "date": null
+    },
+    "queued": []
+  },
+  "db-01": {
+    "id": "db-01",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-02": {
+    "id": "db-02",
+    "decision": "prompt",
+    "promptId": "ask_dob_year",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-03": {
+    "id": "db-03",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-04": {
+    "id": "db-04",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "confirm_appointment",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-05": {
+    "id": "db-05",
+    "decision": "prompt",
+    "promptId": "ask_dob_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-06": {
+    "id": "db-06",
+    "decision": "prompt",
+    "promptId": "ask_dob_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-07": {
+    "id": "db-07",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "chen",
+      "date": null
+    },
+    "queued": []
+  },
+  "db-08": {
+    "id": "db-08",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1991-11-12",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-09": {
+    "id": "db-09",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1972-08-15",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "db-10": {
+    "id": "db-10",
+    "decision": "prompt",
+    "promptId": "ask_provider",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "confirm_appointment",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "2001-01-11",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": []
+  },
+  "fc-21": {
+    "id": "fc-21",
+    "decision": "prompt",
+    "promptId": "ask_change",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-22": {
+    "id": "fc-22",
+    "decision": "prompt",
+    "promptId": "ask_name",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "reschedule",
+    "slots": {
+      "name": null,
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-23": {
+    "id": "fc-23",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-06",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "fc-24": {
+    "id": "fc-24",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "changeSlot",
+    "verdict": "change_slot",
+    "form": "cancel",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "db-11": {
+    "id": "db-11",
+    "decision": "prompt",
+    "promptId": "ask_dob_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
       "date": null
     },
     "queued": []

@@ -22,7 +22,7 @@ export function constrainToWindow(iso: string, mode: string, window: DateWindow 
   return snapped <= window.end ? snapped : null;
 }
 
-function criteriaOf(labels: readonly string[]): Record<string, null> {
+function criteriaOf(labels: readonly string[]): Record<string, string | null> {
   return Object.fromEntries(labels.map((l) => [l, null]));
 }
 
@@ -52,17 +52,20 @@ export const dateSlot: SlotSpec = {
     return {
       dateMode: {
         type: 'choice',
-        instructions: 'Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned.',
-        criteria: criteriaOf(DATE_MODES),
+        instructions: 'Read asr.text. How does the caller refer to a day for the appointment? "absolute" names a month or a month and day. "relative_day" is today, tomorrow, or the day after tomorrow. "weekday" names a day of the week. "window" is a span like this week or next month. "none" if no day is mentioned. The caller\'s date of birth or birthday, or a date answering a question about it, is not an appointment date. One utterance can carry both: a birthday and, separately, the day they want to come in. The appointment day is the one not introduced by born or birthday, so a weekday or a relative day said alongside a birthday is still the appointment day and still names the mode.',
+        criteria: {
+          ...criteriaOf(DATE_MODES),
+          none: "No day for the appointment. The caller's date of birth or birthday, or a date answering a question about it, is not one",
+        },
       },
       dateMonth: {
         type: 'choice',
-        instructions: 'Read asr.text. Which month does the caller name, if any? When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I\'m not sure" or "either" is not a correction; name the month they mention.',
+        instructions: 'Read asr.text. Which month does the caller name, if any? The caller\'s date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller\'s birthday, answer none. When they correct a month, the word not marks the month they are rejecting; choose the other one, as in "not March, April" or "October, not September". A hedge such as "I\'m not sure" or "either" is not a correction; name the month they mention.',
         criteria: criteriaOf([...MONTHS, 'none']),
       },
       dateDay: {
         type: 'choice',
-        instructions: 'Read asr.text. Which day of the month does the caller name, if any? When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I\'m not sure" or "either" is not a correction; name the day of the month they mention.',
+        instructions: 'Read asr.text. Which day of the month does the caller name, if any? The caller\'s date of birth or birthday, or a date answering a question about it, is not an appointment date. If the only month and day in asr.text belong to the caller\'s birthday, answer none. When they correct a day of the month, the word not marks the one they are rejecting; choose the other one, as in "not the 5th, the 6th" or "the 20th, not the 12th". A hedge such as "I\'m not sure" or "either" is not a correction; name the day of the month they mention.',
         criteria: criteriaOf([...DAYS, 'none']),
       },
       dateWeekday: {
@@ -106,7 +109,10 @@ export const dateSlot: SlotSpec = {
         if (resolved.confidence < t.SLOT_CHOICE_CONFIRM) {
           return { kind: 'invalid', reason: 'low_confidence', raw: resolved.iso };
         }
-        const iso = constrainToWindow(resolved.iso, components.mode.choice, ctx.window, ctx.todayIso);
+        // ctx.window is a per-slot partial now; the date slot only ever narrows against its own
+        // DateWindow (never a dob partial, which slotContext never routes here).
+        const dateWindow = ctx.window && !('kind' in ctx.window) ? ctx.window : null;
+        const iso = constrainToWindow(resolved.iso, components.mode.choice, dateWindow, ctx.todayIso);
         if (iso === null) return { kind: 'invalid', reason: 'outside_window', raw: resolved.iso };
         return {
           kind: 'filled',

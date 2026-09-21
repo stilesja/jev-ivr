@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { confirmForm, contextForm, loadCorpus, normalizeText, parseCorpus, type CorpusEntry } from './corpus';
-import { candidateSpans } from '../core/spans';
+import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { spokenToDigits } from '../core/extract/spokenNumber';
 import { DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS } from '../core/extract/date';
 import { PROVIDERS } from '../domain/slots/provider';
 import { FORM_INTENTS } from '../domain/intents';
 import { ALWAYS_ON_IDS } from '../core/questions';
-import { allSlots, type SlotContext } from '../domain/slots';
+import { allSlots, EXCLUDED_NAME_TOKENS, type SlotContext } from '../domain/slots';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 
 const corpus = loadCorpus('fixtures/corpus.jsonl');
@@ -25,7 +25,7 @@ describe('fixtures/corpus.jsonl', () => {
   });
 
   it('overrides name only questions the schema can ask', () => {
-    const ctx: SlotContext = { text: '', candidateSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null };
+    const ctx: SlotContext = { text: '', candidateSpans: [], candidateWordSpans: [], todayIso: '2026-09-18', thresholds: DEFAULT_THRESHOLDS, window: null, excludedNameTokens: EXCLUDED_NAME_TOKENS };
     const askable = new Set<string>([...ALWAYS_ON_IDS, 'confirmsYes', 'confirmsNo', 'menuNumberSaid', 'intentChange']);
     for (const spec of allSlots()) for (const id of Object.keys(spec.questions(ctx))) askable.add(id);
     for (const e of corpus) {
@@ -39,6 +39,24 @@ describe('fixtures/corpus.jsonl', () => {
       if (!m) continue;
       expect(candidateSpans(e.text), e.id).toContain(normalizeText(m.span));
       expect(spokenToDigits(m.span), e.id).toBe(m.value);
+    }
+  });
+
+  it('labels name spans that exist as candidate word spans', () => {
+    for (const e of corpus) {
+      if (e.slots?.name === undefined) continue;
+      expect(candidateWordSpans(e.text), e.id).toContain(normalizeText(e.slots.name));
+    }
+  });
+
+  it('labels birthdays with month and day vocabulary and a year that is a candidate span', () => {
+    const days = Array.from({ length: 31 }, (_, i) => String(i + 1));
+    for (const e of corpus) {
+      const d = e.slots?.dob;
+      if (!d) continue;
+      if (d.month !== undefined) expect(MONTHS, e.id).toContain(d.month);
+      if (d.day !== undefined) expect(days, e.id).toContain(d.day);
+      if (d.year !== undefined) expect(candidateSpans(e.text), e.id).toContain(normalizeText(d.year));
     }
   });
 
@@ -66,6 +84,10 @@ describe('fixtures/corpus.jsonl', () => {
     const intents = new Set(corpus.map((e) => e.intent));
     for (const i of ['schedule_new', 'reschedule', 'cancel', 'confirm_appointment', 'billing', 'agent', 'repeat_prompt', 'other', 'none']) expect(intents).toContain(i);
     expect(corpus.some((e) => e.slots?.memberId)).toBe(true);
+    expect(corpus.some((e) => e.slots?.name)).toBe(true);
+    expect(corpus.some((e) => e.slots?.dob?.year)).toBe(true);
+    expect(corpus.some((e) => e.slots?.dob && e.slots.dob.year === undefined)).toBe(true);
+    expect(corpus.some((e) => e.slots?.dob && e.slots.dob.month === undefined && e.slots.dob.year !== undefined)).toBe(true);
     expect(corpus.some((e) => e.slots?.provider)).toBe(true);
     expect(corpus.some((e) => e.slots?.date?.mode === 'absolute')).toBe(true);
     expect(corpus.some((e) => e.slots?.date?.mode === 'window')).toBe(true);
@@ -137,6 +159,27 @@ describe('parseCorpus', () => {
   it('rejects a changeSlot alongside confirm yes, and a secondIntent equal to intent', () => {
     expect(() => parseCorpus('{"id":"x","text":"yes the day","intent":"none","context":"confirm_reschedule","confirm":"yes","changeSlot":"date"}')).toThrow(/changeSlot needs confirm no or unanswered/);
     expect(() => parseCorpus('{"id":"x","text":"reschedule and reschedule","intent":"reschedule","context":"no_form","secondIntent":"reschedule"}')).toThrow(/secondIntent must differ from intent/);
+  });
+
+  it('rejects a name span and a birth year span that the text does not offer as candidates', () => {
+    const named = (slots: string) => `{"id":"x","text":"my name is Jason Stiles","intent":"none","context":"no_form","slots":${slots}}`;
+    expect(parseCorpus(named('{"name":"Jason Stiles"}'))[0]?.slots?.name).toBe('Jason Stiles');
+    expect(() => parseCorpus(named('{"name":"my name"}'))).toThrow(/not a candidate word span/);
+    const born = (slots: string) => `{"id":"y","text":"March fifth nineteen eighty","intent":"none","context":"no_form","slots":${slots}}`;
+    expect(parseCorpus(born('{"dob":{"month":"march","day":"5","year":"nineteen eighty"}}'))[0]?.slots?.dob?.day).toBe('5');
+    expect(() => parseCorpus(born('{"dob":{"month":"march","day":"5","year":"nineteen ninety"}}'))).toThrow(/not a candidate span/);
+    expect(() => parseCorpus(born('{"dob":{"month":"march"}}'))).toThrow(/month and day together/);
+    expect(parseCorpus(born('{"dob":{"year":"nineteen eighty"}}'))[0]?.slots?.dob?.year).toBe('nineteen eighty');
+  });
+
+  it('rejects a dob month or day the slot\'s own choice labels do not offer', () => {
+    // "Mar" and "31st" would parse clean and then pick `none` at run time, so the labelled
+    // birthday would silently never be read. The month and day are choice labels, not spans.
+    const born = (slots: string) => `{"id":"z","text":"March thirty first nineteen eighty","intent":"none","context":"no_form","slots":${slots}}`;
+    expect(parseCorpus(born('{"dob":{"month":"march","day":"31"}}'))[0]?.slots?.dob?.month).toBe('march');
+    expect(() => parseCorpus(born('{"dob":{"month":"Mar","day":"31"}}'))).toThrow(/corpus z: dob month "Mar"/);
+    expect(() => parseCorpus(born('{"dob":{"month":"march","day":"31st"}}'))).toThrow(/corpus z: dob day "31st"/);
+    expect(() => parseCorpus(born('{"dob":{"month":"march","day":"32"}}'))).toThrow(/corpus z: dob day "32"/);
   });
 
   it('treats confirm_appointment as the confirm_appointment form itself, not a confirm_ context', () => {

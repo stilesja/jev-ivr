@@ -136,15 +136,18 @@ describe('adapter', () => {
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
-    expect(texts(sock).at(-1)).toBe("What's your member ID?");
-    await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
-    // The member ID fills silently: the next question follows it straight away.
+    expect(texts(sock).at(-1)).toBe("What's your first and last name?");
+    await handleSocketMessage(d, sock, ctx, prompt('Jason Stiles'));
+    // The name fills silently: the next question follows it straight away.
+    expect(texts(sock).at(-1)).toBe('And your date of birth?');
+    await handleSocketMessage(d, sock, ctx, prompt('March fifth nineteen eighty'));
     expect(texts(sock).at(-1)).toBe('next week. Which day works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
-    // The summary reads the whole form back. The wire gets the digits spaced out; the session
-    // and the trace keep the readable form.
-    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?');
-    expect(d.store.get('CA1')?.session.lastPromptText).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, member ID 4471 8293. Shall I make that change?');
+    // The summary reads the whole form back, the year included: a lone four-digit run is left
+    // for TTS to read as a year rather than spelled out the way a member ID is.
+    const summary = 'Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980. Shall I make that change?';
+    expect(texts(sock).at(-1)).toBe(summary);
+    expect(d.store.get('CA1')?.session.lastPromptText).toBe(summary);
     await handleSocketMessage(d, sock, ctx, prompt('yes'));
     expect(texts(sock).at(-2)).toBe('Your appointment is moved.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
@@ -154,9 +157,9 @@ describe('adapter', () => {
     expect(sock.closed).toBeNull();
     expect(d.store.get('CA1')?.ended).toBe(true);
     const records = readFileSync(join(d.dir, 'CA1.jsonl'), 'utf8').trim().split('\n');
-    expect(records).toHaveLength(5);
+    expect(records).toHaveLength(6);
     const frames = readFileSync(join(d.dir, 'CA1.frames.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    expect(frames.filter((f) => f.dir === 'in')).toHaveLength(5);
+    expect(frames.filter((f) => f.dir === 'in')).toHaveLength(6);
     expect(frames.filter((f) => f.dir === 'out').length).toBeGreaterThanOrEqual(6);
   });
 
@@ -166,9 +169,9 @@ describe('adapter', () => {
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
-    await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
-    await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
-    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    for (const t of ['Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'yes']) {
+      await handleSocketMessage(d, sock, ctx, prompt(t));
+    }
     expect(sock.closed).toBeNull();
     await new Promise((r) => setTimeout(r, 100));
     expect(sock.closed).toEqual({ code: 1000, reason: 'end grace elapsed' });
@@ -181,9 +184,9 @@ describe('adapter', () => {
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
-    await handleSocketMessage(d, sock, ctx, prompt('four four seven one eight two nine three'));
-    await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
-    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    for (const t of ['Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'yes']) {
+      await handleSocketMessage(d, sock, ctx, prompt(t));
+    }
     // Twilio closing the connection itself, exactly as the ws 'close' handler reports it.
     await handleSocketClose(d, ctx);
     await new Promise((r) => setTimeout(r, 100));
@@ -197,13 +200,14 @@ describe('adapter', () => {
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     await handleSocketMessage(d, sock, ctx, prompt('Cancel my appointment with Dr. Kim please'));
+    await handleSocketMessage(d, sock, ctx, prompt('Jason Stiles'));
     const before = sock.sent.length;
-    for (const digit of '4471829') await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit }));
+    for (const digit of '0305198') await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit }));
     expect(sock.sent.length).toBe(before);
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
     expect(sock.sent.length).toBe(before);
-    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '3' }));
-    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim would be cancelled, member ID 4 4 7 1, 8 2 9 3. Shall I cancel it?');
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '0' }));
+    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim would be cancelled, for Jason Stiles, born March 5th, 1980. Shall I cancel it?');
     await handleSocketMessage(d, sock, ctx, prompt('yes'));
     expect(texts(sock).at(-2)).toBe('Your appointment is cancelled.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
@@ -220,7 +224,7 @@ describe('adapter', () => {
     const last = records.at(-1);
     expect(last.event.last).toBe(true);
     expect(last.turnState.asr.bargeIn).toBe(true);
-    expect(last.decision.promptId).toBe('ask_memberId');
+    expect(last.decision.promptId).toBe('ask_name');
   });
 
   it('drops a non-final prompt without running a turn, and logs it once', async () => {
@@ -241,7 +245,7 @@ describe('adapter', () => {
     expect(d.lines.filter((l) => l.includes('non-final prompt'))).toHaveLength(1);
     // The final prompt that follows is handled normally.
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
-    expect(texts(sock).at(-1)).toBe("What's your member ID?");
+    expect(texts(sock).at(-1)).toBe("What's your first and last name?");
   });
 
   it('truncates a very long partial in the frame log', async () => {
@@ -292,11 +296,11 @@ describe('adapter', () => {
     const sock2 = fakeSocket();
     const ctx2 = newConnectionContext(d.tokens.mint('CA1'), sock2);
     await handleSocketMessage(d, sock2, ctx2, setupMsg('CA1', 'VX2'));
-    expect(texts(sock2)).toEqual(["What's your member ID?"]);
+    expect(texts(sock2)).toEqual(["What's your first and last name?"]);
     await handleSocketMessage(d, sock2, ctx2, prompt('Dr. Chen'));
-    // The form asks for the member ID before the date, so the re-ask repeats; the provider fill
+    // The form asks for the name before the provider, so the re-ask repeats; the provider fill
     // below is what proves the turn ran on the session the first connection left behind.
-    expect(texts(sock2)).toEqual(["What's your member ID?", "What's your member ID?"]);
+    expect(texts(sock2)).toEqual(["What's your first and last name?", "What's your first and last name?"]);
     expect(d.store.get('CA1')?.session.slots.provider.value).toBe('chen');
   });
 
@@ -313,7 +317,7 @@ describe('adapter', () => {
     await handleSocketClose(d, ctx);
     expect(d.store.get('CA1')?.socket).toBe(sock2);
     await handleSocketMessage(d, sock2, ctx2, prompt('I need to reschedule my appointment'));
-    expect(texts(sock2).at(-1)).toBe("What's your member ID?");
+    expect(texts(sock2).at(-1)).toBe("What's your first and last name?");
     expect(frameLines(d.dir).some((f) => f.dir === 'log' && f.msg.staleSocketClosed === true)).toBe(true);
   });
 
@@ -324,7 +328,7 @@ describe('adapter', () => {
     const ctx = newConnectionContext(tok, sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
     expect(d.store.get('CA1')?.socket).toBeNull();
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday', 'yes']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'yes']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(d.store.get('CA1')?.ended).toBe(true);
@@ -353,7 +357,7 @@ describe('adapter', () => {
     expect(texts(sock).at(-1)).toBe(TURN_ERROR_TEXT);
     expect(d.store.get('CA1')?.ended).toBe(false);
     await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
-    expect(texts(sock).at(-1)).toBe("What's your member ID?");
+    expect(texts(sock).at(-1)).toBe("What's your first and last name?");
     const failed = frameLines(d.dir).find((f) => f.dir === 'log' && f.msg.turnFailed !== undefined);
     expect((failed?.msg.turnFailed as { message: string }).message).toBe('boom');
   });
@@ -363,7 +367,7 @@ describe('adapter', () => {
     const sock = fakeSocket();
     const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
     await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday', 'yes']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'yes']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(d.store.get('CA1')?.ended).toBe(true);
@@ -372,7 +376,7 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '5' }));
     expect(sock.sent.length).toBe(settled);
     const inbound = frameLines(d.dir).filter((f) => f.dir === 'in');
-    expect(inbound).toHaveLength(7);
+    expect(inbound).toHaveLength(8);
     expect(inbound.at(-2)?.msg.voicePrompt).toBe('hello? are you still there?');
     expect(inbound.at(-1)?.msg.digit).toBe('5');
   });
@@ -496,16 +500,19 @@ describe('no-input timer', () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
     await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
-    expect(texts(sock).at(-1)).toBe(promptText('ask_memberId', {}));
-    // Two digits of an eight digit ID: the turn runs but decides nothing, so only this re-arm
+    expect(texts(sock).at(-1)).toBe(promptText('ask_name', {}));
+    // The keypad rung belongs to the birthday: the name takes no digits at all.
+    await handleSocketMessage(d, sock, ctx, prompt('Jason Stiles'));
+    expect(texts(sock).at(-1)).toBe(promptText('ask_dob', {}));
+    // Two digits of an eight digit date: the turn runs but decides nothing, so only this re-arm
     // keeps the caller from being left with a half-typed buffer and an open line.
-    for (const n of ['4', '4']) await handleSocketMessage(d, sock, ctx, digit(n));
-    expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('44');
-    await vi.advanceTimersByTimeAsync(textEstimateMs(promptText('ask_memberId', {})) + WAIT - 1);
-    expect(texts(sock)).toHaveLength(2);
+    for (const n of ['0', '3']) await handleSocketMessage(d, sock, ctx, digit(n));
+    expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('03');
+    await vi.advanceTimersByTimeAsync(textEstimateMs(promptText('ask_dob', {})) + WAIT - 1);
+    expect(texts(sock)).toHaveLength(3);
     await vi.advanceTimersByTimeAsync(1);
-    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_memberId', {})]);
-    // Silence abandons the half-typed ID rather than carrying it into the plain re-ask.
+    expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_dob', {})]);
+    // Silence abandons the half-typed date rather than carrying it into the plain re-ask.
     expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('');
   });
 
@@ -530,20 +537,20 @@ describe('no-input timer', () => {
     expect(texts(sock).slice(-2)).toEqual([NO_INPUT, ASK_INTENT]);
   });
 
-  it('estimates on the frames as they went out, digit spacing included', async () => {
+  it('estimates the wait from the frames as they went out', async () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     const spoken = texts(sock).at(-1)!;
-    expect(spoken).toContain('4 4 7 1, 8 2 9 3');
+    expect(spoken).toContain('born March 5th, 1980');
     const armed = frameLines(d.dir).filter((f) => f.dir === 'log' && f.msg.noInputArmedMs !== undefined).at(-1);
     expect(armed?.msg.noInputArmedMs).toBe(textEstimateMs(spoken) + WAIT);
-    // Twilio reads eight separate digits, which takes longer than the readable form the session
-    // keeps; estimating on the unrewritten text would have cut the wait short.
-    const readable = d.store.get('CA1')!.session.lastPromptText;
-    expect(textEstimateMs(readable)).toBeLessThan(textEstimateMs(spoken));
+    // No summary speaks an identifier any more (billing hands off instead of reading one back),
+    // so this summary goes out as the session holds it. Where the rewrite does spell one out,
+    // Twilio reads more than the readable form, which is why the estimate is built on the frames.
+    expect(spoken).toBe(d.store.get('CA1')!.session.lastPromptText);
   });
 
   it('restarts the wait on the prompt a reconnect replays', async () => {
@@ -604,7 +611,7 @@ describe('no-input timer', () => {
 
     broken = false;
     await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
-    expect(texts(sock).at(-1)).toBe(promptText('ask_memberId', {}));
+    expect(texts(sock).at(-1)).toBe(promptText('ask_name', {}));
     // One turn that works resets the count, so the wait comes back with it.
     expect(vi.getTimerCount()).toBe(1);
 
@@ -656,7 +663,7 @@ describe('no-input timer', () => {
     expect(vi.getTimerCount()).toBe(0);
     await vi.advanceTimersByTimeAsync(500);
     await running;
-    expect(texts(sock)).toEqual([GREETING, "What's your member ID?"]);
+    expect(texts(sock)).toEqual([GREETING, "What's your first and last name?"]);
     expect(silenceLines(d.dir)).toHaveLength(0);
   });
 
@@ -669,7 +676,7 @@ describe('no-input timer', () => {
     // handleSocketMessage clears the timer before its first await, so the queued closure finds
     // the generation already moved on and does nothing.
     await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
-    expect(texts(sock)).toEqual([GREETING, "What's your member ID?"]);
+    expect(texts(sock)).toEqual([GREETING, "What's your first and last name?"]);
     expect(silenceLines(d.dir)).toHaveLength(0);
     expect(d.store.get('CA1')?.session.intentAttempts).toBe(0);
   });
@@ -677,7 +684,7 @@ describe('no-input timer', () => {
   it('never arms after a completion', async () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
-    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'four four seven one eight two nine three', 'Tuesday', 'yes']) {
+    for (const t of ["I need to reschedule my appointment, it's with Dr. Chen sometime next week", 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'yes']) {
       await handleSocketMessage(d, sock, ctx, prompt(t));
     }
     expect(sock.sent.at(-1)).toMatchObject({ type: 'end' });
@@ -750,6 +757,19 @@ describe('spokenDigits', () => {
     expect(spokenDigits('Your code is 44718293.')).toBe('Your code is 4 4 7 1 8 2 9 3.');
   });
 
+  it('leaves a lone four-digit year alone, which the summary now reads back', () => {
+    expect(spokenDigits('for Jason Stiles, born March 5th, 1980.')).toBe('for Jason Stiles, born March 5th, 1980.');
+    expect(spokenDigits('1980')).toBe('1980');
+  });
+
+  it('spells an ID group out beside a year without touching the year', () => {
+    expect(spokenDigits('born 1980, member 4471 8293')).toBe('born 1980, member 4 4 7 1, 8 2 9 3');
+    // Latent, and no prompt writes it today: a year separated from an ID group by nothing but a
+    // space reads to the regex as one three-group identifier, so the year is spelled out too.
+    // A slot that declared how its value is spoken would not have to guess from the text.
+    expect(spokenDigits('born 1980 4471 8293')).toBe('born 1 9 8 0, 4 4 7 1, 8 2 9 3');
+  });
+
   it('leaves short numbers alone', () => {
     expect(spokenDigits('Your appointment with Dr. Chen is moved to Tuesday, September 22.')).toBe(
       'Your appointment with Dr. Chen is moved to Tuesday, September 22.',
@@ -767,6 +787,8 @@ describe('spokenDigits', () => {
     expect(spokenDigits('1234 5678 9012')).toBe('1 2 3 4, 5 6 7 8, 9 0 1 2');
     // The summary's member ID arrives as a text frame of its own, between recorded clips.
     expect(spokenDigits('4471 8293')).toBe('4 4 7 1, 8 2 9 3');
-    expect(spokenDigits('1234 and 5678')).toBe('1 2 3 4 and 5 6 7 8');
+    // Two lone four-digit runs with words between them are two ordinary numbers, not an identifier.
+    expect(spokenDigits('1234 and 5678')).toBe('1234 and 5678');
+    expect(spokenDigits('12345 and 56789')).toBe('1 2 3 4 5 and 5 6 7 8 9');
   });
 });

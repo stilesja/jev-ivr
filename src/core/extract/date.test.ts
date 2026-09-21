@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeWindow, resolveDate, type DateComponents } from './date';
+import { describeDob, describeWindow, normalizeYear, ordinal, resolveDate, type DateComponents } from './date';
 
 // 2026-09-18 is a Friday.
 const TODAY = '2026-09-18';
@@ -124,5 +124,52 @@ describe('describeWindow', () => {
   it('describes a month window as "in <Month>" and other windows as underscore-to-space', () => {
     expect(describeWindow({ start: '2026-12-01', end: '2026-12-31', label: 'december' })).toBe('in December');
     expect(describeWindow({ start: '2026-09-21', end: '2026-09-27', label: 'next_week' })).toBe('next week');
+  });
+});
+
+describe('ordinal', () => {
+  it('suffixes 1st, 2nd, 3rd, and 4th', () => {
+    expect(ordinal(1)).toBe('1st');
+    expect(ordinal(2)).toBe('2nd');
+    expect(ordinal(3)).toBe('3rd');
+    expect(ordinal(4)).toBe('4th');
+  });
+
+  it('keeps the teens at th', () => {
+    expect(ordinal(11)).toBe('11th');
+    expect(ordinal(12)).toBe('12th');
+    expect(ordinal(13)).toBe('13th');
+  });
+
+  it('resumes st/nd/rd past the teens', () => {
+    expect(ordinal(21)).toBe('21st');
+    expect(ordinal(22)).toBe('22nd');
+    expect(ordinal(23)).toBe('23rd');
+    expect(ordinal(31)).toBe('31st');
+  });
+});
+
+describe('describeDob', () => {
+  it('describes with an ordinal day', () => {
+    expect(describeDob('1980-03-05')).toBe('March 5th, 1980');
+    expect(describeDob('1991-11-22')).toBe('November 22nd, 1991');
+    expect(describeDob('2001-01-11')).toBe('January 11th, 2001');
+  });
+});
+
+describe('normalizeYear', () => {
+  it('maps a two-digit year into the past', () => {
+    expect(normalizeYear('eighty', '2026-09-18')).toBe(1980);
+    expect(normalizeYear('ten', '2026-09-18')).toBe(2010);
+  });
+
+  it('parses a spoken four-digit year', () => {
+    expect(normalizeYear('nineteen eighty', '2026-09-18')).toBe(1980);
+    expect(normalizeYear('two thousand five', '2026-09-18')).toBe(2005);
+  });
+
+  it('rejects a non-numeric span', () => {
+    expect(normalizeYear('none', '2026-09-18')).toBeNull();
+    expect(normalizeYear('march', '2026-09-18')).toBeNull();
   });
 });

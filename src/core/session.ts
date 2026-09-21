@@ -1,6 +1,6 @@
 import type { FormId, Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
-import type { DateWindow } from './extract/date';
+import type { SlotPartial } from '../domain/slots/types';
 import type { AnswerMap } from '../jev/types';
 
 export interface SlotState {
@@ -8,7 +8,7 @@ export interface SlotState {
   display: string | null;
   confirmed: boolean;
   attempts: number;
-  window: DateWindow | null;
+  window: SlotPartial | null;
 }
 
 export interface HistoryEntry {
@@ -89,7 +89,7 @@ function cloneSlot(s: SlotState): SlotState {
 }
 
 export function emptySlots(): Record<SlotId, SlotState> {
-  return { memberId: emptySlot(), provider: emptySlot(), date: emptySlot() };
+  return { name: emptySlot(), dob: emptySlot(), memberId: emptySlot(), provider: emptySlot(), date: emptySlot() };
 }
 
 export function newSession(sessionId: string, nowMs: number, caller: CallerRecord = DEFAULT_CALLER): Session {
@@ -125,6 +125,8 @@ export function cloneSession(s: Session): Session {
   return {
     ...s,
     slots: {
+      name: cloneSlot(s.slots.name),
+      dob: cloneSlot(s.slots.dob),
       memberId: cloneSlot(s.slots.memberId),
       provider: cloneSlot(s.slots.provider),
       date: cloneSlot(s.slots.date),
