@@ -9,6 +9,28 @@ Status: Phase 3a (phone line over Twilio ConversationRelay); Phase 0–1 merged.
 No Jev API key yet; the harness runs against a deterministic stub keyed on a
 labeled corpus.
 
+## A call, end to end
+
+    System   Thanks for calling the clinic. How can I help you today?
+    Caller   I need to reschedule my appointment, it's with Dr. Chen sometime next week.
+    System   What's your first and last name?
+    Caller   Jason Stiles.
+    System   And your date of birth?
+    Caller   March fifth, nineteen eighty.
+    System   next week. Which day works for you?
+    Caller   Tuesday.
+    System   Your appointment with Dr. Chen would move to Tuesday, September 22,
+             for Jason Stiles, born March 5th, 1980. Shall I make that change?
+    Caller   Yes.
+    System   Your appointment is moved. Goodbye.
+
+The four scheduling forms (`schedule_new`, `reschedule`, `cancel`,
+`confirm_appointment`) identify the caller by first-and-last name and date of
+birth, asked in that order before the provider and the date. `billing` asks for
+a member ID instead, and hands off. The name and the two dates are spoken by
+TTS, never played from a clip: a recorded clip only ever carries the fixed text
+around them.
+
 ## Setup
 
 Node 20+ and pnpm required.
@@ -36,8 +58,8 @@ checking today's behaviour against an old recording rather than reproducing it.
 In the REPL, type an utterance, `dtmf:44718293` to send keypad digits,
 `/silence` (or an empty line) to run a silence turn — as if the caller said
 and pressed nothing — or `/reset` to start a new call. A scenario step can be
-`{ "silence": true }` for the same thing. The corpus has 188 labeled
-outcomes and there are 67 scenarios available for multi-turn testing.
+`{ "silence": true }` for the same thing. The corpus has 211 labeled
+outcomes and there are 72 scenarios available for multi-turn testing.
 
 ## Regression
 
@@ -65,8 +87,8 @@ confirmed explicitly), `change` (`adding` or `replacing`, for an utterance
 that asks for another task, including at the summary), `providerUnsure` (a
 hedged or dual provider name is read back), `confirm` (`yes`, `no`, or
 `unanswered`: how an utterance at the summary answers it), `changeSlot`
-(`provider`, `date`, or `memberId`: which detail the caller names when asked
-what to change), and `secondIntent` (a second form intent named alongside
+(`name`, `dob`, `provider`, `date`, or `memberId`: which detail the caller
+names when asked what to change), and `secondIntent` (a second form intent named alongside
 the main one, `no_form` entries only). An entry with none of the optional
 labels is a plain, committed answer to the current question. Contexts add
 `confirm_<form>` for the summary turn, alongside a plain form or `no_form`:
@@ -78,6 +100,18 @@ the wrong kind of context. An entry's text must also be unique once
 normalized (lowercased, punctuation stripped): the fixture stub looks
 entries up by that text, so two entries that normalize the same are
 ambiguous and the parser rejects the second one.
+
+A scheduling-form entry labels the two identity slots the way the caller says
+them. `slots.name` is the span as spoken ("Jason Stiles"), and must be one of
+the candidate word spans of the entry's normalized text, because `nameSpan` is
+a Choice over exactly those spans. `slots.dob` is `{ month, day, year? }`: the
+month as one of the slot's own month labels (`march`, not "Mar"), the day as
+`"1"`..`"31"` (not "5th"), and the year as a number span of the text
+("nineteen eighty", "eighty"). Month and day come together or not at all; a
+year on its own is what a caller answers "And what year?" with. Billing entries
+keep `slots.memberId`. Every one of those is checked against the vocabulary the
+questions actually offer, so a label no answer could pick fails the load naming
+the entry id instead of going quietly unread as a `none` at run time.
 
 Every run ends with a summary: corpus outcomes matching the baseline,
 scenarios passing their own expectation and matching the baseline, a cost
@@ -234,6 +268,19 @@ apology is still spoken but the wait stops re-arming, so a model that is down
 cannot leave the line apologizing every few seconds; the server log says
 `N consecutive turn failures, no-input wait stopped`.
 
+Every slot walks that ladder, but the middle rung is the slot's own. `dob`
+offers the keypad — "Please enter your date of birth on the keypad: two digits
+for the month, two for the day, and four for the year." — and reads the eight
+digits as MMDDYYYY under the same validity rules as a spoken answer. `name` has
+no keypad rung at all, because a keypad cannot take a name: its ladder is the
+retry text ("Sorry, I need your first and last name."), the retry text again,
+then an agent. A birthday said without a year narrows instead of failing:
+"March fifth" is answered with "And what year?", and a year on its own finishes
+the slot. Saying the same partial again is not an answer and not progress —
+"March fifth" at "And what year?", or "next week" at "next week. Which day
+works for you?" — so it counts a failed attempt and walks the ladder rather
+than asking the same question forever.
+
 ### Confirmation and multi-intent
 
 A hedged request ("maybe cancel it") is confirmed before anything happens:
@@ -241,27 +288,47 @@ A hedged request ("maybe cancel it") is confirmed before anything happens:
 that utterance are kept and filled once the caller says yes.
 
 Every form that fills its last slot ends with a summary question instead of
-finishing outright: "Your appointment with Dr. Chen would move to Tuesday,
-September 22, member ID 4471 8293. Shall I make that change?" Saying "yes"
-completes the form with a short line, "Your appointment is moved." A
-correction — "no, Thursday", "no, Thursday with Dr. Alvarez", or a bare
-"Thursday" on its own — refills the named slot(s) and asks the summary
-again with the new values. A bare "no" asks "What should I change?" once
-per summary; answering that with another bare "no" still counts as a turn
-spent on the confirmation, so repeated bare no's walk the same ladder as an
-unanswered turn: a re-ask, then the keypad ("Press 1 to confirm, or 2 to
-change something."), then an agent. An utterance that is neither yes/no nor
-a slot value or name is itself an unanswered turn and follows that same
-ladder. The member ID fills silently — no ack, no readback of its own — and
-is confirmed only in the summary, where it can be corrected like any other
-slot. A form that ends in a handoff (billing) has no summary; the slots
-collected so far ride along in the handoff data instead.
+finishing outright:
+
+- `confirm_schedule`: "You'd be booked with Dr. Patel on Thursday, September
+  24, for Jason Stiles, born March 5th, 1980. Shall I book that?"
+- `confirm_reschedule`: "Your appointment with Dr. Chen would move to Tuesday,
+  September 22, for Jason Stiles, born March 5th, 1980. Shall I make that
+  change?"
+- `confirm_cancel`: "Your appointment with Dr. Chen would be cancelled, for
+  Jason Stiles, born March 5th, 1980. Shall I cancel it?"
+- `confirm_appointment_details`: "That's your appointment with Dr. Chen, for
+  Jason Stiles, born March 5th, 1980. Is that the one?"
+
+Saying "yes" completes the form with a short line, "Your appointment is
+moved." A correction — "no, Thursday", "no, Thursday with Dr. Alvarez", "no,
+it's Jason Styles", "no, born March 6th 1980", or a bare "Thursday" on its own
+— refills the named slot(s) and asks the summary again with the new values.
+Naming a detail without giving its new value re-asks that detail's own
+question: "the name" is answered with "What's your first and last name?", "the
+birthday" with "And your date of birth?". A bare "no" asks "What should I
+change?" once per summary; answering that with another bare "no" still counts
+as a turn spent on the confirmation, so repeated bare no's walk the same ladder
+as an unanswered turn: a re-ask, then the keypad ("Press 1 to confirm, or 2 to
+change something."), then an agent. An utterance that is neither yes/no nor a
+slot value or name is itself an unanswered turn and follows that same ladder.
+So is a correction to the value the summary just read back: "no, it's Jason
+Styles" changes the name and asks the summary again, while "no, it's Jason
+Stiles" against a summary that already says Jason Stiles changes nothing and
+spends a turn on the ladder — the corpus keeps that one-letter pair as `fc-13`
+and `fc-21`. The name, the date of birth and the member ID all fill silently —
+no ack, no readback of their own — and are confirmed only in the summary, where
+they can be corrected like any other slot. A form that ends in a handoff
+(billing) has no summary; the slots collected so far ride along in the handoff
+data instead.
 
 A request added mid-task ("can I also ask about my bill") is acknowledged
 once and queued: the current task completes with its short line, and the
-call moves on with "Now, let's ask about billing." The member
-ID carries over; provider and date are asked again, because an added task
-is a different appointment. "Never mind, I have a question about my bill"
+call moves on with "Now, let's ask about billing." The name,
+the date of birth and the member ID carry over; provider and date are asked
+again, because an added task is a different appointment. Billing chained after
+a scheduling form therefore asks for the member ID before it hands off: the
+scheduling form never collected one. "Never mind, I have a question about my bill"
 replaces the current task instead, and "actually, just cancel it instead"
 keeps the appointment's provider and date because it is the same
 appointment. A task that ends in a handoff (billing) always runs last, and
@@ -286,18 +353,27 @@ open.
     pnpm prompts:generate --pick greeting.0-2      # promote a candidate to the clip and record it
     pnpm prompts:generate --dry-run --voice Hannah --only greeting.0 # print the request; no key, no network
 
-After the final-confirm change, `pnpm prompts:check` reports 16 missing
-clips (the four summary questions, `ask_change`, and `confirm_dtmf`) and 4
-stale ones (the shortened completion lines); see Task 10 of
-`docs/superpowers/plans/2026-09-19-final-confirm.md` for the exact commands
-to regenerate them and remove the clips that are now unused.
+After the name-and-date-of-birth change, `pnpm prompts:check` reports 10
+missing clips and 8 stale ones. The missing ones are the six new prompts —
+`ask_name`, `ask_name_retry`, `ask_dob`, `ask_dob_retry`, `ask_dob_year`,
+`ask_dob_dtmf` — and the new closing segment of each of the four summary
+questions; the stale ones are the segments that shifted under them, since
+clip ids are positional: index by index, each summary's tail now reads "for"
+and "born" around the two new variables. All four summaries are
+therefore re-recorded. The member-ID prompts (`ask_memberId`,
+`ask_memberId_retry`, `ask_memberId_dtmf`) stay as they are: billing still asks
+for an ID. So does `ack_memberId`, which exists for the `by-confidence`
+readback policy and is unreachable while the member ID is a summary-policy slot
+on a form that has no summary. See Task 7 of
+`docs/superpowers/plans/2026-09-20-name-dob.md` for the exact commands.
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
 and are discovered by filename; adding one needs no manifest edit. A clip
 id is a fixed segment of a prompt (`ack_provider.0`, the text before the
 provider name) or a vocabulary value (`provider.chen`, `intent.cancel`,
-`window.next_week`). Member IDs and dates are always spoken by TTS, at a
-clause boundary so the voice change is not inside a sentence. The sheet's
+`window.next_week`). The caller's name, their date of birth, the appointment
+date and the member ID are always spoken by TTS, never played from a clip, and
+always at a clause boundary so the voice change is not inside a sentence. The sheet's
 `open` note means the segment precedes a variable: the generator records it
 without a falling intonation by sending it with a trailing comma in the
 request text (`--plain-open` turns that off for the whole run; combine it
@@ -333,8 +409,8 @@ free-form phrases are accepted by the API but untested against the web
 tool's picker, so set one per clip in `tags.json` only after hearing the
 inventory version. Fish Audio is not a ConversationRelay TTS
 provider, so set `TTS_PROVIDER` and `TTS_VOICE` (Google, Amazon, or
-ElevenLabs) to the closest voice to keep the seams on member IDs and dates
-as quiet as possible.
+ElevenLabs) to the closest voice to keep the seams on names, birthdays,
+member IDs and dates as quiet as possible.
 
 ### Live-call checklist
 
@@ -348,54 +424,79 @@ as quiet as possible.
 4. Call the number. You should hear the greeting within a second.
 5. Call again and stay quiet after the greeting: expect "I didn't hear
    anything." then the question again, then the keypad menu, then the
-   transfer to `HANDOFF_NUMBER` — the same ladder step 15 walks by saying
+   transfer to `HANDOFF_NUMBER` — the same ladder step 18 walks by saying
    something unrecognized instead. Partial results are on: watch the server
    log for the one-per-connection "dropped a non-final prompt" line while you
    speak, and confirm that starting to talk during a long pause stops the
    re-ask rather than racing it.
 6. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
-   week." Expect: "What's your member ID?"
-7. Spoken ID: say the eight digits. Expect the window question on its own,
-   with no readback: "next week. Which day works for you?" The member ID
-   fills silently now — it is confirmed only in the summary (step 9), not
-   read back here.
-8. Keypad ID: on a second call, press the eight digits instead. Expect the
-   same window question, with no readback either — spoken or keyed, there is
-   nothing to implicitly confirm before the summary.
-9. Say "Tuesday". Expect the summary question, with the digits spaced out
-   for TTS: "Your appointment with Dr. Chen would move to Tuesday, September
-   22, member ID 4 4 7 1, 8 2 9 3. Shall I make that change?"
-10. Call again, repeat through step 9, then stay quiet at the summary
+   week." Expect: "What's your first and last name?"
+7. Say "Jason Stiles". Expect "And your date of birth?" — the name fills
+   silently, with no readback of its own; it is confirmed only in the summary
+   (step 9).
+8. Say "March fifth, nineteen eighty". Expect the window question on its own,
+   again with no readback: "next week. Which day works for you?"
+9. Say "Tuesday". Expect the summary question: "Your appointment with Dr. Chen
+   would move to Tuesday, September 22, for Jason Stiles, born March 5th,
+   1980. Shall I make that change?" Listen to how the year comes out: a lone
+   four-digit run is left to TTS to read as a year, so it should say "nineteen
+   eighty", not "one nine eight zero".
+10. Call again and give the birthday without a year: say "Jason Stiles", then
+    "March fifth". Expect "And what year?"; answer "nineteen eighty" and expect
+    the day question to follow.
+11. Keypad birthday: call again, get to "And your date of birth?", and stay
+    quiet twice. Expect the question again, then "Please enter your date of
+    birth on the keypad: two digits for the month, two for the day, and four
+    for the year." Press `03051980` and expect the day question. There is no
+    keypad rung for the name: staying quiet three times at "What's your first
+    and last name?" transfers instead.
+12. Call again and say all of it at once: "I need to reschedule my appointment
+    with Dr. Chen next week, this is Jason Stiles, born March 5th 1980."
+    Expect the day question directly — "next week. Which day works for you?" —
+    with neither the name nor the birthday asked.
+13. Call again, repeat through step 9, then stay quiet at the summary
     question: expect "I didn't hear anything." then the summary question
     again, then the keypad offer ("Press 1 to confirm, or 2 to change
     something."), then the transfer.
-11. Call again, repeat through step 9, then say "yes". Expect "Your
+14. Call again, repeat through step 9, then say "yes". Expect "Your
     appointment is moved." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
     finish the queued clips, and Twilio closes it and hits `/cr-action` with
     `SessionStatus=ended`.
-12. Call again, repeat through step 9, then say "no, Thursday" instead of
+15. Call again, repeat through step 9, then say "no, Thursday" instead of
     "yes". Expect the summary question again, now naming Thursday instead of
-    Tuesday. Say "yes" to finish.
-13. Call again and say: "I need to reschedule my appointment with Dr.
+    Tuesday. Then try "no, it's Jason Styles": expect the summary again with
+    the new name. Say "yes" to finish.
+16. Call again and say: "I need to reschedule my appointment with Dr.
     Alvarez for next Thursday, and also I have a question about my bill."
-    Expect "Sure, we'll ask about billing after this." before the member ID
-    question. Give the ID, say "yes" at the summary, and expect the billing
-    handoff to follow.
-14. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
-15. Call again, say "what are your hours" three times. Expect the open
+    Expect "Sure, we'll ask about billing after this." before the name
+    question. Give the name and birthday, say "yes" at the summary, and expect
+    "Now, let's ask about billing." followed by "What's your member ID?" — a
+    chained billing task collects its own ID before the handoff, because the
+    scheduling form never asked for one.
+17. Call again and say "I have a question about my bill" on its own. Expect
+    "What's your member ID?", the eight digits spoken or keyed, then the
+    billing handoff: billing is the one form that still identifies the caller
+    by member ID.
+18. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
+19. Call again, say "what are your hours" three times. Expect the open
     reprompt, the keypad menu, then the transfer.
-16. Call again, get as far as the member ID question, then kill `pnpm serve`
+20. Call again, get as far as the date-of-birth question, then kill `pnpm serve`
     (Ctrl-C) and start it again. ConversationRelay's session fails, `/cr-action`
     reconnects, and the caller hears the last prompt again. Repeat the kill more
     than `RECONNECT_LIMIT` times on one call: the next callback stops
     reconnecting, apologizes, and dials `HANDOFF_NUMBER`.
-17. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
+21. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
     and compare its decisions with `traces/<CallSid>.jsonl`.
 
 Things to note on the first real call, per the spec's open questions: whether
 `speechModel="flux"` is accepted alongside partial prompts, how long Deepgram
 takes to finalize a turn, whether an interrupted prompt also arrives as a
-`prompt`, and how TTS reads the member ID and provider names.
+`prompt`, and how TTS reads a name, a birthday, the member ID and the provider
+names. Watch the opener's latency too: the turn outside a form now asks 32
+questions rather than 26 — `nameGiven`, `nameSpan`, `dobGiven`, `dobMonth`,
+`dobDay`, `dobYear` are all on it — which costs a fraction of a cent but
+several hundred more output tokens on the longest turn of the call. That is the
+turn to check against `JEV_TIMEOUT_MS` before trusting the default.
 
 ### Operational notes
 
@@ -456,5 +557,14 @@ takes to finalize a turn, whether an interrupted prompt also arrives as a
 ## DTMF baseline
 
 `src/domain/dtmf-baseline.json` counts caller turns under a conventional
-keypad tree: main menu, ID entry, ID confirm, provider menu, date entry, date
-confirm, final confirm. The metrics summary reports observed turns against it.
+keypad tree: main menu, birthday entry, birthday confirm, provider menu, date
+entry, date confirm, final confirm. The metrics summary reports observed turns
+against it.
+
+A keypad tree cannot take a name, so the scheduling branches now key in a
+birthday where they used to key in a member ID; billing keeps the ID entry. The
+turn counts are unchanged (7, 7, 5, 5 for the scheduling forms, 3 for billing),
+and the file holds counts only — which is why the ID-to-birthday swap is
+recorded here rather than in the JSON. The metric that moves is what the voice
+path gets for those turns: it collects a name as well, in the same number of
+turns.

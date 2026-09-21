@@ -1,7 +1,7 @@
 # Design: Name and date of birth in place of the member ID
 
 **Date:** 2026-09-20
-**Status:** approved in conversation; implementation plan to follow
+**Status:** implemented on branch name-dob; see plan deviation record
 **Depends on:** final confirm (PR #8), no-input handling (PR #9)
 
 ## 1. Scope
