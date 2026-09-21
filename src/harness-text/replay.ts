@@ -38,13 +38,15 @@ function isRecordedSilence(msg: unknown): boolean {
  *
  * Each turn runs with the clock and default date the recording actually happened under: `now`
  * returns the frame line's own timestamp, and `todayIso` is the setup line's date unless the
- * caller passed one in `options`.
+ * caller overrides it. `opts.todayIso` is never the date a turn runs under -- RunOptions requires
+ * one, and the recording's own date is the honest answer -- so the override has a name of its own
+ * rather than shadowing a field the caller has already had to fill in.
  */
 export async function replayFrameLog(
   path: string,
   opts: RunOptions,
   onRun?: (run: TurnRun) => void,
-  options?: { todayIso?: string },
+  options?: { todayIsoOverride?: string },
 ): Promise<ReplayResult> {
   const skipped: string[] = [];
   const lines = readFrameLog(path, (lineNumber) => skipped.push(`line ${lineNumber}: unparsable`));
@@ -90,7 +92,7 @@ export async function replayFrameLog(
       skipped.push(`line ${lineNumber}: non-final prompt`);
       continue;
     }
-    const turnOpts: RunOptions = { ...opts, now: () => lineMs, todayIso: options?.todayIso ?? setupDate! };
+    const turnOpts: RunOptions = { ...opts, now: () => lineMs, todayIso: options?.todayIsoOverride ?? setupDate! };
     try {
       const run = await runTurn(session, frame, turnOpts);
       session = run.result.session;

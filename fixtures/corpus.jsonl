@@ -189,7 +189,7 @@
 {"id":"fc-10","text":"the day","intent":"none","context":"confirm_reschedule","changeSlot":"date"}
 {"id":"fc-11","text":"the doctor","intent":"none","context":"confirm_cancel","changeSlot":"provider"}
 {"id":"fc-12","text":"my date of birth","intent":"none","context":"confirm_reschedule","changeSlot":"dob"}
-{"id":"fc-13","text":"no, it's Jason Styles","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"name":"Jason Styles"}}
+{"id":"fc-13","text":"no, it's Jason Styles","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"name":"Jason Styles"},"tags":["correction_changes_value"]}
 {"id":"fc-15","text":"yes, and can I also ask about my bill","intent":"billing","context":"confirm_reschedule","confirm":"yes","change":"adding"}
 {"id":"fc-16","text":"no, the doctor is wrong","intent":"none","context":"confirm_reschedule","confirm":"no","changeSlot":"provider"}
 {"id":"fc-17","text":"Cheng, not Chen","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"provider":"cheng"}}
@@ -221,8 +221,8 @@
 {"id":"db-08","text":"I was born on the twelfth of November nineteen ninety one","intent":"none","context":"schedule_new","prompted":"dob","slots":{"dob":{"month":"november","day":"12","year":"nineteen ninety one"}}}
 {"id":"db-09","text":"August 15th, 1972","intent":"none","context":"cancel","prompted":"dob","slots":{"dob":{"month":"august","day":"15","year":"1972"}}}
 {"id":"db-10","text":"my birthday is January 11th 2001","intent":"none","context":"confirm_appointment","prompted":"dob","slots":{"dob":{"month":"january","day":"11","year":"2001"}}}
-{"id":"fc-21","text":"no, it's Jason Stiles","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"name":"Jason Stiles"}}
+{"id":"fc-21","text":"no, it's Jason Stiles","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"name":"Jason Stiles"},"tags":["correction_same_value"]}
 {"id":"fc-22","text":"the name","intent":"none","context":"confirm_reschedule","changeSlot":"name"}
 {"id":"fc-23","text":"no, born March 6th 1980","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"dob":{"month":"march","day":"6","year":"1980"}}}
 {"id":"fc-24","text":"the birthday","intent":"none","context":"confirm_cancel","changeSlot":"dob"}
-{"id":"db-11","text":"nineteen eighty","intent":"none","context":"reschedule","prompted":"dob","slots":{"dob":{"year":"nineteen eighty"}},"tags":["year_only"]}
+{"id":"db-11","text":"nineteen eighty","intent":"none","context":"reschedule","prompted":"dob","slots":{"dob":{"year":"nineteen eighty"}},"tags":["year_only_no_pending","dob_retry"]}

@@ -117,9 +117,10 @@ async function repl(opts: RunOptions, quiet: boolean): Promise<TraceRecord[]> {
 async function main(): Promise<void> {
   const args = parseCliArgs();
   const thresholds = buildThresholds(args.threshold ?? []);
-  const client = buildClient(args.client!, corpusFileOf(args['corpus-file'], args.corpus), thresholds);
+  const todayIso = resolveTodayIso(args.today);
+  const client = buildClient(args.client!, corpusFileOf(args['corpus-file'], args.corpus), thresholds, todayIso);
   const trace = args.trace ? new TraceWriter(args.trace) : null;
-  const opts: RunOptions = { client, thresholds, todayIso: resolveTodayIso(args.today), trace };
+  const opts: RunOptions = { client, thresholds, todayIso, trace };
   const records: TraceRecord[] = [];
 
   if (args.corpus) {
@@ -151,7 +152,7 @@ async function main(): Promise<void> {
   if (args.replay) {
     // A replay defaults to the call's own date; --today only overrides it when the flag was
     // actually passed (in either `--today VALUE` or `--today=VALUE` form).
-    const replayOptions = args.today !== undefined ? { todayIso: args.today } : undefined;
+    const replayOptions = args.today !== undefined ? { todayIsoOverride: args.today } : undefined;
     const r = await replayFrameLog(args.replay, opts, (run) => printRun(run, args.quiet!), replayOptions);
     records.push(...r.records);
     for (const s of r.skipped) console.log(`skipped ${s}`);

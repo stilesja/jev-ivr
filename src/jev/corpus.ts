@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { FORM_INTENTS, INTENTS, isFormIntent, type FormId, type Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 import { candidateSpans, candidateWordSpans } from '../core/spans';
+import { MONTHS } from '../core/extract/date';
+import { DOB_DAYS } from '../domain/slots/dob';
 
 export interface DateLabel {
   mode?: string;
@@ -180,6 +182,15 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
       if (dob.day !== undefined && dob.month === undefined) throw new Error(`corpus ${entry.id}: dob needs a month and day together`);
       if (dob.year !== undefined && !candidateSpans(entry.text).includes(normalizeText(dob.year))) {
         throw new Error(`corpus ${entry.id}: dob year span "${dob.year}" is not a candidate span of the text`);
+      }
+      // The month and the day are choice labels, not spans: the dobMonth and dobDay questions
+      // offer exactly these, so anything else ("Mar", "31st") can only be picked as `none`, and
+      // the labelled birthday would go quietly unread instead of failing here at the id.
+      if (dob.month !== undefined && !(MONTHS as readonly string[]).includes(dob.month)) {
+        throw new Error(`corpus ${entry.id}: dob month "${dob.month}" is not one of the month labels`);
+      }
+      if (dob.day !== undefined && !DOB_DAYS.includes(dob.day)) {
+        throw new Error(`corpus ${entry.id}: dob day "${dob.day}" is not a day-of-month label "1".."31"`);
       }
     }
     if (seen.has(entry.id)) throw new Error(`corpus ${entry.id}: duplicate id`);

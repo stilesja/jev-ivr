@@ -218,7 +218,9 @@ describe('fillSlots member id policy', () => {
 
   it('fills a summary-policy slot silently: no ack, not confirmed, no readback owed', () => {
     const spec = { ...SLOTS.memberId, spokenConfirm: 'summary' as const };
-    const s = setForm(newSession('s', 0), 'cancel');
+    // billing, the form that actually carries the member ID: the slot is required there, so the
+    // readback assertion below is the policy answering rather than a slot no form asked for.
+    const s = setForm(newSession('s', 0), 'billing');
     const r = fillSlots(s, answers, spoken, [spec]);
     expect(r.acks).toEqual([]);
     expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });
@@ -226,12 +228,12 @@ describe('fillSlots member id policy', () => {
   });
 
   // Contrasts with the summary-policy test above: passing a spec whose spokenConfirm differs from
-  // SLOTS.memberId's global 'always' policy must change fillSlots' behavior, proving it reads the
+  // SLOTS.memberId's own 'summary' policy must change fillSlots' behavior, proving it reads the
   // policy off the spec it is given rather than off the global SLOTS registry (the summary-policy
   // test alone would still pass against code that read SLOTS[spec.id].spokenConfirm instead).
   it('fills a by-confidence-policy spec with an implicit ack and stays unconfirmed', () => {
     const spec = { ...SLOTS.memberId, spokenConfirm: 'by-confidence' as const };
-    const s = setForm(newSession('s', 0), 'cancel');
+    const s = setForm(newSession('s', 0), 'billing');
     const r = fillSlots(s, answers, spoken, [spec]);
     expect(r.acks).toEqual([{ promptId: 'ack_memberId', vars: { memberId: '4471 8293' } }]);
     expect(s.slots.memberId).toMatchObject({ value: '44718293', confirmed: false });

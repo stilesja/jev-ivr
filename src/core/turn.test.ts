@@ -206,7 +206,7 @@ describe('turn', () => {
     let r = say(started(), 'cancel with dr patel', {
       intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }),
     });
-    r = say(r.session, 'jason stiles', { nameGiven: noul(0.95), nameSpan: choice({ 'jason stiles': 0.9, none: 0.1 }) });
+    r = say(r.session, 'jason stiles', NAME_ANSWERS);
     expect(r.decision).toMatchObject({ promptId: 'ask_dob' });
 
     // No partial pending: the plain retry text, and the attempt is counted.
@@ -562,7 +562,7 @@ type Turn = string | { say: string; over: AnswerMap };
 function heuristicAnswers(session: Session, text: string, over: AnswerMap): AnswerMap {
   const questions = plan(session, promptFrame(text), tc).questions ?? {};
   const out: AnswerMap = {};
-  for (const [id, q] of Object.entries(questions)) out[id] = answerHeuristically(id, q, text.toLowerCase());
+  for (const [id, q] of Object.entries(questions)) out[id] = answerHeuristically(id, q, text.toLowerCase(), tc.todayIso);
   return { ...out, ...over };
 }
 

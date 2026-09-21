@@ -8,11 +8,11 @@ import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { isChoice, isNoul, isScore, rankProbabilities } from './types';
 
-async function ask(text: string) {
+async function ask(text: string, todayIso = '2026-09-18') {
   const session = newSession('s', 0);
   const state = buildTurnState(session, { text, isFinal: true, dtmf: null }, 0);
-  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
-  const res = await new HeuristicStubClient().ask({ state: state as never, questions });
+  const questions = buildQuestions(session, { text, candidateSpans: candidateSpans(text), candidateWordSpans: candidateWordSpans(text), todayIso, thresholds: { ...DEFAULT_THRESHOLDS }, window: null });
+  const res = await new HeuristicStubClient({ todayIso }).ask({ state: state as never, questions });
   expect(Object.keys(res.answers).sort()).toEqual(Object.keys(questions).sort());
   return res;
 }
@@ -88,6 +88,46 @@ describe('HeuristicStubClient', () => {
     // A member ID is a long string of number words, not a birth year said on its own.
     const id = await ask('four four seven one eight two nine three');
     expect((id.answers.dobGiven as { noul: number }).noul).toBeLessThan(0.2);
+  });
+
+  it('does not read a marker phrase that introduces a reason as a name', async () => {
+    // "this is" / "it's" introduces a name only when a name is what follows: one to three words
+    // with nothing in them that belongs around a name rather than in it.
+    for (const text of ['this is regarding a scheduling issue', 'this is about my bill', 'this is dr chen calling']) {
+      const res = await ask(text);
+      expect([text, (res.answers.nameGiven as { noul: number }).noul]).toEqual([text, 0.05]);
+      expect((res.answers.nameSpan as { choice: string }).choice).toBe('none');
+    }
+  });
+
+  it('reads a name said in the same breath as a member id', async () => {
+    const res = await ask('my name is Jason Stiles, member 4471 8293');
+    expect((res.answers.nameGiven as { noul: number }).noul).toBeGreaterThan(0.8);
+    expect((res.answers.nameSpan as { choice: string }).choice).toBe('jason stiles');
+    // Digits are still no name on their own: no marker, and a digit token is never a word span.
+    const bare = await ask('4471 8293');
+    expect((bare.answers.nameGiven as { noul: number }).noul).toBeLessThan(0.2);
+  });
+
+  it('treats an explicit year as a birthday whether or not the year is in the past', async () => {
+    // The gate is "a year was said", not "a year a caller could be born in": an appointment date
+    // is spoken without one, so a year means the dob questions own the utterance either way.
+    const past = await ask('can i come in on december 25th 2026');
+    expect((past.answers.dateMode as { choice: string }).choice).toBe('none');
+    const future = await ask('december 25th 2030');
+    expect((future.answers.dateMode as { choice: string }).choice).toBe('none');
+    // No year, so the date is read as one.
+    const noYear = await ask('can i come in on december 25th');
+    expect((noYear.answers.dateMode as { choice: string }).choice).toBe('absolute');
+  });
+
+  it('reads a birth year against the run\'s pinned date, not the wall clock', async () => {
+    // 2030 is not a year anyone has been born in yet, until it is: the run's date decides,
+    // so the same utterance answers the same way however long after the run it is replayed.
+    const before = await ask('2030', '2026-09-18');
+    expect((before.answers.dobYear as { choice: string }).choice).toBe('none');
+    const after = await ask('2030', '2031-01-01');
+    expect((after.answers.dobYear as { choice: string }).choice).toBe('2030');
   });
 
   it('flags a request for a human', async () => {

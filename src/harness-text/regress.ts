@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     console.log(`cassette ${path}${existsSync(path) ? '' : ' (not found; every turn will miss until recorded)'}`);
   }
   const opts: RunOptions = {
-    client: buildClient(kind, DEFAULT_CORPUS_FILE, thresholds),
+    client: buildClient(kind, DEFAULT_CORPUS_FILE, thresholds, REGRESS_TODAY),
     thresholds,
     todayIso: REGRESS_TODAY,
     now: () => 0,

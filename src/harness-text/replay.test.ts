@@ -43,7 +43,7 @@ describe('replayFrameLog', () => {
     const live = readFileSync(join(dir, 'CA1.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     // The frame log's clock is pinned to the epoch, so the date it would replay under is 1970;
     // the birthday slot is date-sensitive, so replay gets the date the live run used.
-    const replay = await replayFrameLog(join(dir, 'CA1.frames.jsonl'), { ...opts, trace: null }, undefined, { todayIso: opts.todayIso });
+    const replay = await replayFrameLog(join(dir, 'CA1.frames.jsonl'), { ...opts, trace: null }, undefined, { todayIsoOverride: opts.todayIso });
     const shape = (r: { event: { type: string }; decision: { kind: string; promptId?: string } }) => [r.event.type, r.decision.kind, r.decision.promptId ?? null];
     expect(replay.records.map(shape)).toEqual(live.map(shape));
     expect(replay.records.at(-1)!.decision.kind).toBe('complete');

@@ -172,6 +172,16 @@ describe('parseCorpus', () => {
     expect(parseCorpus(born('{"dob":{"year":"nineteen eighty"}}'))[0]?.slots?.dob?.year).toBe('nineteen eighty');
   });
 
+  it('rejects a dob month or day the slot\'s own choice labels do not offer', () => {
+    // "Mar" and "31st" would parse clean and then pick `none` at run time, so the labelled
+    // birthday would silently never be read. The month and day are choice labels, not spans.
+    const born = (slots: string) => `{"id":"z","text":"March thirty first nineteen eighty","intent":"none","context":"no_form","slots":${slots}}`;
+    expect(parseCorpus(born('{"dob":{"month":"march","day":"31"}}'))[0]?.slots?.dob?.month).toBe('march');
+    expect(() => parseCorpus(born('{"dob":{"month":"Mar","day":"31"}}'))).toThrow(/corpus z: dob month "Mar"/);
+    expect(() => parseCorpus(born('{"dob":{"month":"march","day":"31st"}}'))).toThrow(/corpus z: dob day "31st"/);
+    expect(() => parseCorpus(born('{"dob":{"month":"march","day":"32"}}'))).toThrow(/corpus z: dob day "32"/);
+  });
+
   it('treats confirm_appointment as the confirm_appointment form itself, not a confirm_ context', () => {
     expect(contextForm('confirm_appointment')).toBe('confirm_appointment');
     expect(confirmForm('confirm_appointment')).toBeNull();

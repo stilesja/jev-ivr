@@ -2,7 +2,8 @@ import type { SlotSpec, SlotOutcome } from './types';
 import { isChoice, noulValue, type AnswerMap } from '../../jev/types';
 import { MONTHS, describeDob, normalizeYear } from '../../core/extract/date';
 
-const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+/** The day-of-month choice labels: "1" .. "31", exactly as dobDay offers them. */
+export const DOB_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const MIN_YEAR = 1900;
 
 function isoOf(y: number, m: number, d: number): string | null {
@@ -52,7 +53,7 @@ export const dobSlot: SlotSpec = {
       dobDay: {
         type: 'choice',
         instructions: "Read asr.text. Which day of the month is the caller's date of birth, if they say one? This is the birth date, not an appointment date.",
-        criteria: criteriaOf(DAYS),
+        criteria: criteriaOf(DOB_DAYS),
       },
       dobYear: {
         type: 'choice',
