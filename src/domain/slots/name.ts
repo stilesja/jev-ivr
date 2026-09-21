@@ -15,7 +15,7 @@ export const nameSlot: SlotSpec = {
     // reads as "no name given". The sentinel wins; a caller whose name is the word none is not
     // a case worth keeping the collision for.
     for (const span of ctx.candidateWordSpans) if (span !== 'none') criteria[span] = null;
-    criteria.none = "No span of asr.text is the caller's name";
+    criteria.none = "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves";
     return {
       nameGiven: {
         type: 'noul',
@@ -24,7 +24,7 @@ export const nameSlot: SlotSpec = {
       },
       nameSpan: {
         type: 'choice',
-        instructions: 'Read asr.text. Which of these spans is the caller\'s own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider\'s name or anyone else\'s. A single word can be the whole name, as in Prince. Choose none if no span is the caller\'s name.',
+        instructions: 'Read asr.text. Which of these spans is the caller\'s own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider\'s name or anyone else\'s. When `slots.name` is already set and the caller says a different name, as in no, it\'s Sam Lee, that different name is the caller\'s name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller\'s name.',
         criteria,
       },
     };

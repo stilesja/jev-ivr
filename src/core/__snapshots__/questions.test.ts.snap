@@ -298,9 +298,9 @@ exports[`question redesign > pins every question the model sees at the summary (
   },
   "nameSpan": {
     "criteria": {
-      "none": "No span of asr.text is the caller's name",
+      "none": "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller says a different name, as in no, it's Sam Lee, that different name is the caller's name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {
@@ -642,9 +642,9 @@ exports[`question redesign > pins every question the model sees inside a form (a
   },
   "nameSpan": {
     "criteria": {
-      "none": "No span of asr.text is the caller's name",
+      "none": "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller says a different name, as in no, it's Sam Lee, that different name is the caller's name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {
@@ -992,9 +992,9 @@ exports[`question redesign > pins every question the model sees outside a form (
   },
   "nameSpan": {
     "criteria": {
-      "none": "No span of asr.text is the caller's name",
+      "none": "No span of asr.text is the caller's name, as when the caller only agrees, refuses, or names something other than themselves",
     },
-    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
+    "instructions": "Read asr.text. Which of these spans is the caller's own full name as they say it, first and last when both are given? Do not include words such as my name is or this is, and do not choose a provider's name or anyone else's. When \`slots.name\` is already set and the caller says a different name, as in no, it's Sam Lee, that different name is the caller's name now: choose that span. A single word can be the whole name, as in Prince. Choose none if no span is the caller's name.",
     "type": "choice",
   },
   "provider": {
