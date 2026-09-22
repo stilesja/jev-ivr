@@ -63,14 +63,16 @@ export type ReplayRecord = TraceRecord & { spokenText?: string };
 export interface ReplayOptions {
   from?: string;
   thresholds?: Partial<Thresholds>;
+  /** Masked, for the `transfer to …4567` marker; the trace does not record the number dialled. */
+  handoffNumber?: string;
   /** Legacy escape hatch: only consulted when the record carries no `spokenText`. */
   spoken?: (record: ReplayRecord) => string;
 }
 
 /** Mirrors `ALL_SLOTS` in src/domain/forms.ts; view.js cannot import it. */
-export const ALL_SLOTS: string[];
+export const ALL_SLOTS: readonly string[];
 /** Mirrors `FORMS[form].slots` in src/domain/forms.ts; view.js cannot import it. */
-export const FORM_SLOTS: Record<string, string[]>;
+export const FORM_SLOTS: Readonly<Record<string, readonly string[]>>;
 
 export function reduce(events: DashboardEvent[]): View;
 export function replayEvents(records: ReplayRecord[], frames: FrameLogLine[], opts?: ReplayOptions): DashboardEvent[];
@@ -79,6 +81,8 @@ export function decisiveRows(
   thresholds: Partial<Thresholds>,
   gateRows: readonly GateRow[] | readonly unknown[],
   questions?: QuestionMap | Record<string, unknown> | null,
+  /** The form the batch was asked under: which rung the `intent` row's tick is drawn at. */
+  activeForm?: string | null,
 ): Row[];
 export function groupRows(rows: Row[], formSlots: readonly string[], pending: PendingConfirmation | { target: string } | null): Group[];
-export function thresholdFor(id: string, thresholds: Partial<Thresholds>): number | null;
+export function thresholdFor(id: string, thresholds: Partial<Thresholds>, activeForm?: string | null): number | null;

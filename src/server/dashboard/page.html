@@ -71,8 +71,9 @@
     GATE_COMPLETE: 0.6,
     GATE_WANTS_HUMAN: 0.7,
     GATE_FRUSTRATION_HIGH: 0.6,
-    // intent
-    INTENT_ROUTE: 0.7,
+    // intent: the two rungs the ladder actually routes from -- outside a form and inside one
+    INTENT_EXPLICIT: 0.4,
+    INTENT_SWITCH: 0.85,
     INTENT_TENTATIVE: 0.5,
     INTENT_CHANGE: 0.6,
     INTENT_SECOND: 0.6,
@@ -149,7 +150,10 @@
     const threshold = num(row.threshold);
     const tick = threshold === null ? '' : `<em style="left:${pct(threshold)}"></em>`;
     const p = num(row.p);
-    if (p === null) return `<div class="bar pending"><i></i>${tick}</div>`;
+    // The pulse means "the batch is still out". A row with an answer but no probability to draw
+    // (a score no gate compared, so there is no value/rule pair) gets an empty bar instead.
+    if (row.kind === 'pending') return `<div class="bar pending"><i></i>${tick}</div>`;
+    if (p === null) return `<div class="bar">${tick}</div>`;
     // Green when the record called the row decisive, plain blue when it merely crossed its tick,
     // grey when it did neither.
     const cls = row.decisive ? 'hi' : threshold !== null && p >= threshold ? '' : 'lo';
@@ -158,7 +162,8 @@
 
   function valueHtml(row) {
     const p = num(row.p);
-    if (p === null) return '<span class="muted">…</span>';
+    // An answered row with no probability still has its answer: the winning level of a score.
+    if (p === null) return row.value ? esc(row.value) : '<span class="muted">…</span>';
     if (row.kind === 'noul') return esc(row.value ?? p.toFixed(2));
     return `${esc(row.value ?? '')} <span class="muted">${p.toFixed(2)}</span>`;
   }

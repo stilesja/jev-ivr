@@ -1,79 +1,41 @@
 import { describe, expect, it } from 'vitest';
-import { runTurn, type RunOptions } from '../../run/turn';
-import { newSession, type Session } from '../../core/session';
-import { promptFrame, dtmfFrames, silenceFrame, setupFrame } from '../../channel/frames';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
-import { FixtureStubClient } from '../../jev/fixtureStub';
-import { HeuristicStubClient } from '../../jev/heuristicStub';
-import { loadCorpus } from '../../jev/corpus';
-import { DEFAULT_CORPUS_FILE } from '../../run/client';
-import { spokenText } from '../../prompts/render';
+import { JevClientError } from '../../jev/types';
 import { ALL_SLOTS as REAL_ALL_SLOTS, FORMS } from '../../domain/forms';
 import type { TraceRecord } from '../../trace/types';
-import type { FrameLogLine } from '../frameLog';
-import { DashboardBus, type PublishedEvent } from './bus';
-import { makeObserver } from './observer';
-import type { SessionStore } from '../sessions';
+import type { FrameDir, FrameLogLine } from '../frameLog';
+import { CALL, FROM, OPENER, TODAY, replayRecords, scripted } from './fixtures';
 import { ALL_SLOTS, FORM_SLOTS, decisiveRows, groupRows, reduce, replayEvents, thresholdFor } from './view.js';
 import type { DashboardEvent } from './events';
 
-const TODAY = '2026-09-18';
-const CALL = 'CA1';
-const FROM = '…2926';
-const fixture = new FixtureStubClient(loadCorpus(DEFAULT_CORPUS_FILE), { sharpness: 0.9, fallback: new HeuristicStubClient() });
+const started: DashboardEvent = { type: 'call_started', callSid: CALL, at: 0, from: FROM, todayIso: TODAY, thresholds: DEFAULT_THRESHOLDS };
 
-type Step = string | { dtmf: string } | { silence: true };
-
-/**
- * Runs a scripted call through the real observer and the real bus, so the events the view is
- * tested against are the ones the page receives: the observer's `asked`/`turn` (with the redacted
- * record and the spoken line) plus the moments the adapter publishes itself.
- */
-async function scripted(steps: Step[]): Promise<{ events: PublishedEvent[]; records: TraceRecord[] }> {
-  const events: PublishedEvent[] = [];
-  const records: TraceRecord[] = [];
-  const bus = new DashboardBus();
-  bus.subscribe((e) => events.push(e));
-  let session: Session = newSession(CALL, 0);
-  // makeObserver reads the live turn counter through the store, exactly as the server wires it.
-  const store = { get: () => ({ session }) } as unknown as SessionStore;
-  let t = 1_000;
-  const opts: RunOptions = {
-    client: fixture,
-    thresholds: { ...DEFAULT_THRESHOLDS },
-    todayIso: TODAY,
-    now: () => t,
-    observe: makeObserver(bus, store, CALL),
-  };
-  const step = async (frame: Parameters<typeof runTurn>[1]): Promise<void> => {
-    const run = await runTurn(session, frame, opts);
-    records.push(run.record);
-    session = run.result.session;
-  };
-  bus.publish({ type: 'call_started', callSid: CALL, at: t, from: FROM, todayIso: TODAY, thresholds: DEFAULT_THRESHOLDS });
-  await step(setupFrame(CALL));
-  for (const s of steps) {
-    t += 5_000;
-    if (typeof s === 'string') await step(promptFrame(s));
-    else if ('dtmf' in s) {
-      for (const f of dtmfFrames(s.dtmf)) {
-        bus.publish({ type: 'dtmf', callSid: CALL, at: t, digit: f.digit });
-        await step(f);
-      }
-    } else {
-      bus.publish({ type: 'silence', callSid: CALL, at: t, promptId: session.lastPromptId });
-      await step(silenceFrame());
-    }
-  }
-  return { events, records };
+/** The index in `events` of the nth `turn` event, so a prefix can end on a chosen turn. */
+function turnIndexes(events: readonly DashboardEvent[]): number[] {
+  const out: number[] = [];
+  events.forEach((e, i) => {
+    if (e.type === 'turn') out.push(i);
+  });
+  return out;
 }
 
-/** What `/dashboard/traces/<sid>` hands the page: the record plus the line the caller heard. */
-function replayRecords(records: TraceRecord[]): Array<TraceRecord & { spokenText: string }> {
-  return records.map((r) => ({ ...r, spokenText: spokenText(r.decision) }));
+/** A `turn` event carrying only the fields under test; everything else is a plausible blank. */
+function turnEvent(fields: Record<string, unknown>): DashboardEvent {
+  return {
+    type: 'turn', callSid: CALL, at: 10, spoken: '',
+    record: {
+      v: 1, sessionId: CALL, turnIndex: 2, ts: '2026-09-18T00:00:00.000Z',
+      event: { type: 'prompt', voicePrompt: 'yes', lang: 'en-US', last: true },
+      turnState: null, questions: null, answers: null, source: 'none', error: null,
+      gates: [], decision: { kind: 'prompt', promptId: 'date_ask' }, frames: [], form: 'reschedule',
+      slots: {}, timing: { planMs: 0, askMs: 0, resolveMs: 0, totalMs: 0 },
+      usage: { inputTokens: 0, outputTokens: 0, estimated: true, costUsd: 0 },
+      ...fields,
+    },
+  } as unknown as DashboardEvent;
 }
 
-const OPENER = "I need to reschedule my appointment, it's with Dr. Chen sometime next week";
+const frameLine = (dir: FrameDir, msg: unknown, at: number): FrameLogLine => ({ ts: new Date(at).toISOString(), dir, msg, line: 1 });
 
 describe('reduce', () => {
   it('shows the conversation, fills three slots from the opener, narrows, and reaches the summary', async () => {
@@ -86,7 +48,7 @@ describe('reduce', () => {
     expect(v.lines.at(-1)!.text).toMatch(/^Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980/);
     expect(v.form).toBe('reschedule');
     expect(v.chips.map((c) => [c.id, c.state])).toEqual([['name', 'filled'], ['dob', 'filled'], ['provider', 'filled'], ['date', 'filled']]);
-    expect(v.pending).toBe('confirm · form · attempt 0');
+    expect(v.pending).toBe('confirm · summary (reschedule) · attempt 0');
     expect(v.turnCount).toBe(5);
     expect(v.totals.askMs).toBeGreaterThanOrEqual(0);
     expect(v.totals.tokens).toBeGreaterThan(0);
@@ -126,10 +88,10 @@ describe('reduce', () => {
     expect(v.chips.find((c) => c.id === 'provider')!.label).toBe('Dr. Alvarez');
   });
 
-  it('renders silence markers between turns', async () => {
+  it('renders silence markers with how long the caller was quiet', async () => {
     const { events } = await scripted(['I need to reschedule my appointment with Dr. Chen', { silence: true }, { silence: true }, { silence: true }]);
     const v = reduce(events);
-    expect(v.lines.filter((l) => l.kind === 'marker').map((l) => l.text)).toEqual(['silence', 'silence', 'silence']);
+    expect(v.lines.filter((l) => l.kind === 'marker').map((l) => l.text)).toEqual(['silence · 5 s', 'silence · 5 s', 'silence · 5 s']);
     expect(v.status).toBe('live · …2926');
   });
 
@@ -160,11 +122,75 @@ describe('reduce', () => {
     const { events } = await scripted([OPENER, { silence: true }]);
     expect(reduce(events).asking).toBe('asking name · attempt 2 of 3');
   });
+
+  /**
+   * The confirmation questions are asked because a confirmation was pending when the batch left,
+   * so the group has to follow the ask-time state: the record's post-turn `pendingConfirmation` is
+   * empty on the turn that speaks the summary and already cleared on the turn that answers it.
+   */
+  it('groups the confirmation questions on the turn that answers the summary', async () => {
+    const { events } = await scripted([OPENER, 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'yes']);
+    const turns = turnIndexes(events);
+    expect(turns.length).toBe(6);
+
+    const answering = reduce(events);
+    const group = answering.jev.groups.find((g) => g.name === 'confirmation')!;
+    expect(group.rows.map((r) => r.id).sort()).toEqual(['changeSlot', 'confirmsNo', 'confirmsYes']);
+    expect(answering.jev.groups.map((g) => g.name).slice(0, 3)).toEqual(['gates', 'intent', 'confirmation']);
+
+    // The turn that speaks the summary asked nothing about it yet: no confirmation group at all.
+    const summary = reduce(events.slice(0, turns[4]! + 1));
+    expect(summary.pending).toBe('confirm · summary (reschedule) · attempt 0');
+    expect(summary.jev.groups.find((g) => g.name === 'confirmation')).toBeUndefined();
+    expect(summary.jev.groups.flatMap((g) => g.rows).filter((r) => r.id === 'confirmsYes')).toEqual([]);
+  });
+
+  it('draws a score row against the rule the ladder compared, and leaves an unread score bare', async () => {
+    const { events, records } = await scripted([OPENER]);
+    const opener = records[1]!;
+    const gates = reduce(events).jev.groups.find((g) => g.name === 'gates')!;
+
+    const frustration = gates.rows.find((r) => r.id === 'frustration')!;
+    const row = opener.gates.find((g) => g.gate === 'frustration')!;
+    expect(frustration.kind).toBe('score');
+    expect(frustration.p).toBe(row.value);
+    expect(frustration.threshold).toBe(DEFAULT_THRESHOLDS.GATE_FRUSTRATION_HIGH);
+    // The winning level stays the value, and its probability is not what the bar draws.
+    expect(frustration.value).toBe('none');
+    const levels = (opener.answers!.frustration as { probabilities: Record<string, number> }).probabilities;
+    expect(frustration.p).not.toBe(levels.none);
+
+    // `urgency` is asked but no gate reads it, so there is no pair to draw.
+    const urgency = gates.rows.find((r) => r.id === 'urgency')!;
+    expect(urgency.p).toBeNull();
+    expect(urgency.threshold).toBeNull();
+    expect(urgency.value).toBeTruthy();
+  });
+
+  it('keeps the last consultation on screen through a turn that asked nothing', async () => {
+    const { events } = await scripted([OPENER, { silence: true }]);
+    const before = reduce(events.slice(0, events.findIndex((e) => e.type === 'silence')));
+    const after = reduce(events);
+    expect(before.jev.groups.length).toBeGreaterThan(0);
+    expect(after.jev.groups).toEqual(before.jev.groups);
+    expect(after.jev.header).toBe('Jev · turn 3 · no questions (last: turn 2)');
+    expect(after.jev.decision).not.toBe(before.jev.decision);
+  });
+
+  it('says so when the model call failed, and leaves the rows pending', async () => {
+    const boom = { ask: (): Promise<never> => Promise.reject(new JevClientError('timed out')) };
+    const { events } = await scripted(['Jason Stiles'], { client: boom });
+    const v = reduce(events);
+    expect(v.jev.header).toMatch(/^Jev · turn 2 · \d+ questions · .* · error: JevClientError$/);
+    expect(v.lines.map((l) => l.text)).toContain('model error · JevClientError');
+    const rows = v.jev.groups.flatMap((g) => g.rows);
+    expect(rows.length).toBeGreaterThan(20);
+    expect(rows.every((r) => r.kind === 'pending')).toBe(true);
+  });
 });
 
 /** Reducer behaviour that no scripted stub call produces: keypad runs and the end of a call. */
 describe('reduce, call-level moments', () => {
-  const started: DashboardEvent = { type: 'call_started', callSid: CALL, at: 0, from: FROM, todayIso: TODAY, thresholds: DEFAULT_THRESHOLDS };
   const digits = (s: string): DashboardEvent[] => [...s].map((digit, i) => ({ type: 'dtmf', callSid: CALL, at: i + 1, digit }));
 
   it('merges a keypad run into one marker', () => {
@@ -188,6 +214,32 @@ describe('reduce, call-level moments', () => {
     const v = reduce([started, { type: 'handoff', callSid: CALL, at: 1, reason: 'billing', number: '…4567' }]);
     expect(v.lines.map((l) => l.text)).toEqual(['transfer to …4567 (billing)']);
   });
+
+  it('starts over when a second call begins', async () => {
+    const { events } = await scripted([OPENER, 'Jason Stiles']);
+    const second: DashboardEvent = { type: 'call_started', callSid: 'CA2', at: 99_000, from: '…1111', todayIso: TODAY, thresholds: DEFAULT_THRESHOLDS };
+    const v = reduce([...events, second]);
+    expect(v.callSid).toBe('CA2');
+    expect(v.status).toBe('live · …1111');
+    expect(v.lines).toEqual([]);
+    expect(v.turnCount).toBe(0);
+    expect(v.totals).toEqual({ askMs: 0, tokens: 0, usd: 0 });
+    expect(v.form).toBeNull();
+    expect(v.chips.every((c) => c.state === 'empty' && c.label === '' && !c.changed)).toBe(true);
+    expect(v.pending).toBeNull();
+    expect(v.queued).toEqual([]);
+    expect(v.asking).toBeNull();
+    expect(v.jev).toEqual({ header: 'Jev', pending: false, groups: [], decision: '' });
+    // Nothing of the first call survives: the whole view is the one the second call alone builds.
+    expect(v).toEqual(reduce([second]));
+  });
+
+  it('names what the pending confirmation is about', () => {
+    const line = (pendingConfirmation: Record<string, unknown>): string | null => reduce([started, turnEvent({ pendingConfirmation })]).pending;
+    expect(line({ target: 'form', form: 'reschedule', attempts: 1 })).toBe('confirm · summary (reschedule) · attempt 1');
+    expect(line({ target: 'slot', slot: 'date', value: '2026-09-22', display: 'Tuesday, September 22' })).toBe('confirm · date → Tuesday, September 22');
+    expect(line({ target: 'intent', intent: 'billing' })).toBe('confirm · billing');
+  });
 });
 
 describe('replayEvents', () => {
@@ -195,12 +247,7 @@ describe('replayEvents', () => {
     const { events, records } = await scripted([OPENER, { silence: true }, 'Jason Stiles']);
     const frames: FrameLogLine[] = events
       .filter((e) => e.type === 'silence' || e.type === 'dtmf')
-      .map((e) => ({
-        ts: new Date(e.at).toISOString(),
-        dir: 'in',
-        msg: e.type === 'silence' ? { type: 'silence' } : { type: 'dtmf', digit: (e as { digit: string }).digit },
-        line: 1,
-      }));
+      .map((e) => frameLine('in', e.type === 'silence' ? { type: 'silence' } : { type: 'dtmf', digit: (e as { digit: string }).digit }, e.at));
     const rebuilt = replayEvents(replayRecords(records), frames, { from: FROM, thresholds: DEFAULT_THRESHOLDS });
     expect(rebuilt.map((e) => e.type)).toEqual(events.map((e) => e.type));
     expect(reduce(rebuilt).lines).toEqual(reduce(events).lines);
@@ -212,6 +259,46 @@ describe('replayEvents', () => {
     const { records } = await scripted([OPENER]);
     expect(replayEvents([], [], {})).toEqual([]);
     expect(replayEvents(replayRecords(records), [], {}).map((e) => e.type)).toEqual(['call_started', 'turn', 'asked', 'turn']);
+  });
+
+  it('ends on a handoff, with the transfer marker before it', async () => {
+    const { records } = await scripted([OPENER]);
+    const end = (reasonCode: string): FrameLogLine => frameLine('out', { type: 'end', handoffData: JSON.stringify({ reasonCode, completed: [] }) }, 20_000);
+
+    const rebuilt = replayEvents(replayRecords(records), [end('live-agent')], { handoffNumber: '…4567' });
+    expect(rebuilt.map((e) => e.type).slice(-2)).toEqual(['handoff', 'ended']);
+    const v = reduce(rebuilt);
+    expect(v.lines.at(-1)!.text).toBe('transfer to …4567 (live-agent)');
+    expect(v.status).toBe('ended · handoff');
+
+    // A completed call ends without a transfer, and an unreadable payload is a transfer of unknown reason.
+    const done = replayEvents(replayRecords(records), [end('completed')], {});
+    expect(done.filter((e) => e.type === 'handoff')).toEqual([]);
+    expect(reduce(done).status).toBe('ended · completed');
+    const garbled = replayEvents(replayRecords(records), [frameLine('out', { type: 'end', handoffData: 'not json' }, 20_000)], {});
+    expect(reduce(garbled).lines.at(-1)!.text).toBe('transfer to … (unknown)');
+  });
+
+  it('ends a caller hangup, which leaves no end frame at all', async () => {
+    const { records } = await scripted([OPENER]);
+    const closed = frameLine('log', { socketClosed: true, ended: false }, 20_000);
+    expect(reduce(replayEvents(replayRecords(records), [closed], {})).status).toBe('ended · hangup');
+
+    // With an end frame the close says nothing new: that frame already ended the call.
+    const both = [frameLine('out', { type: 'end', handoffData: '{"reasonCode":"completed"}' }, 19_000), frameLine('log', { socketClosed: true, ended: true }, 20_000)];
+    const reasons = replayEvents(replayRecords(records), both, {}).filter((e) => e.type === 'ended').map((e) => (e as { reason: string }).reason);
+    expect(reasons).toEqual(['completed']);
+  });
+
+  it('numbers reconnect attempts by the resumed sockets the log holds', async () => {
+    const { records } = await scripted([OPENER]);
+    const frames = [
+      frameLine('log', { resumed: true, sessionId: CALL }, 8_000),
+      frameLine('log', { replacedSocket: true }, 9_000),
+      frameLine('log', { resumed: true, sessionId: CALL }, 10_000),
+    ];
+    const v = reduce(replayEvents(replayRecords(records), frames, {}));
+    expect(v.lines.filter((l) => l.kind === 'marker').map((l) => l.text)).toEqual(['reconnected (1)', 'reconnected (2)']);
   });
 });
 
@@ -234,6 +321,19 @@ describe('row helpers', () => {
     expect(decisiveRows(answers, DEFAULT_THRESHOLDS, gates).find((r) => r.id === 'confirmsNo')!.decisive).toBe(true);
   });
 
+  it('credits only the confirmation answer the gate read', () => {
+    const answers = {
+      confirmsYes: { type: 'noul', noul: 0.92 },
+      confirmsNo: { type: 'noul', noul: 0.04 },
+    };
+    const confirmed = [{ gate: 'confirmation', value: 0.92, threshold: 0.7, passed: true, outcome: 'confirmed', decided: true }];
+    const yes = decisiveRows(answers, { CONFIRM_YES: 0.7, CONFIRM_NO: 0.7 }, confirmed);
+    expect(yes.filter((r) => r.decisive).map((r) => r.id)).toEqual(['confirmsYes']);
+    // An unanswered summary read neither answer, so neither row is the one that decided.
+    const unanswered = [{ gate: 'confirmation', value: 0.3, threshold: 0.7, passed: false, outcome: 'unanswered', decided: true }];
+    expect(decisiveRows({ confirmsYes: { type: 'noul', noul: 0.3 } }, { CONFIRM_YES: 0.7 }, unanswered).filter((r) => r.decisive)).toEqual([]);
+  });
+
   it('groups by role using the question id and the form slots', () => {
     const rows = [{ id: 'addressedToSystem' }, { id: 'intent' }, { id: 'nameGiven' }, { id: 'dateMode' }];
     const g = groupRows(rows as never, ['name', 'dob', 'provider', 'date'], null);
@@ -250,6 +350,25 @@ describe('row helpers', () => {
     expect(groupRows(rows as never, ['name'], null).map((x) => x.name)).toEqual(['gates', 'intent', 'slot · name', 'other']);
   });
 
+  it('keeps a known slot the current form does not have in a slot group of its own', () => {
+    const rows = [{ id: 'nameGiven' }, { id: 'containsMemberId' }, { id: 'somethingNew' }];
+    const g = groupRows(rows as never, ['name'], null);
+    expect(g.map((x) => x.name)).toEqual(['gates', 'intent', 'slot · name', 'slot · memberId', 'other']);
+    expect(g.find((x) => x.name === 'slot · memberId')!.rows.map((r) => r.id)).toEqual(['containsMemberId']);
+  });
+
+  it('routes every slot question a real turn asks into that slot\'s group', async () => {
+    // The first spoken turn is outside a form, so the batch carries every slot's questions; this
+    // is what pins SLOT_PREFIX against the ids the slot specs actually ask.
+    const { records } = await scripted(['Jason Stiles']);
+    const rows = decisiveRows(null, DEFAULT_THRESHOLDS, [], records[1]!.questions);
+    const groups = groupRows(rows, ALL_SLOTS, null);
+    for (const slot of ALL_SLOTS) {
+      expect(groups.find((g) => g.name === `slot · ${slot}`)!.rows.length).toBeGreaterThan(0);
+    }
+    expect(groups.find((g) => g.name === 'other')).toBeUndefined();
+  });
+
   it('maps every question id a real turn asks to the threshold that decides it', async () => {
     const { records } = await scripted([OPENER, 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday', 'no, Thursday with Dr. Alvarez']);
     const ids = new Set<string>();
@@ -262,9 +381,24 @@ describe('row helpers', () => {
     expect(unmapped).toEqual([...informational].sort());
     expect(thresholdFor('addressedToSystem', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.GATE_ADDRESSED);
     expect(thresholdFor('nameGiven', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.SLOT_DETECT);
-    expect(thresholdFor('intent', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.INTENT_ROUTE);
     expect(thresholdFor('dobMonth', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.SLOT_CHOICE_CONFIRM);
     expect(thresholdFor('providerUnsure', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.PROVIDER_UNSURE);
+  });
+
+  /** INTENT_ROUTE is never applied at runtime: gates.ts routes at EXPLICIT, or SWITCH in a form. */
+  it('ticks the intent row at the rung the ladder uses for the form in hand', async () => {
+    expect(thresholdFor('intent', DEFAULT_THRESHOLDS, null)).toBe(DEFAULT_THRESHOLDS.INTENT_EXPLICIT);
+    expect(thresholdFor('intent', DEFAULT_THRESHOLDS, 'reschedule')).toBe(DEFAULT_THRESHOLDS.INTENT_SWITCH);
+
+    // And a real turn's row takes the rung from the form the batch was asked under, not the one
+    // the turn ends on: the opener is spoken outside a form and enters one.
+    const { events, records } = await scripted([OPENER, 'Jason Stiles']);
+    const turns = turnIndexes(events);
+    const opener = reduce(events.slice(0, turns[1]! + 1));
+    expect(records[1]!.turnState!.activeForm).toBeNull();
+    expect(records[1]!.form).toBe('reschedule');
+    expect(opener.jev.groups.find((g) => g.name === 'intent')!.rows[0]!.threshold).toBe(DEFAULT_THRESHOLDS.INTENT_EXPLICIT);
+    expect(reduce(events).jev.groups.find((g) => g.name === 'intent')!.rows[0]!.threshold).toBe(DEFAULT_THRESHOLDS.INTENT_SWITCH);
   });
 });
 
@@ -274,11 +408,21 @@ describe('row helpers', () => {
  */
 describe('the form slot mirror', () => {
   it('matches the real FORMS', () => {
-    const real = Object.fromEntries(Object.entries(FORMS).map(([form, spec]) => [form, spec.slots]));
+    const real: Record<string, readonly string[]> = Object.fromEntries(Object.entries(FORMS).map(([form, spec]) => [form, spec.slots]));
     expect(FORM_SLOTS).toEqual(real);
   });
 
   it('lists every slot, in the domain order', () => {
     expect(ALL_SLOTS).toEqual([...REAL_ALL_SLOTS]);
+  });
+});
+
+/** The records a replay reads are the trace's own, so their shape is worth one assertion. */
+describe('replayRecords', () => {
+  it('carries the line the caller heard on every record', async () => {
+    const { records } = await scripted([OPENER]);
+    const spoken = replayRecords(records).map((r) => r.spokenText);
+    expect(spoken[0]).toMatch(/^Thanks for calling/);
+    expect(spoken.at(-1)).toBe("What's your first and last name?");
   });
 });

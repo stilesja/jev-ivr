@@ -47,9 +47,17 @@ const CONFIRM_IDS = new Set(['confirmsYes', 'confirmsNo', 'changeSlot']);
  * marks the right row decisive (src/core/gates.ts pushes these names).
  */
 const DECIDED_ALIAS = {
-  confirmation: ['confirmsYes', 'confirmsNo'],
   menuNumber: ['menuNumberSaid'],
   intentMargin: ['intent'],
+};
+
+/**
+ * The confirmation gate reads one of the two answers, never both, so only the one its outcome
+ * came from is the decisive row (src/core/gates.ts step 6).
+ */
+const CONFIRM_DECIDED_ALIAS = {
+  confirmed: ['confirmsYes'],
+  rejected: ['confirmsNo'],
 };
 
 /** Question id prefixes per slot; `containsMemberId` is the one id that does not start with its slot. */
@@ -86,12 +94,18 @@ function slotOf(id) {
   return null;
 }
 
-/** Which threshold a row's bar draws its tick at, or null when the row is only reported. */
-export function thresholdFor(id, thresholds) {
+/**
+ * Which threshold a row's bar draws its tick at, or null when the row is only reported.
+ * `activeForm` is the form the batch was asked under, which is what the intent rung depends on.
+ */
+export function thresholdFor(id, thresholds, activeForm) {
   const t = thresholds ?? {};
   if (Object.hasOwn(GATE_THRESHOLD, id)) return t[GATE_THRESHOLD[id]] ?? null;
   if (/Given$/.test(id) || id === 'containsMemberId' || id === 'memberIdComplete') return t.SLOT_DETECT ?? null;
-  if (id === 'intent') return t.INTENT_ROUTE ?? null;
+  // INTENT_ROUTE is never applied: outside a form the ladder routes from INTENT_EXPLICIT up (the
+  // lowest rung that still routes, with a confirmation), and inside one only a switch at
+  // INTENT_SWITCH takes the turn away from the form (src/core/gates.ts step 8).
+  if (id === 'intent') return (activeForm ? t.INTENT_SWITCH : t.INTENT_EXPLICIT) ?? null;
   if (slotOf(id)) return t.SLOT_CHOICE_CONFIRM ?? null;
   return null;
 }
@@ -100,17 +114,22 @@ export function thresholdFor(id, thresholds) {
  * One row per question, with the answer folded in when present. `questions` gives the row order
  * and, before the answers arrive, the pending rows; without it the answers decide.
  */
-export function decisiveRows(answers, thresholds, gateRows, questions) {
+export function decisiveRows(answers, thresholds, gateRows, questions, activeForm) {
   const ids = questions ? Object.keys(questions) : Object.keys(answers ?? {});
   const named = new Set();
+  /** The row the ladder actually built for a question id, when it built one; see the score branch. */
+  const byGate = new Map();
   for (const g of gateRows ?? []) {
-    if (!g || !g.decided) continue;
+    if (!g) continue;
+    if (!byGate.has(g.gate)) byGate.set(g.gate, g);
+    if (!g.decided) continue;
     named.add(g.gate);
-    for (const alias of DECIDED_ALIAS[g.gate] ?? []) named.add(alias);
+    const alias = g.gate === 'confirmation' ? CONFIRM_DECIDED_ALIAS[g.outcome] : DECIDED_ALIAS[g.gate];
+    for (const id of alias ?? []) named.add(id);
   }
   return ids.map((id) => {
     const a = answers ? answers[id] : null;
-    const threshold = thresholdFor(id, thresholds);
+    const threshold = thresholdFor(id, thresholds, activeForm);
     if (!a) return { id, kind: 'pending', p: null, value: null, threshold, decisive: false, top: null };
     if (a.type === 'noul') {
       const p = a.noul;
@@ -123,12 +142,20 @@ export function decisiveRows(answers, thresholds, gateRows, questions) {
       const decisive = named.has(id) || (a.choice !== 'none' && threshold !== null && p !== null && p >= threshold);
       return { id, kind: 'choice', p, value: a.choice, threshold, decisive, top };
     }
-    // A score's own threshold is a rule about one level (`frustration.high`), not about the
-    // winning level, so only the record's gate rows can call a score row decisive.
+    // A score's threshold is a rule about one level (`frustration.high`), not about the winning
+    // level, so a bar of the winning level's probability with that tick would compare two
+    // different numbers. The bar takes the pair the ladder itself compared -- the gate row's
+    // `value` and `threshold` -- and the value stays the winning level. A score no gate reads
+    // (`urgency`) has no such pair, and no bar; only a gate row can call a score row decisive.
     const winner = entries[0];
+    const row = byGate.get(id);
+    const level = winner ? winner[0] : String(a.score ?? '');
     return {
-      id, kind: a.type, p: winner ? winner[1] : null, value: winner ? winner[0] : String(a.score ?? ''),
-      threshold, decisive: named.has(id), top,
+      id, kind: a.type,
+      p: typeof row?.value === 'number' ? row.value : null,
+      value: level,
+      threshold: typeof row?.threshold === 'number' ? row.threshold : null,
+      decisive: named.has(id), top,
     };
   });
 }
@@ -140,6 +167,8 @@ export function groupRows(rows, formSlots, pending) {
   const confirmation = { name: 'confirmation', rows: [] };
   const fixed = pending ? [gates, intent, confirmation] : [gates, intent];
   const slotGroups = new Map((formSlots ?? ALL_SLOTS).map((s) => [s, { name: `slot · ${s}`, rows: [] }]));
+  // A slot the current form does not have is still a slot: `other` is for ids no slot claims.
+  const offForm = new Map();
   const other = { name: 'other', rows: [] };
   for (const r of rows) {
     if (pending && CONFIRM_IDS.has(r.id)) confirmation.rows.push(r);
@@ -148,10 +177,14 @@ export function groupRows(rows, formSlots, pending) {
     else {
       const s = slotOf(r.id);
       if (s && slotGroups.has(s)) slotGroups.get(s).rows.push(r);
-      else other.rows.push(r);
+      else if (s) {
+        if (!offForm.has(s)) offForm.set(s, { name: `slot · ${s}`, rows: [] });
+        offForm.get(s).rows.push(r);
+      } else other.rows.push(r);
     }
   }
-  const out = fixed.concat([...slotGroups.values()]);
+  const extra = ALL_SLOTS.filter((s) => offForm.has(s)).map((s) => offForm.get(s));
+  const out = fixed.concat([...slotGroups.values()], extra);
   if (other.rows.length) out.push(other);
   return out.map((g) => ({ ...g, decisive: g.rows.some((r) => r.decisive), quiet: g.rows.filter((r) => !r.decisive).length }));
 }
@@ -214,11 +247,23 @@ function decisionLine(record, changed) {
   return parts.join(' · ');
 }
 
+/**
+ * The pending confirmation, with what is being confirmed: `form`, `slot` and `intent` alone say
+ * only which kind of question is out. Reads both shapes of the pending state -- the session's
+ * (src/core/session.ts) and the flatter one a TurnState carries.
+ */
 function pendingLine(pending) {
   if (!pending) return null;
-  // Only the form summary counts unanswered turns; an intent or slot readback has no counter.
-  const attempts = typeof pending.attempts === 'number' ? ` · attempt ${pending.attempts}` : '';
-  return `confirm · ${pending.target}${attempts}`;
+  const subject = pending.target === 'form' ? pending.form : pending.target === 'intent' ? pending.intent : pending.slot ?? pending.target;
+  const named = subject ?? pending.value ?? '?';
+  if (pending.target === 'form') {
+    // Only the form summary counts unanswered turns; an intent or slot readback has no counter.
+    const attempts = typeof pending.attempts === 'number' ? ` · attempt ${pending.attempts}` : '';
+    return `confirm · summary (${named})${attempts}`;
+  }
+  if (pending.target === 'intent') return `confirm · ${named}`;
+  const value = pending.display ?? pending.value ?? '';
+  return `confirm · ${named}${value ? ` → ${value}` : ''}`;
 }
 
 function askingLine(record, thresholds) {
@@ -237,18 +282,27 @@ function tokensOf(usage) {
   return (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0);
 }
 
-/** Folds an event list into the view the page renders. */
-export function reduce(events) {
-  const v = {
+/** Everything one call accumulates; a second `call_started` starts from this again. */
+function emptyView() {
+  return {
     status: 'waiting for a call', callSid: null, turnCount: 0,
     totals: { askMs: 0, tokens: 0, usd: 0 },
     lines: [], form: null, chips: chipsOf(null, null, null), pending: null, queued: [], asking: null,
     jev: { header: 'Jev', pending: false, groups: [], decision: '' },
     thresholds: {},
   };
+}
+
+/** Folds an event list into the view the page renders. */
+export function reduce(events) {
+  const v = emptyView();
   let from = null;
   let ended = false;
   let prevSlots = null;
+  /** The last turn whose batch reached the model, for the header of a turn that asked nothing. */
+  let lastConsult = null;
+  /** The previous event's clock, for how long a silence lasted. */
+  let prevAt = null;
   /**
    * The action webhook publishes `ended{hangup}` before a reconnect is known, so anything that
    * only a live call produces takes the status back (spec §2.2, plan Task 4 review).
@@ -259,8 +313,14 @@ export function reduce(events) {
     v.status = from === null ? 'live' : `live · ${from}`;
   };
   for (const e of events) {
+    const at = typeof e.at === 'number' ? e.at : null;
     switch (e.type) {
       case 'call_started':
+        // The page follows one call at a time (spec §2.2): a second `call_started` is a new call,
+        // and every total, line and panel starts over rather than continuing the last one's.
+        Object.assign(v, emptyView());
+        prevSlots = null;
+        lastConsult = null;
         from = e.from;
         ended = true; // so `live()` sets the status from one place
         live();
@@ -269,7 +329,7 @@ export function reduce(events) {
         break;
       case 'asked': {
         live();
-        const rows = decisiveRows(null, v.thresholds, [], e.questions);
+        const rows = decisiveRows(null, v.thresholds, [], e.questions, e.turnState?.activeForm ?? null);
         v.jev = {
           header: `Jev · turn ${e.turnIndex} · ${Object.keys(e.questions ?? {}).length} questions · asking…`,
           pending: true,
@@ -288,6 +348,9 @@ export function reduce(events) {
         const ev = r.event;
         if (ev && ev.type === 'prompt') v.lines.push({ kind: 'caller', text: ev.voicePrompt, turn: r.turnIndex });
         else if (ev && ev.type === 'error') v.lines.push({ kind: 'marker', text: 'relay error', turn: r.turnIndex });
+        // The batch went out and came back empty: say so between the caller and what the system
+        // fell back to, or the panel is 32 blank bars with no explanation.
+        if (consulted && r.error) v.lines.push({ kind: 'marker', text: `model error · ${r.error.name}`, turn: r.turnIndex });
         if (e.spoken) v.lines.push({ kind: 'system', text: e.spoken, promptId: r.decision.promptId ?? r.decision.kind, turn: r.turnIndex });
         if (!consulted && !acted) break;
         live();
@@ -305,23 +368,39 @@ export function reduce(events) {
         v.totals.usd += r.usage?.costUsd ?? 0;
         const decision = decisionLine(r, changed);
         if (consulted) {
-          const rows = decisiveRows(r.answers, v.thresholds, r.gates, r.questions);
+          // Both the tick the intent row draws and the groups belong to the batch, so they read
+          // the state it was asked under: `turnState`. The post-turn `pendingConfirmation` is one
+          // turn out -- not yet set on the turn that speaks the summary, and already cleared on
+          // the turn the caller answers it, which is the turn whose confirmation rows matter.
+          const askedUnder = r.turnState ?? null;
+          const rows = decisiveRows(r.answers, v.thresholds, r.gates, r.questions, askedUnder?.activeForm ?? null);
           const header = [
             `Jev · turn ${r.turnIndex}`,
             `${Object.keys(r.questions).length} questions`,
             `${Math.round(r.timing?.askMs ?? 0)} ms`,
             `${tokensOf(r.usage).toLocaleString('en-US')} tokens`,
             money(r.usage?.costUsd ?? 0),
-          ].join(' · ');
-          v.jev = { header, pending: false, groups: groupRows(rows, slotsOf(r.form), r.pendingConfirmation ?? null), decision };
+          ].join(' · ') + (r.error ? ` · error: ${r.error.name}` : '');
+          // A record with a `turnState` answers this outright, including with a null: falling back
+          // to the post-turn state when it says "nothing was pending" would put the group back on
+          // the very turn that has no answer to group.
+          const pending = askedUnder ? askedUnder.pendingConfirmation ?? null : r.pendingConfirmation ?? null;
+          v.jev = { header, pending: false, groups: groupRows(rows, slotsOf(r.form), pending), decision };
+          lastConsult = r.turnIndex;
         } else {
-          v.jev = { header: `Jev · turn ${r.turnIndex} · no questions`, pending: false, groups: [], decision };
+          // A turn nobody asked the model about (a silence, a keypad digit) must not blank the
+          // column: the last consultation stays on screen and the header says which turn it was.
+          const last = lastConsult === null ? '' : ` (last: turn ${lastConsult})`;
+          v.jev = { header: `Jev · turn ${r.turnIndex} · no questions${last}`, pending: false, groups: v.jev.groups, decision };
         }
         break;
       }
-      case 'silence':
-        v.lines.push({ kind: 'marker', text: 'silence' });
+      case 'silence': {
+        // How long the caller was quiet, when both clocks are known (spec §3.2: `silence · 7 s`).
+        const quiet = at !== null && prevAt !== null && at >= prevAt ? Math.round((at - prevAt) / 1_000) : null;
+        v.lines.push({ kind: 'marker', text: quiet === null ? 'silence' : `silence · ${quiet} s` });
         break;
+      }
       case 'dtmf':
         v.lines.push({ kind: 'marker', text: `keypad ${e.digit}` });
         break;
@@ -340,6 +419,7 @@ export function reduce(events) {
         v.status = `ended · ${e.reason}`;
         break;
     }
+    prevAt = at ?? prevAt;
   }
   // Merge consecutive keypad markers into one ("keypad 03051980").
   const merged = [];
@@ -355,6 +435,26 @@ export function reduce(events) {
   return v;
 }
 
+/** The `reasonCode` an out `end` frame carries, read as the action webhook reads it (src/server/http.ts). */
+function reasonCodeOf(handoffData) {
+  try {
+    const d = JSON.parse(String(handoffData ?? ''));
+    return d && typeof d.reasonCode === 'string' ? d.reasonCode : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Live order among events sharing a timestamp: the inbound frame, then the turn it caused (with
+ * its own `asked` immediately before it), then the end of the call.
+ */
+const REPLAY_RANK = {
+  silence: 0, dtmf: 0, interrupt: 0, reconnect: 0,
+  asked: 1, turn: 1,
+  handoff: 2, ended: 2,
+};
+
 /**
  * Rebuilds the live event sequence from a trace file and its frame log, so the page has one
  * renderer and two sources. `records` are what `/dashboard/traces/<sid>` returns: redacted, each
@@ -369,30 +469,46 @@ export function replayEvents(records, frames, opts) {
     type: 'call_started', callSid, at: Date.parse(first.ts),
     from: opts?.from ?? 'replay', todayIso: String(first.ts).slice(0, 10), thresholds: opts?.thresholds ?? {},
   });
+  const lines = frames ?? [];
+  // A caller hangup leaves no out `end` frame at all: the socket just closes, and the adapter logs
+  // that (`socketClosed` in handleSocketClose). Only then does the close stand for the end.
+  const hasEnd = lines.some((f) => f && f.dir === 'out' && (f.msg ?? {}).type === 'end');
+  // The frame log records each resumed socket, not a counter; the attempt is its position.
+  let resumed = 0;
   // A frame log line's `line` is its line number in the file, for a skip report; not shown here.
-  const frameEvents = (frames ?? []).flatMap((f) => {
+  const frameEvents = lines.flatMap((f) => {
     const at = Date.parse(f.ts);
     const m = f.msg ?? {};
     if (f.dir === 'in' && m.type === 'silence') return [{ type: 'silence', callSid, at, promptId: null }];
     if (f.dir === 'in' && m.type === 'dtmf') return [{ type: 'dtmf', callSid, at, digit: m.digit }];
     if (f.dir === 'in' && m.type === 'interrupt') return [{ type: 'interrupt', callSid, at, utteranceUntilInterrupt: m.utteranceUntilInterrupt ?? null }];
-    if (f.dir === 'log' && m.resumed) return [{ type: 'reconnect', callSid, at, attempt: 1 }];
+    if (f.dir === 'log' && m.resumed) return [{ type: 'reconnect', callSid, at, attempt: ++resumed }];
+    if (f.dir === 'log' && m.socketClosed && !hasEnd) return [{ type: 'ended', callSid, at, reason: 'hangup' }];
     if (f.dir === 'out' && m.type === 'end') {
-      return [{ type: 'ended', callSid, at, reason: /"reasonCode":"completed"/.test(String(m.handoffData)) ? 'completed' : 'handoff' }];
+      const code = reasonCodeOf(m.handoffData);
+      const out = [];
+      // The number dialled is not in the trace (the adapter masks its own), so the page says only
+      // that the call was transferred unless the caller passes one in.
+      if (code !== 'completed') out.push({ type: 'handoff', callSid, at, reason: code, number: opts?.handoffNumber ?? '…' });
+      out.push({ type: 'ended', callSid, at, reason: code === 'completed' ? 'completed' : 'handoff' });
+      return out;
     }
     return [];
   });
   const turnEvents = (records ?? []).flatMap((r) => {
     const at = Date.parse(r.ts);
     const out = [];
+    // Glued to its turn rather than dated `ts - askMs`: the page holds the asked state for the
+    // narration beat anyway (spec §4), so a timestamp of its own buys nothing and can reorder.
     if (r.questions) {
-      out.push({ type: 'asked', callSid, at: at - Math.max(1, Math.round(r.timing?.askMs ?? 0)), turnIndex: r.turnIndex, questions: r.questions, turnState: r.turnState });
+      out.push({ type: 'asked', callSid, at, turnIndex: r.turnIndex, questions: r.questions, turnState: r.turnState });
     }
     out.push({ type: 'turn', callSid, at, record: r, spoken: r.spokenText ?? (opts?.spoken ? opts.spoken(r) : '') });
     return out;
   });
-  // A silence or dtmf frame precedes the turn it caused (same ts, logged first), so a stable sort
-  // by time with turns last among equal timestamps keeps the live order.
-  const all = frameEvents.concat(turnEvents).sort((a, b) => a.at - b.at || (a.type === 'turn' ? 1 : 0) - (b.type === 'turn' ? 1 : 0));
+  // A silence or dtmf frame precedes the turn it caused and an end frame follows it, all three
+  // sharing a timestamp, so the sort breaks ties by that order (stable, so `asked` keeps its turn).
+  const rank = (e) => REPLAY_RANK[e.type] ?? 1;
+  const all = frameEvents.concat(turnEvents).sort((a, b) => a.at - b.at || rank(a) - rank(b));
   return events.concat(all);
 }
