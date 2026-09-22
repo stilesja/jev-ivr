@@ -1,7 +1,7 @@
 # Design: Frustration acknowledgment and transfer offer
 
 **Date:** 2026-09-22
-**Status:** approved in conversation; implementation plan to follow
+**Status:** implemented on branch frustration-escalation; see plan deviation record
 **Depends on:** the live dashboard (PR #13), which shows the frustration gate row and the confirmation group
 
 ## 1. Purpose

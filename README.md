@@ -58,8 +58,8 @@ checking today's behaviour against an old recording rather than reproducing it.
 In the REPL, type an utterance, `dtmf:44718293` to send keypad digits,
 `/silence` (or an empty line) to run a silence turn — as if the caller said
 and pressed nothing — or `/reset` to start a new call. A scenario step can be
-`{ "silence": true }` for the same thing. The corpus has 211 labeled
-outcomes and there are 72 scenarios available for multi-turn testing.
+`{ "silence": true }` for the same thing. The corpus has 217 labeled
+outcomes and there are 75 scenarios available for multi-turn testing.
 
 ## Regression
 
@@ -350,6 +350,22 @@ even asked, as long as the first task routes plainly. A hedged opener
 instead and drops the second; the caller can add it again once the form is
 open.
 
+A caller who sounds frustrated is walked up three rungs rather than
+transferred outright. The first frustrated turn on a call is acknowledged —
+"I understand, let's get this sorted." plays before whatever the turn would
+have said anyway — and the call goes on. The second frustrated turn (and any
+later one, unless the offer was already declined) asks instead of answering:
+"Would you like me to connect you to a person, or keep going?" Saying yes
+transfers, with reason `frustrated`. Saying no, "keep going", or anything
+else that is neither a yes nor a no declines the offer — the offer is not
+made again this call — and the caller goes back to the question they were on;
+content spoken in that same breath still counts, so "keep going, it's Dr.
+Chen" fills the provider on its way past. Two silences at the offer count the
+same as a decline. A third frustrated turn, or a second one after a decline,
+transfers directly with "Let me get you to someone who can help." The
+wording never claims a problem the system does not otherwise know about — it
+reacts to how the caller sounds, not to a guess at what's wrong.
+
 ### Recorded prompts
 
     pnpm -s prompts:sheet > clips.tsv # every clip id with the exact text to record (-s keeps pnpm's banner out)
@@ -372,6 +388,14 @@ for an ID. So does `ack_memberId`, which exists for the `by-confidence`
 readback policy and is unreachable while the member ID is a summary-policy slot
 on a form that has no summary. See Task 7 of
 `docs/superpowers/plans/2026-09-20-name-dob.md` for the exact commands.
+
+The frustration acknowledgment and transfer offer add two clips —
+`ack_frustration.0` ("I understand, let's get this sorted.") and
+`offer_transfer.0` ("Would you like me to connect you to a person, or keep
+going?") — and re-record `handoff_frustrated.0` for its new text ("Let me
+get you to someone who can help."). `pnpm prompts:check` reports 2 missing
+and 1 stale until those are recorded (Task 3 of
+`docs/superpowers/plans/2026-09-22-frustration-escalation.md`).
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
 and are discovered by filename; adding one needs no manifest edit. A clip
@@ -539,6 +563,14 @@ and on every record the trace route returns — before it leaves the server.
     reconnecting, apologizes, and dials `HANDOFF_NUMBER`.
 22. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
     and compare its decisions with `traces/<CallSid>.jsonl`.
+23. Call again and say "this is ridiculous, I need to reschedule" at the
+    greeting. Expect "I understand, let's get this sorted." before the name
+    question. Give the name, then be frustrated again at the birthday
+    question ("this is ridiculous, I already gave you my birthday"): expect
+    the offer, "Would you like me to connect you to a person, or keep
+    going?" Say "keep going" and expect the birthday question again. On
+    another call, repeat through the offer and say "yes": expect "Let me get
+    you to someone who can help." then the transfer to `HANDOFF_NUMBER`.
 
 Things to note on the first real call, per the spec's open questions: whether
 `speechModel="flux"` is accepted alongside partial prompts, how long Deepgram
