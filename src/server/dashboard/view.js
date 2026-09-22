@@ -503,7 +503,7 @@ export function replayEvents(records, frames, opts) {
     if (r.questions) {
       out.push({ type: 'asked', callSid, at, turnIndex: r.turnIndex, questions: r.questions, turnState: r.turnState });
     }
-    out.push({ type: 'turn', callSid, at, record: r, spoken: r.spokenText ?? (opts?.spoken ? opts.spoken(r) : '') });
+    out.push({ type: 'turn', callSid, at, record: r, spoken: r.spokenText ?? '' });
     return out;
   });
   // A silence or dtmf frame precedes the turn it caused and an end frame follows it, all three

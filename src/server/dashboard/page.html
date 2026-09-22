@@ -34,6 +34,9 @@
   button.on { border-color:var(--bar); color:#cfe0ff; }
   button[hidden], select[hidden], label[hidden] { display:none; }
   #conn { color:var(--partial); font-size:13px; }
+  /* An option's full ISO timestamp made this ~485px wide, which overflowed the 56px header at
+     1920; the option label is shortened to match (see startReplay in the script below). */
+  #trace { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 </style></head>
 <body>
 <header>
@@ -108,11 +111,17 @@
     /** Group names the viewer has opened by hand; kept across renders so a click sticks. */
     open: new Set(),
     view: reduce([]),
+    /** So a malformed event logs once per page load rather than spamming the console. */
+    renderErrorLogged: false,
   };
 
   const speed = () => Number(el('speed').value) || 1;
   const beatMs = () => {
-    const v = Number(el('beat').value);
+    // Number('') is 0, not NaN, so an empty box would otherwise read as "no beat" rather than
+    // falling through to the default.
+    const raw = el('beat').value.trim();
+    if (raw === '') return 800;
+    const v = Number(raw);
     return Number.isFinite(v) && v >= 0 ? v : 800;
   };
 
@@ -248,10 +257,22 @@
       const seq = num(event.seq);
       if (seq !== null) {
         if (seq <= state.lastSeq) return;
+        // A stalled viewer can have events dropped server-side (routes.ts skips writes once the
+        // backlog passes 1 MB); a gap in the sequence is the only sign of that reaching the page.
+        if (state.lastSeq > 0 && seq > state.lastSeq + 1) {
+          el('conn').textContent = `missed ${seq - state.lastSeq - 1} events, reload to catch up`;
+        }
         state.lastSeq = seq;
       }
       state.events.push(event);
-      render(reduce(state.events));
+      try {
+        render(reduce(state.events));
+      } catch (err) {
+        // A malformed event must not take down every render after it; drop just this one and keep
+        // showing the last view that worked.
+        if (!state.renderErrorLogged) { console.error('dashboard: failed to render event', event, err); state.renderErrorLogged = true; }
+        state.events.pop();
+      }
     };
     render(reduce(state.events));
   }
@@ -276,8 +297,16 @@
     const rows = (await json('/dashboard/traces')) ?? [];
     const list = Array.isArray(rows) ? rows : [];
     const sel = el('trace');
+    // The full sid plus a full ISO timestamp made the widest option ~485px, which pushed the
+    // header past its 56px band at 1920 wide; the option itself carries only what fits, and the
+    // full sid lives in `title` for a hover.
     sel.innerHTML = list.length
-      ? list.map((r) => `<option value="${esc(r.callSid)}">${esc(r.callSid)} · ${esc(r.startedAt ?? 'unknown')} · ${esc(r.turns ?? 0)} turns</option>`).join('')
+      ? list.map((r) => {
+          const sid = esc(r.callSid);
+          const started = typeof r.startedAt === 'string' ? r.startedAt : null;
+          const time = started && started.length >= 16 ? started.slice(11, 16) : 'unknown';
+          return `<option value="${sid}" title="${sid}">${sid.slice(0, 10)}… · ${time} · ${esc(r.turns ?? 0)} turns</option>`;
+        }).join('')
       : '<option value="">no traces yet</option>';
     await pick(list.length ? String(list[0].callSid) : '');
   }
@@ -364,11 +393,19 @@
     const tag = e.target && e.target.tagName ? e.target.tagName : '';
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (state.mode !== 'replay') return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
-    else if (e.key === 'Home') { e.preventDefault(); stopPlay(); state.cursor = 0; draw(); }
+    // Whichever button was last clicked keeps focus; left there, Space/Enter would also fire the
+    // browser's own activation of that button on top of the handling below (a toggle undone by a
+    // second toggle looks like nothing happened). Blurring it makes these keys work no matter which
+    // button was clicked last.
+    const deactivate = () => {
+      e.preventDefault();
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    };
+    if (e.key === 'ArrowRight') { deactivate(); step(1); }
+    else if (e.key === 'ArrowLeft') { deactivate(); step(-1); }
+    else if (e.key === 'Home') { deactivate(); stopPlay(); state.cursor = 0; draw(); }
     // ' ' is what a browser sends; 'Spacebar' is the old name, `code` the layout-independent one.
-    else if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') { e.preventDefault(); if (state.playing) stopPlay(); else setPlaying(true); }
+    else if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') { deactivate(); if (state.playing) stopPlay(); else setPlaying(true); }
   });
 
   startLive();

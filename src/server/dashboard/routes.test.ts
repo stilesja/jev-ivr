@@ -122,6 +122,23 @@ describe('dashboard routes', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('drops a JSON null (or array, or scalar) line rather than failing the trace', async () => {
+    // A line that parses but isn't a plain object would otherwise reach redactRecord and throw --
+    // as malformed, for this route's purposes, as a line that doesn't parse at all.
+    const dir = mkdtempSync(join(tmpdir(), 'dash-'));
+    const rec = { v: 1, sessionId: 'CA6', turnIndex: 0, ts: '2026-09-21T00:00:00.000Z', event: { type: 'setup', from: '+15550002926', to: '+15550000002' }, decision: { kind: 'prompt', promptId: 'greeting', vars: {}, acks: [] }, slots: {}, form: null, gates: [], frames: [], timing: {}, usage: {} };
+    writeFileSync(join(dir, 'CA6.jsonl'), [JSON.stringify(rec), 'null', '[1,2,3]', '"just a string"', '42'].join('\n') + '\n');
+    const s = await serve(new DashboardBus(), dir);
+    const one = await fetch(`${s.base}/dashboard/traces/CA6`);
+    expect(one.status).toBe(200);
+    const body = await one.json() as { records: unknown[] };
+    expect(body.records).toHaveLength(1);
+    const list = await (await fetch(`${s.base}/dashboard/traces`)).json() as { callSid: string; turns: number }[];
+    expect(list).toMatchObject([{ callSid: 'CA6', turns: 1 }]);
+    s.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('lists nothing when the trace directory does not exist yet', async () => {
     // Nothing creates the directory until the first call, so a fresh checkout hits this.
     const dir = join(mkdtempSync(join(tmpdir(), 'dash-')), 'not-created-yet');

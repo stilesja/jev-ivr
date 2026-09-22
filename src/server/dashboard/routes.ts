@@ -8,6 +8,10 @@ import { readFrameLog, type ReadFrameLogLine } from '../frameLog';
 import type { TraceRecord } from '../../trace/types';
 import { spokenText } from '../../prompts/render';
 
+// `enabled` duplicates `deps.bus`'s existence in production (src/server/index.ts only builds a
+// bus when the dashboard is on, and src/server/http.ts only reaches this module when that bus is
+// present); it is kept as its own field so routes.test.ts can exercise "disabled" against a real
+// bus without also having to fake a config.
 export interface DashboardDeps { bus: DashboardBus; traceDir: string; enabled: boolean }
 
 /** One trace record as `/dashboard/traces/<sid>` returns it: redacted, plus the line the caller heard. */
@@ -50,7 +54,12 @@ function traceLines(path: string): TraceRecord[] {
     .filter(Boolean)
     .flatMap((line) => {
       try {
-        return [JSON.parse(line) as TraceRecord];
+        const parsed: unknown = JSON.parse(line);
+        // A line that parses but isn't a plain object -- `null`, an array, a bare number or
+        // string -- is as malformed as one that doesn't parse at all: redactRecord walks it as a
+        // record and a `null` reaches Object.entries and throws.
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
+        return [parsed as TraceRecord];
       } catch {
         return [];
       }
@@ -92,7 +101,8 @@ export function handleDashboardRequest(req: IncomingMessage, res: ServerResponse
     if (head) { res.end(); return true; }
     res.write(': connected\n\n');
     const off = deps.bus.subscribe((event) => {
-      // A stalled viewer is dropped frames, not unbounded memory; the page reloads to catch up.
+      // A stalled viewer is dropped frames, not unbounded memory; the page notices the gap in
+      // `seq` and shows a warning rather than reloading on its own (page.html's `es.onmessage`).
       if (res.writableLength > MAX_STREAM_BACKLOG) return;
       res.write(`id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`);
     });

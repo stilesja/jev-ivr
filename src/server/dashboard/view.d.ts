@@ -3,7 +3,7 @@
  * build step; this file is what TypeScript resolves for `import … from './view.js'`.
  */
 import type { DashboardEvent } from './events';
-import type { TraceRecord } from '../../trace/types';
+import type { ReplayRecord } from './routes';
 import type { FrameLogLine } from '../frameLog';
 import type { Thresholds } from '../../core/thresholds';
 import type { GateRow } from '../../core/gates';
@@ -57,16 +57,11 @@ export interface View {
   thresholds: Partial<Thresholds>;
 }
 
-/** One trace record as the replay route returns it: the line the caller heard is precomputed. */
-export type ReplayRecord = TraceRecord & { spokenText?: string };
-
 export interface ReplayOptions {
   from?: string;
   thresholds?: Partial<Thresholds>;
   /** Masked, for the `transfer to …4567` marker; the trace does not record the number dialled. */
   handoffNumber?: string;
-  /** Legacy escape hatch: only consulted when the record carries no `spokenText`. */
-  spoken?: (record: ReplayRecord) => string;
 }
 
 /** Mirrors `ALL_SLOTS` in src/domain/forms.ts; view.js cannot import it. */

@@ -15,6 +15,12 @@ export type DashboardEvent =
    * by arrival order (the bus preserves it), never by index.
    */
   | (Base & { type: 'asked'; turnIndex: number; questions: QuestionMap; turnState: TurnState })
+  /**
+   * `spoken` is the line the caller heard on this turn, as the observer renders it live. The
+   * replay route (routes.ts) computes the same string from the trace record and calls it
+   * `spokenText` there instead (see `ReplayRecord`), since a stored record has no `spoken` field
+   * of its own.
+   */
   | (Base & { type: 'turn'; record: TraceRecord; spoken: string })
   | (Base & { type: 'silence'; promptId: string | null })
   | (Base & { type: 'dtmf'; digit: string })
@@ -24,7 +30,6 @@ export type DashboardEvent =
   | (Base & { type: 'ended'; reason: 'completed' | 'hangup' | 'handoff' | 'error' });
 
 export type DashboardEventType = DashboardEvent['type'];
-
 
 /** The last four digits only; the page never shows a whole caller number. */
 export function maskNumber(n: string | undefined | null): string {
