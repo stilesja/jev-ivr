@@ -7,7 +7,7 @@ import { JevClientError, type JevClient } from '../jev/types';
 import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
 import { loadCorpus } from '../jev/corpus';
-import { DEFAULT_CORPUS_FILE } from '../run/client';
+import { DEFAULT_CORPUS_FILE } from './client';
 
 const opts = {
   client: new FixtureStubClient([], { sharpness: 0.9, fallback: new HeuristicStubClient() }),
@@ -16,8 +16,8 @@ const opts = {
   now: () => 1_000,
 };
 
-// The rest of runTurn (model calls, client errors, tracing) is covered by
-// describe('runTurn') in src/harness-text/runner.test.ts; this file only pins the render wiring.
+// Broader coverage of runTurn (model calls, client errors, tracing) lives in describe('runTurn')
+// in src/harness-text/runner.test.ts; this file pins the render wiring and the observer hook.
 describe('runTurn render context', () => {
   it('renders a play frame when render context has clips, and text otherwise', async () => {
     const render = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
@@ -43,9 +43,8 @@ describe('runTurn trace source', () => {
   });
 });
 
-const TODAY = '2026-09-18';
 function observedOpts(client: JevClient, observe?: TurnObserver): RunOptions {
-  return { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: TODAY, observe, now: () => 1_700_000_000_000 };
+  return { ...opts, client, observe, now: () => 1_700_000_000_000 };
 }
 
 describe('runTurn observer', () => {
@@ -54,6 +53,11 @@ describe('runTurn observer', () => {
   it('fires asked before the client and turn after, with the record', async () => {
     const order: string[] = [];
     const seen: { questions: unknown; client: unknown } = { questions: null, client: null };
+    // runTurn wraps observer calls in try/catch (they're best-effort), so an `expect` thrown
+    // inside the `turn` callback below would be swallowed and the test would stay green even if
+    // it failed. Capture what the callback saw and assert on it after the `await` instead.
+    let turnRecord: { turnIndex: number } | undefined;
+    let turnAt: number | undefined;
     const client: JevClient = {
       ask: async (req) => { order.push('client'); seen.client = req.questions; return fixture.ask(req); },
     } as JevClient;
@@ -61,12 +65,26 @@ describe('runTurn observer', () => {
       asked: (questions) => { order.push('asked'); seen.questions = questions; },
       // The first turn resolved on a session runs bookkeep(), which increments turnIndex from 0 to 1
       // before the trace record is built (see src/core/turn.ts).
-      turn: (record, at) => { order.push('turn'); expect(record.turnIndex).toBe(1); expect(at).toBe(1_700_000_000_000); },
+      turn: (record, at) => { order.push('turn'); turnRecord = record; turnAt = at; },
     };
     const session = newSession('CA1', 1_700_000_000_000);
     await runTurn(session, promptFrame("I need to reschedule my appointment, it's with Dr. Chen sometime next week"), observedOpts(client, observe));
     expect(order).toEqual(['asked', 'client', 'turn']);
     expect(seen.questions).toBe(seen.client);
+    expect(turnRecord?.turnIndex).toBe(1);
+    expect(turnAt).toBe(1_700_000_000_000);
+  });
+
+  it('does not break the turn when both asked and turn throw', async () => {
+    const throwingObserve: TurnObserver = {
+      asked: () => { throw new Error('boom from asked'); },
+      turn: () => { throw new Error('boom from turn'); },
+    };
+    const event = promptFrame("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    const withoutObserver = await runTurn(newSession('CA1', 1_700_000_000_000), event, observedOpts(fixture));
+    const withThrowingObserver = await runTurn(newSession('CA1', 1_700_000_000_000), event, observedOpts(fixture, throwingObserve));
+    expect(withThrowingObserver.record).toBeDefined();
+    expect(withThrowingObserver.record.decision).toEqual(withoutObserver.record.decision);
   });
 
   it('fires turn but not asked when the model is not needed', async () => {

@@ -11,6 +11,7 @@ import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
 import { buildHints } from './hints';
 import { DashboardBus } from './dashboard/bus';
+import { redactRecord } from './dashboard/events';
 import { newSession } from '../core/session';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
@@ -108,7 +109,9 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
       const observe: TurnObserver | null = bus
         ? {
             asked: (questions, turnState, at) => bus.publish({ type: 'asked', callSid, at, turnIndex: askedTurnIndex(), questions, turnState }),
-            turn: (record, at) => bus.publish({ type: 'turn', callSid, at, record, spoken: spokenText(record.decision) }),
+            // Published record is redacted for the dashboard bus; the trace file on disk (written
+            // by opts.trace above) keeps the unredacted record.
+            turn: (record, at) => bus.publish({ type: 'turn', callSid, at, record: redactRecord(record), spoken: spokenText(record.decision) }),
           }
         : null;
       return {

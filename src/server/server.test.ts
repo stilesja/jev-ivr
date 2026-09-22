@@ -6,7 +6,7 @@ import { startServer, type RunningServer, type ServerOverrides } from './index';
 import { loadConfig } from './config';
 import { FakeRelay } from '../testing/fakeRelay';
 import type { JevClient } from '../jev/types';
-import type { DashboardEvent } from './dashboard/events';
+import { maskNumber, type DashboardEvent } from './dashboard/events';
 
 let running: RunningServer | null = null;
 /** Temp dirs minted by makeConfig() for this test, swept up alongside the server it started. */
@@ -270,6 +270,9 @@ describe('server end to end', () => {
     expect(turns.at(-1)!.record.turnIndex).toBe(asked[0]!.turnIndex);
     expect(turns.at(-1)!.spoken).toBe("What's your first and last name?");
     expect(asked[0]!.questions).toHaveProperty('intent');
+    // The dashboard route is unauthenticated, so the raw record is never enough: the setup turn's
+    // event must already carry a masked caller number, not the whole one FakeRelay.setup sent.
+    expect(turns[0]!.record.event).toMatchObject({ type: 'setup', from: maskNumber('+15550000001'), to: maskNumber('+15550000002') });
   });
 
   it('has no bus when the dashboard is off', async () => {
