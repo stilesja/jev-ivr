@@ -479,10 +479,10 @@ export async function handleSocketClose(deps: AdapterDeps, ctx: ConnectionContex
     clearTimeout(timer);
     endGraceTimers.delete(ctx.callSid);
   }
-  // The live socket of a call that never ended: the caller hung up. A reconnect does not get
-  // here, because Twilio's reconnect setup arrives on a new socket first and this close is then
-  // the stale one returned above.
-  if (!entry.ended) publish(deps, { type: 'ended', callSid: ctx.callSid, at: Date.now(), reason: 'hangup' });
+  // A close of the live socket of a call that never ended is not yet a hangup: the reconnect
+  // Twilio drives from `/cr-action` gets here too, and in that order (socket close, then the
+  // action webhook, then the new setup) this handler cannot tell the two apart. The action
+  // webhook can, so the `ended{hangup}` event is published there (`decideActionTwiml` in http.ts).
   // Nobody is listening on the other end; a re-ask would be played to a closed socket.
   clearNoInput(ctx.callSid);
   entry.frames.write('log', { socketClosed: true, ended: entry.ended });

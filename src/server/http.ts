@@ -151,8 +151,14 @@ export function decideActionTwiml(deps: HttpDeps, params: Record<string, string>
   // (b) No handoff: an ordinary caller hangup (or any status that isn't a live in-progress call)
   // just ends the call. This must not be logged as gave-up or dialed.
   if (params.SessionStatus === 'completed' || params.CallStatus !== 'in-progress') {
+    // Read before `end`, and published only for a call that was still live: this branch is the
+    // one place that knows a socket close was a hangup rather than the reconnect branch below,
+    // so it is the dashboard's only producer of `ended{hangup}`. A call that ended on its own
+    // (complete or handoff) already published its own `ended` from the adapter's turn.
+    const wasLive = deps.store.get(callSid)?.ended === false;
     deps.store.end(callSid);
     deps.tokens.revoke(callSid);
+    if (wasLive) deps.bus?.publish({ type: 'ended', reason: 'hangup', callSid, at: Date.now() });
     const reason = params.SessionStatus ?? params.CallStatus ?? 'unknown';
     return { twiml: hangupTwiml(), note: `hangup:${reason}` };
   }

@@ -4,10 +4,16 @@ import type { TraceRecord } from '../../trace/types';
 import type { Thresholds } from '../../core/thresholds';
 import type { FrameLogLine } from '../frameLog';
 
-interface Base { callSid: string; at: number; seq?: number }
+interface Base { callSid: string; at: number }
 
 export type DashboardEvent =
   | (Base & { type: 'call_started'; from: string; todayIso: string; thresholds: Partial<Thresholds> })
+  /**
+   * `turnIndex` is the index the record of the turn now starting will carry -- except on a turn
+   * that resolves to ignore or hold, where `bookkeep` does not increment the session's counter and
+   * this is therefore one ahead of the `turn` event that follows. Pair an `asked` with its `turn`
+   * by arrival order (the bus preserves it), never by index.
+   */
   | (Base & { type: 'asked'; turnIndex: number; questions: QuestionMap; turnState: TurnState })
   | (Base & { type: 'turn'; record: TraceRecord; spoken: string })
   | (Base & { type: 'silence'; promptId: string | null })

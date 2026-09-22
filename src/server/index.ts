@@ -11,7 +11,7 @@ import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
 import { buildHints } from './hints';
 import { DashboardBus } from './dashboard/bus';
-import { redactRecord } from './dashboard/events';
+import { makeObserver } from './dashboard/observer';
 import { newSession } from '../core/session';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
@@ -19,7 +19,6 @@ import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
 import type { TurnObserver } from '../run/turn';
-import { spokenText } from '../prompts/render';
 import { clipVersions, discoverClips, recordableClips } from '../prompts/clips';
 import { clipDurations } from '../prompts/playback';
 import { coverage, readRecorded } from '../prompts/sheet';
@@ -31,6 +30,8 @@ export interface RunningServer {
   tokens: CallTokens;
   /** The dashboard's event bus, or undefined when DASHBOARD=off. */
   bus?: DashboardBus;
+  /** One pass of the idle sweep the evictor runs on its interval; exposed for tests. */
+  sweep(): void;
   close(): Promise<void>;
 }
 
@@ -96,24 +97,13 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const bus = config.dashboard ? new DashboardBus() : undefined;
   log(bus ? 'dashboard: /dashboard' : 'dashboard: off');
 
-  const store = new SessionStore(
+  // Annotated because the factory below hands `store` to `makeObserver`, and an inferred type
+  // would be circular: the initializer references the very binding it is initializing.
+  const store: SessionStore = new SessionStore(
     (callSid) => {
       const file = safeFileStem(callSid);
       const trace = new TraceWriter(join(config.traceDir, `${file}.jsonl`));
-      // The turn index the record of the turn now starting will carry. `bookkeep` increments the
-      // session's counter before the record is built, so the record of the first turn is 1 and the
-      // live session's counter is one behind. Read from the store, not from the resources object
-      // below: the store spreads these into its own entry, and it is the entry's `session` the
-      // adapter replaces after every turn. (`history` is no substitute: HISTORY_WINDOW caps it.)
-      const askedTurnIndex = () => (store.get(callSid)?.session.turnIndex ?? 0) + 1;
-      const observe: TurnObserver | null = bus
-        ? {
-            asked: (questions, turnState, at) => bus.publish({ type: 'asked', callSid, at, turnIndex: askedTurnIndex(), questions, turnState }),
-            // Published record is redacted for the dashboard bus; the trace file on disk (written
-            // by opts.trace above) keeps the unredacted record.
-            turn: (record, at) => bus.publish({ type: 'turn', callSid, at, record: redactRecord(record), spoken: spokenText(record.decision) }),
-          }
-        : null;
+      const observe: TurnObserver | null = bus ? makeObserver(bus, store, callSid) : null;
       return {
         session: newSession(callSid, now()),
         opts: { client, thresholds, todayIso: todayIso(), trace, now, render, observe },
@@ -134,16 +124,31 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs, noInputMs, clipDurations: durations, bus, handoffNumber: config.handoffNumber },
     overrides.setupTimeoutMs,
   );
-  const evictor = setInterval(() => {
-    for (const sid of store.evictIdle()) {
+  /**
+   * One pass of the idle sweep. Named and returned rather than inlined into the interval so a
+   * test can drive a tick without waiting a minute for one.
+   */
+  const sweep = (): void => {
+    // Read before the eviction: `evictIdle` deletes the entry, so afterwards there is no way to
+    // tell whether the call it closed was still live. It closes the socket too, but that close
+    // reaches `handleSocketClose` with the entry already gone, so nothing downstream would ever
+    // publish the end of an evicted call -- this is the only producer of reason 'error'.
+    const live = bus?.current() ?? null;
+    const wasLive = live ? store.get(live)?.ended === false : false;
+    const evicted = store.evictIdle();
+    for (const sid of evicted) {
       // An evicted call with a socket gets here again through the socket's own close, but one
       // whose socket had already gone would otherwise leave its no-input bookkeeping behind.
       forgetNoInput(sid);
       log(`${sid}: evicted idle session`);
     }
+    if (live && wasLive && evicted.includes(live)) {
+      bus?.publish({ type: 'ended', callSid: live, at: now(), reason: 'error' });
+    }
     const swept = tokens.evictExpired();
     if (swept) log(`swept ${swept} expired call tokens`);
-  }, EVICT_EVERY_MS);
+  };
+  const evictor = setInterval(sweep, EVICT_EVERY_MS);
   evictor.unref();
 
   // listen reports failure as an 'error' event, which is unhandled (and fatal) unless it is awaited here.
@@ -169,6 +174,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     store,
     tokens,
     bus,
+    sweep,
     close: async () => {
       clearInterval(evictor);
       // Let turns that are already running finish (and flush their frames) before the sockets go away.

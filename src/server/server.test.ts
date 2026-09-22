@@ -288,7 +288,7 @@ describe('server end to end', () => {
     expect((await fetch(`${base}/dashboard/traces`)).status).toBe(404);
   });
 
-  it('pairs the asked and turn events of one turn by turnIndex, and skips the bus when off', async () => {
+  it('pins the index labels of one ordinary turn, where asked and turn agree', async () => {
     const { relay } = await connected();
     const events: DashboardEvent[] = [];
     running!.bus!.subscribe((e) => events.push(e));
@@ -300,12 +300,57 @@ describe('server end to end', () => {
     expect(asked).toHaveLength(1);
     // The setup turn asked nothing, so the model's first turn is the second turn of the call.
     expect(asked[0]).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
+    // This turn is an ordinary one, so the two labels agree. That is not the general rule: a turn
+    // that resolves to ignore or hold leaves `asked` one ahead (see events.ts), which is why the
+    // page pairs the two events by arrival order rather than by this number.
     expect(turns.at(-1)!.record.turnIndex).toBe(asked[0]!.turnIndex);
     expect(turns.at(-1)!.spoken).toBe("What's your first and last name?");
     expect(asked[0]!.questions).toHaveProperty('intent');
     // The dashboard route is unauthenticated, so the raw record is never enough: the setup turn's
     // event must already carry a masked caller number, not the whole one FakeRelay.setup sent.
     expect(turns[0]!.record.event).toMatchObject({ type: 'setup', from: maskNumber('+15550000001'), to: maskNumber('+15550000002') });
+  });
+
+  it('publishes ended with reason error when a live call is evicted', async () => {
+    // `evictIdle` deletes the entry before the socket it closes reaches the adapter's close
+    // handler, so the sweep itself is the only place that can end an evicted call for the page.
+    let clock = 0;
+    const { config } = makeConfig({ SESSION_TTL_MS: '50', PORT: '0' });
+    running = await startServer(config, { log: () => {}, now: () => clock });
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForTexts(1);
+    const events: DashboardEvent[] = [];
+    running.bus!.subscribe((e) => events.push(e));
+    // Well past the idle TTL, on the server's own clock. `sweep` is the evictor's per-tick body,
+    // called directly so the test does not wait out the minute-long interval.
+    clock = 10_000;
+    running.sweep();
+    expect(running.store.get('CA1')).toBeUndefined();
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'error', callSid: 'CA1', at: 10_000 });
+    expect(events.filter((e) => e.type === 'ended')).toHaveLength(1);
+    relay.close();
+  });
+
+  it('does not publish an ended for a call that had already ended when it was evicted', async () => {
+    let clock = 0;
+    const { config } = makeConfig({ SESSION_TTL_MS: '50', PORT: '0' });
+    running = await startServer(config, { log: () => {}, now: () => clock });
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForTexts(1);
+    const events: DashboardEvent[] = [];
+    running.bus!.subscribe((e) => events.push(e));
+    // A call that ended on its own published its own `ended`; the sweep that later reclaims the
+    // entry must not add a second one.
+    running.store.end('CA1');
+    clock = 10_000;
+    running.sweep();
+    expect(running.store.get('CA1')).toBeUndefined();
+    expect(events.filter((e) => e.type === 'ended')).toHaveLength(0);
+    relay.close();
   });
 
   it('has no bus when the dashboard is off', async () => {
