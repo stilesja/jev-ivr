@@ -8,6 +8,7 @@ import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
 import { spokenText } from '../prompts/render';
 import type { DateWindow } from './extract/date';
+import type { Ack } from './fia';
 
 const tc: TurnContext = { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
 
@@ -886,6 +887,98 @@ describe('final confirm', () => {
     expect(r.session.promptedFor).toBe('confirm');
     // The failure is not a dodged summary: the ladder keeps its place.
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+});
+
+/**
+ * Spec 2026-09-22 §2: the rungs a frustrated caller walks -- an acknowledgment, then the offer of
+ * a transfer, then the transfer. The texts here are ones the heuristic stub scores as high
+ * frustration ("ridiculous", "useless", "ugh"), the same way the corpus labels do.
+ */
+describe('frustration escalation', () => {
+  const OPENER = 'ugh, I already told you, I need to reschedule my appointment';
+  const ANGRY = 'ugh, come on, third time now';
+  const ACK: Ack = { promptId: 'ack_frustration', vars: {} };
+  const OFFER = { kind: 'prompt', promptId: 'offer_transfer', target: 'confirm', options: ['yes', 'no'] };
+  /** Frustrated at the greeting, then frustrated again at the name question. */
+  const TO_OFFER: Turn[] = [OPENER, ANGRY];
+
+  it('acknowledges the first frustrated turn before the question it was going to ask anyway', () => {
+    const r = afterTurns([OPENER]);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', acks: [ACK] });
+    expect(r.session.form).toBe('reschedule');
+    expect(r.session.frustratedTurns).toBe(1);
+  });
+
+  it('offers a transfer on the second frustrated turn, in place of the next question', () => {
+    const r = afterTurns(TO_OFFER);
+    expect(r.decision).toMatchObject(OFFER);
+    expect(r.session.pendingConfirmation).toEqual({ target: 'transfer', attempts: 0 });
+    expect(r.session.frustratedTurns).toBe(2);
+    expect(spokenText(r.decision)).toContain('Would you like me to connect you to a person');
+  });
+
+  it('transfers on yes', () => {
+    const r = afterTurns([...TO_OFFER, 'yes']);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'frustrated' });
+    expect(spokenText(r.decision)).toContain('Let me get you to someone who can help.');
+  });
+
+  it('goes back to the question it was on when the offer is declined', () => {
+    const r = afterTurns([...TO_OFFER, 'no']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', target: 'name' });
+    expect(r.session.pendingConfirmation).toBeNull();
+    expect(r.session.transferDeclined).toBe(true);
+    // Answering the offer is not itself a frustrated turn.
+    expect(r.session.frustratedTurns).toBe(2);
+  });
+
+  it('transfers on the next frustrated turn once the offer has been declined', () => {
+    expect(afterTurns([...TO_OFFER, 'no', ANGRY]).decision).toMatchObject({ kind: 'handoff', reason: 'frustrated' });
+  });
+
+  it('keeps what the answer to the offer says, and asks the next slot', () => {
+    // At the provider question, frustrated twice, then an answer that is neither yes nor no:
+    // the offer is declined, the doctor it named is kept, and the day is what is left to ask.
+    const steps: Turn[] = ['I need to reschedule my appointment', 'Jason Stiles', 'March fifth nineteen eighty', OPENER, ANGRY];
+    const offered = afterTurns(steps);
+    expect(offered.decision).toMatchObject(OFFER);
+    const r = afterTurns([...steps, 'keep going, it is Dr. Chen']);
+    expect(r.session.slots.provider.value).toBe('chen');
+    expect(r.session.transferDeclined).toBe(true);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date', target: 'date' });
+  });
+
+  it('never attaches the acknowledgment to a decision that ends the call', () => {
+    // A frustrated yes at the summary completes the form; the completion line says it all.
+    const r = afterTurns([...HAPPY, 'yes, finally, what a ridiculous system']);
+    expect(r.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed', acks: [] });
+    expect(r.session.frustratedTurns).toBe(1);
+  });
+
+  it('plays the acknowledgment at most once per call', () => {
+    const turns = runTurns([OPENER, 'Jason Stiles', ANGRY]);
+    expect(turns[0]!.decision).toMatchObject({ promptId: 'ask_name', acks: [ACK] });
+    expect(turns[1]!.decision).toMatchObject({ promptId: 'ask_dob', acks: [] });
+    expect(turns[2]!.decision).toMatchObject(OFFER);
+  });
+
+  it('re-asks the offer after one silence and declines it after two, without a keypad rung', () => {
+    const s = afterTurns(TO_OFFER).session;
+    const one = resolve(s, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'offer_transfer', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.pendingConfirmation).toEqual({ target: 'transfer', attempts: 1 });
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(two.session.pendingConfirmation).toBeNull();
+    expect(two.session.transferDeclined).toBe(true);
+  });
+
+  it('ignores the keypad at the offer', () => {
+    const s = afterTurns(TO_OFFER).session;
+    const r = resolve(s, dtmfFrames('1')[0]!, null, tc);
+    expect(r.decision).toEqual({ kind: 'ignore' });
+    expect(r.session.pendingConfirmation).toEqual({ target: 'transfer', attempts: 0 });
   });
 });
 

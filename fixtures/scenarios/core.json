@@ -380,12 +380,105 @@
       },
       {
         "say": "This is ridiculous, I already said Dr. Chen three times"
+      },
+      {
+        "say": "Are you kidding me"
+      },
+      {
+        "say": "keep going"
+      },
+      {
+        "say": "This is ridiculous, I just want to reschedule"
       }
     ],
     "expect": {
       "decision": "handoff",
       "reason": "frustrated",
-      "form": "reschedule"
+      "form": "reschedule",
+      "slots": {
+        "provider": "chen"
+      },
+      "text": "Let me get you to someone who can help."
+    }
+  },
+  {
+    "id": "frustration-offer-yes",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "This is ridiculous, I already said Dr. Chen three times"
+      },
+      {
+        "say": "Are you kidding me"
+      },
+      {
+        "say": "yes, connect me"
+      }
+    ],
+    "expect": {
+      "decision": "handoff",
+      "reason": "frustrated",
+      "form": "reschedule",
+      "text": "Let me get you to someone who can help."
+    }
+  },
+  {
+    "id": "frustration-offer-silence",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "This is ridiculous, I already said Dr. Chen three times"
+      },
+      {
+        "say": "Are you kidding me"
+      },
+      {
+        "silence": true
+      },
+      {
+        "silence": true
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_name",
+      "form": "reschedule",
+      "text": "I didn't hear anything."
+    }
+  },
+  {
+    "id": "frustration-content-at-offer",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Are you kidding me"
+      },
+      {
+        "say": "This is ridiculous, I just want to reschedule"
+      },
+      {
+        "say": "make it Dr. Chen"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_date",
+      "form": "reschedule",
+      "slots": {
+        "provider": "chen"
+      }
     }
   },
   {

@@ -14,21 +14,55 @@ export interface GateRow {
   decided: boolean;
 }
 
+/**
+ * The rung the frustration gate reached (spec 2026-09-22 §2): `ack` for the first frustrated turn,
+ * `offer` for the second. A handoff is a verdict of its own, and a turn that is not frustrated --
+ * or one that is answering the offer -- carries nothing.
+ *
+ * Only the verdicts that let the call go on carry it: the turn prepends the acknowledgment to the
+ * prompt it was going to play, or replaces that prompt with the offer, and neither makes sense for
+ * a turn that says nothing (`ignore`, `hold`), one that is already leaving (`handoff`), or a replay
+ * of the last prompt.
+ */
+export type FrustrationRung = 'ack' | 'offer';
+interface Frustrated {
+  frustration?: FrustrationRung;
+}
+
 export type Verdict =
   | { kind: 'ignore' }
   | { kind: 'hold' }
-  | { kind: 'nomatch' }
+  | ({ kind: 'nomatch' } & Frustrated)
   | { kind: 'handoff'; reason: string }
-  | { kind: 'confirmed'; queue?: FormId }
-  | { kind: 'rejected'; queue?: FormId }
-  | { kind: 'confirm_unanswered'; queue?: FormId }
-  | { kind: 'change_slot'; slot: SlotId; queue?: FormId }
+  | ({ kind: 'confirmed'; queue?: FormId } & Frustrated)
+  | ({ kind: 'rejected'; queue?: FormId } & Frustrated)
+  | ({ kind: 'confirm_unanswered'; queue?: FormId } & Frustrated)
+  | ({ kind: 'change_slot'; slot: SlotId; queue?: FormId } & Frustrated)
   | { kind: 'replay' }
-  | { kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit'; queue?: FormId }
-  | { kind: 'queue'; intent: FormId }
-  | { kind: 'disambiguate_intent'; a: Intent; b: Intent }
-  | { kind: 'intent_failed' }
-  | { kind: 'proceed' };
+  | ({ kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit'; queue?: FormId } & Frustrated)
+  | ({ kind: 'queue'; intent: FormId } & Frustrated)
+  | ({ kind: 'disambiguate_intent'; a: Intent; b: Intent } & Frustrated)
+  | ({ kind: 'intent_failed' } & Frustrated)
+  | ({ kind: 'proceed' } & Frustrated);
+
+/** The rung a verdict carries, if it is one of the kinds that can carry one. */
+export function frustrationOf(verdict: Verdict): FrustrationRung | undefined {
+  return 'frustration' in verdict ? verdict.frustration : undefined;
+}
+
+/** Stamp the rung onto the verdict the gates settled on, where that verdict can carry it. */
+function withFrustration(verdict: Verdict, rung: FrustrationRung | null): Verdict {
+  if (rung === null) return verdict;
+  switch (verdict.kind) {
+    case 'ignore':
+    case 'hold':
+    case 'handoff':
+    case 'replay':
+      return verdict;
+    default:
+      return { ...verdict, frustration: rung };
+  }
+}
 
 export interface GateResult {
   rows: GateRow[];
@@ -83,14 +117,25 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     passed ? rows.push(row) : decide(row, { kind: 'handoff', reason: 'live-agent' });
   }
 
-  // 5. frustration escalation (before intent; see Deviation note)
+  // 5. frustration escalation (before intent; see Deviation note). The gate reads the rung off the
+  // count the session carries; only the handoff is a verdict of its own, and the turn does the
+  // bookkeeping (spec 2026-09-22 §2). A repeated attempt no longer matters.
+  let frustrationRung: FrustrationRung | null = null;
   {
     const f = answers.frustration;
     const high = isScore(f) ? (f.probabilities.high ?? 0) : 0;
-    const repeat = ts.turn.attempt !== 'first';
-    const passed = !(high >= t.GATE_FRUSTRATION_HIGH && repeat);
-    const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed, outcome: passed ? (high >= t.GATE_FRUSTRATION_HIGH ? 'first_attempt' : 'pass') : 'handoff', decided: false };
-    passed ? rows.push(row) : decide(row, { kind: 'handoff', reason: 'frustrated' });
+    const frustrated = high >= t.GATE_FRUSTRATION_HIGH;
+    // The caller answering the offer is not counted again, however crossly they answer it.
+    const atOffer = session.pendingConfirmation?.target === 'transfer';
+    const count = frustrated && !atOffer ? session.frustratedTurns + 1 : session.frustratedTurns;
+    const rung = !frustrated || atOffer ? 'pass'
+      : count === 1 ? 'ack'
+        : count === 2 && !session.transferDeclined ? 'offer'
+          : 'handoff';
+    const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed: rung !== 'handoff', outcome: rung, decided: false };
+    if (rung === 'handoff') decide(row, { kind: 'handoff', reason: 'frustrated' });
+    else rows.push(row);
+    frustrationRung = rung === 'ack' || rung === 'offer' ? rung : null;
   }
 
   // 6. pending confirmation. Intent and slot readbacks decide here. The summary (target form)
@@ -105,10 +150,12 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     const isForm = pending.target === 'form';
     const yes = noulValue(answers, 'confirmsYes');
     const no = noulValue(answers, 'confirmsNo');
+    // The transfer offer takes anything that is not a yes as a no (spec 2026-09-22 §3): the caller
+    // who answers it with a doctor's name, or with nothing much, is not asked it a second time.
     if (yes >= t.CONFIRM_YES && yes >= no) {
       confirmationRow = { gate: 'confirmation', value: yes, threshold: t.CONFIRM_YES, passed: true, outcome: 'confirmed', decided: false };
       if (isForm) { formConfirm = 'confirmed'; rows.push(confirmationRow); } else decide(confirmationRow, { kind: 'confirmed' });
-    } else if (no >= t.CONFIRM_NO) {
+    } else if (no >= t.CONFIRM_NO || pending.target === 'transfer') {
       confirmationRow = { gate: 'confirmation', value: no, threshold: t.CONFIRM_NO, passed: true, outcome: 'rejected', decided: false };
       if (isForm) { formConfirm = 'rejected'; rows.push(confirmationRow); } else decide(confirmationRow, { kind: 'rejected' });
     } else {
@@ -281,5 +328,5 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
   }
 
   // `verdict` is only ever assigned inside the `decide` closure, so TypeScript narrows it to null here; the `??` is load-bearing at runtime.
-  return { rows, verdict: verdict ?? routeVerdict };
+  return { rows, verdict: withFrustration(verdict ?? routeVerdict, frustrationRung) };
 }

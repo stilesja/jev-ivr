@@ -25,8 +25,20 @@ export interface TurnState {
   caller: { verified: boolean; openAppointment: boolean; priorCalls: PriorCallsBucket };
   asr: { text: string; isFinal: boolean; bargeIn: boolean; dtmf: string | null };
   candidateSpans: string[];
-  /** the model sees 'intent', 'form', or the slot id */
-  pendingConfirmation: { target: 'intent' | 'form' | SlotId; value: string } | null;
+  /** the model sees 'intent', 'form', 'transfer', or the slot id */
+  pendingConfirmation: { target: 'intent' | 'form' | 'transfer' | SlotId; value: string } | null;
+}
+
+/**
+ * The pending confirmation as the model sees it: what is being confirmed, and the thing itself in
+ * words. The transfer offer names what a yes buys rather than a form or a slot (spec 2026-09-22 §3).
+ */
+function pendingState(pc: Session['pendingConfirmation']): TurnState['pendingConfirmation'] {
+  if (pc === null) return null;
+  if (pc.target === 'intent') return { target: 'intent', value: INTENT_LABELS[pc.intent] };
+  if (pc.target === 'form') return { target: 'form', value: INTENT_LABELS[pc.form] };
+  if (pc.target === 'transfer') return { target: 'transfer', value: 'connect you to a person' };
+  return { target: pc.slot, value: pc.display };
 }
 
 export function buildTurnState(session: Session, input: TurnInput, nowMs: number): TurnState {
@@ -55,12 +67,6 @@ export function buildTurnState(session: Session, input: TurnInput, nowMs: number
     },
     asr: { text: input.text, isFinal: input.isFinal, bargeIn: session.lastInterrupt !== null, dtmf: input.dtmf },
     candidateSpans: candidateSpans(input.text),
-    pendingConfirmation: session.pendingConfirmation
-      ? session.pendingConfirmation.target === 'intent'
-        ? { target: 'intent', value: INTENT_LABELS[session.pendingConfirmation.intent] }
-        : session.pendingConfirmation.target === 'form'
-          ? { target: 'form', value: INTENT_LABELS[session.pendingConfirmation.form] }
-          : { target: session.pendingConfirmation.slot, value: session.pendingConfirmation.display }
-      : null,
+    pendingConfirmation: pendingState(session.pendingConfirmation),
   };
 }

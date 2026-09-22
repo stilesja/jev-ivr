@@ -356,7 +356,69 @@
       "name": null,
       "dob": null,
       "memberId": null,
-      "provider": null,
+      "provider": "chen",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "frustration-offer-yes": {
+    "id": "frustration-offer-yes",
+    "decision": "handoff",
+    "promptId": "handoff_frustrated",
+    "acks": [],
+    "reason": "frustrated",
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "reschedule",
+    "slots": {
+      "name": null,
+      "dob": null,
+      "memberId": null,
+      "provider": "chen",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "frustration-offer-silence": {
+    "id": "frustration-offer-silence",
+    "decision": "prompt",
+    "promptId": "ask_name",
+    "acks": [
+      "no_input"
+    ],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": null,
+    "form": "reschedule",
+    "slots": {
+      "name": null,
+      "dob": null,
+      "memberId": null,
+      "provider": "chen",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "frustration-content-at-offer": {
+    "id": "frustration-content-at-offer",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "chen",
       "date": null
     },
     "queued": [],

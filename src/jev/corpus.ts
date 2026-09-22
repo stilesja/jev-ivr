@@ -41,15 +41,21 @@ export interface AnswerOverride {
   probabilities?: Record<string, number>;
 }
 
-export type CorpusContext = 'no_form' | FormId | `confirm_${FormId}`;
+/**
+ * The state an utterance is spoken in: nothing started yet, a form in progress, the summary of a
+ * form (`confirm_<form>`), or the transfer offered to a frustrated caller (spec 2026-09-22 §5).
+ * The offer is not a `confirm_` context: it confirms no form and reads no summary back. It is
+ * seeded inside a `reschedule` form so that a declined offer has a question to return to.
+ */
+export type CorpusContext = 'no_form' | FormId | `confirm_${FormId}` | 'offer_transfer';
 
 export interface CorpusEntry {
   id: string;
   text: string;
   intent: Intent;
-  /** the form active when this utterance is spoken; no_form for a first utterance; confirm_<form> for the summary turn */
+  /** the form active when this utterance is spoken; no_form for a first utterance; confirm_<form> for the summary turn; offer_transfer for the transfer offer */
   context: CorpusContext;
-  /** the slot the last prompt asked for; only inside a form, defaults to the form's first missing slot */
+  /** the slot the last prompt asked for; inside a form or at the offer, defaults to the form's first missing slot */
   prompted?: SlotId;
   slots?: CorpusSlots;
   /** the caller hedges the request (spec 2026-09-19 §2.1) */
@@ -58,7 +64,7 @@ export interface CorpusEntry {
   change?: 'adding' | 'replacing';
   /** the caller hedges or names more than one provider (§2.5) */
   providerUnsure?: boolean;
-  /** confirm_ contexts only: how the utterance answers the summary question (final-confirm §7) */
+  /** confirm_ and offer_transfer contexts only: how the utterance answers the question (final-confirm §7) */
   confirm?: 'yes' | 'no' | 'unanswered';
   /** confirm_ contexts only: the detail the caller names when asked what to change (final-confirm §6) */
   changeSlot?: SlotId;
@@ -82,9 +88,18 @@ export function confirmForm(context: CorpusContext): FormId | null {
   return CONFIRM_CONTEXTS.get(context) ?? null;
 }
 
-/** the form a context runs in: the form itself, or the form behind a confirm_ context */
+/** true for the transfer offer's context, which is a pending confirmation but not a form's summary */
+export function offerTransfer(context: CorpusContext): boolean {
+  return context === 'offer_transfer';
+}
+
+/** the form the transfer offer is seeded inside, so a declined offer has a question to come back to */
+export const OFFER_TRANSFER_FORM: FormId = 'reschedule';
+
+/** the form a context runs in: the form itself, the form behind a confirm_ context, or the offer's */
 export function contextForm(context: CorpusContext): FormId | null {
   if (context === 'no_form') return null;
+  if (offerTransfer(context)) return OFFER_TRANSFER_FORM;
   const cf = confirmForm(context);
   if (cf !== null) return cf;
   return isFormIntent(context) ? context : null;
@@ -117,10 +132,12 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
     if (!entry.id || !entry.text) throw new Error(`corpus line ${i + 1}: id and text are required`);
     if (!(INTENTS as readonly string[]).includes(entry.intent)) throw new Error(`corpus ${entry.id}: unknown intent ${entry.intent}`);
     const cf = entry.context === 'no_form' ? null : confirmForm(entry.context);
-    if (entry.context !== 'no_form' && !(FORM_INTENTS as readonly string[]).includes(cf ?? entry.context)) {
+    const offering = offerTransfer(entry.context);
+    if (entry.context !== 'no_form' && !offering && !(FORM_INTENTS as readonly string[]).includes(cf ?? entry.context)) {
       throw new Error(`corpus ${entry.id}: unknown context ${entry.context}`);
     }
-    // prompted names a slot in a form already in progress; the confirm_ context has no "prompted slot" of its own.
+    // prompted names a slot in a form already in progress -- for the offer, the question the caller
+    // was on when it was made; the confirm_ context has no "prompted slot" of its own.
     if (entry.prompted !== undefined) {
       if (cf !== null) throw new Error(`corpus ${entry.id}: prompted needs a form context, not ${entry.context}`);
       const promptedForm = contextForm(entry.context);
@@ -141,7 +158,7 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
     }
     if (entry.confirm !== undefined) {
       if (!['yes', 'no', 'unanswered'].includes(entry.confirm)) throw new Error(`corpus ${entry.id}: confirm must be yes, no, or unanswered`);
-      if (cf === null) throw new Error(`corpus ${entry.id}: confirm needs a confirm_ context`);
+      if (cf === null && !offering) throw new Error(`corpus ${entry.id}: confirm needs a confirm_ or offer_transfer context`);
     }
     if (entry.changeSlot !== undefined) {
       if (cf === null) throw new Error(`corpus ${entry.id}: changeSlot needs a confirm_ context`);

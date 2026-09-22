@@ -43,7 +43,13 @@ export type PendingConfirmation =
    * The question is free at most once per summary: the keypad's 2 can ask for it again, and each
    * of those spends a rung.
    */
-  | { target: 'form'; form: FormId; attempts: number; askedChange?: boolean };
+  | { target: 'form'; form: FormId; attempts: number; askedChange?: boolean }
+  /**
+   * The transfer offered to a frustrated caller (spec 2026-09-22 §3). `attempts` counts silences
+   * at the offer only: every spoken answer settles it, a yes as a transfer and anything else as a
+   * decline, so the offer is asked at most twice and never walks to the keypad or to an agent.
+   */
+  | { target: 'transfer'; attempts: number };
 
 export interface Interrupt {
   utteranceUntilInterrupt: string;
@@ -75,6 +81,14 @@ export interface Session {
   /** the barge-in that cut off the last prompt, until the next prompt turn consumes it */
   lastInterrupt: Interrupt | null;
   consecutiveFailures: number;
+  /**
+   * Turns on this call the frustration gate scored high (spec 2026-09-22 §2). The count is the
+   * rung: one is acknowledged, two is offered a transfer, three is transferred. The turn that
+   * answers the offer is not counted.
+   */
+  frustratedTurns: number;
+  /** the caller turned the transfer offer down; it is not offered again on this call */
+  transferDeclined: boolean;
   ended: boolean;
 }
 
@@ -113,6 +127,8 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
     dtmfBuffer: '',
     lastInterrupt: null,
     consecutiveFailures: 0,
+    frustratedTurns: 0,
+    transferDeclined: false,
     ended: false,
   };
 }

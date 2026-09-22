@@ -1,6 +1,7 @@
 {
   "ack_date.0": "[happy]",
   "ack_declined.0": "[happy]",
+  "ack_frustration.0": "[empathetic]",
   "ack_intent.0": "[happy]",
   "ack_memberId.0": "[happy]",
   "ack_provider.0": "[happy]",
@@ -67,6 +68,7 @@
   "no_input.0": "[calm]",
   "nomatch_dtmf_menu.0": "[calm]",
   "nomatch_open.0": "[calm]",
+  "offer_transfer.0": "[calm]",
   "provider.alvarez": "[calm]",
   "provider.chen": "[calm]",
   "provider.cheng": "[calm]",

@@ -226,3 +226,9 @@
 {"id":"fc-23","text":"no, born March 6th 1980","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"dob":{"month":"march","day":"6","year":"1980"}}}
 {"id":"fc-24","text":"the birthday","intent":"none","context":"confirm_cancel","changeSlot":"dob"}
 {"id":"db-11","text":"nineteen eighty","intent":"none","context":"reschedule","prompted":"dob","slots":{"dob":{"year":"nineteen eighty"}},"tags":["year_only_no_pending","dob_retry"]}
+{"id":"ft-01","text":"yes, connect me","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"yes","tags":["offer_transfer"]}
+{"id":"ft-02","text":"transfer me","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"yes","tags":["offer_transfer"]}
+{"id":"ft-03","text":"no, keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
+{"id":"ft-04","text":"keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
+{"id":"ft-05","text":"no thanks, keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
+{"id":"ft-06","text":"make it Dr. Chen","intent":"none","context":"offer_transfer","prompted":"provider","slots":{"provider":"chen"},"tags":["offer_transfer"]}

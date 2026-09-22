@@ -128,6 +128,11 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Sorry about that.",
   },
   {
+    "id": "ack_frustration.0",
+    "note": "closed",
+    "text": "I understand, let's get this sorted.",
+  },
+  {
     "id": "no_input.0",
     "note": "closed",
     "text": "I didn't hear anything.",
@@ -243,6 +248,11 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "Press 1 to confirm, or 2 to change something.",
   },
   {
+    "id": "offer_transfer.0",
+    "note": "closed",
+    "text": "Would you like me to connect you to a person, or keep going?",
+  },
+  {
     "id": "disambiguate_intent.0",
     "note": "open",
     "text": "Do you want to",
@@ -315,7 +325,7 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "handoff_frustrated.0",
     "note": "closed",
-    "text": "I'm sorry for the trouble. Let me get you to a person.",
+    "text": "Let me get you to someone who can help.",
   },
   {
     "id": "handoff_max_attempts.0",
