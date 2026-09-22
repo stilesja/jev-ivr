@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1920"><title>Jev IVR · live</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --border:#2a2f3a; --text:#d7dae0; --muted:#8b93a7; --sys:#9fc5ff; --usr:#ffd58a; --filled:#3ccf7a; --partial:#ffb454; --bar:#4f8cff; --quiet:#5a6172; --tick:#ffd58a; }
+  html,body { margin:0; background:var(--bg); color:var(--text); font:18px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; height:100%; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .muted { color:var(--muted); }
+  header { height:56px; display:flex; align-items:center; gap:24px; padding:0 24px; border-bottom:1px solid var(--border); box-sizing:border-box; }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:24px; height:calc(100vh - 56px); box-sizing:border-box; }
+  .col { display:flex; flex-direction:column; gap:24px; min-height:0; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; overflow:auto; min-height:0; }
+  .conversation { flex:1; } .state { flex:0 0 auto; max-height:40%; }
+  .line { padding:4px 0 4px 12px; border-left:3px solid transparent; } .line.now { border-left-color:var(--bar); }
+  .sys { color:var(--sys); } .usr { color:var(--usr); } .marker { color:var(--muted); font-style:italic; font-size:15px; }
+  .pid { color:var(--muted); font-size:13px; margin-left:8px; }
+  .title { color:var(--muted); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+  .sline { color:var(--muted); font-size:15px; margin-top:6px; }
+  .chip { display:inline-block; padding:4px 12px; border-radius:16px; border:1px solid var(--border); margin:4px 6px 4px 0; }
+  .chip.filled { border-color:var(--filled); color:#c9f2d6; } .chip.partial { border-color:var(--partial); color:#f2e6c9; } .chip.empty { color:var(--muted); }
+  .chip.changed { animation: flash .9s ease-out; } @keyframes flash { 0% { background:#2f7a4f; } 100% { background:transparent; } }
+  .grp { color:var(--muted); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin:12px 0 4px; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; }
+  .row { display:grid; grid-template-columns: 220px 1fr 140px; gap:12px; align-items:center; padding:2px 0; }
+  .row .id { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .val { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar { position:relative; height:10px; background:#262b36; border-radius:5px; overflow:hidden; }
+  .bar i { position:absolute; left:0; top:0; bottom:0; background:var(--bar); } .bar i.hi { background:var(--filled); } .bar i.lo { background:var(--quiet); }
+  .bar em { position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--tick); }
+  .bar.pending i { width:100%; opacity:.15; animation: pulse 1s infinite alternate; } @keyframes pulse { to { opacity:.35; } }
+  .top { grid-column: 2 / 4; display:flex; gap:6px; flex-wrap:wrap; margin:2px 0 4px; } .top span { padding:1px 8px; border-radius:4px; background:#262b36; font-size:14px; } .top span.win { background:#1f4d33; color:#c9f2d6; }
+  .decision { margin-top:12px; color:var(--usr); }
+  .jevhead { color:var(--text); font-size:15px; }
+  .controls { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  button, select, input { font:inherit; background:#262b36; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 10px; }
+  button.on { border-color:var(--bar); color:#cfe0ff; }
+  button[hidden], select[hidden], label[hidden] { display:none; }
+  #conn { color:var(--partial); font-size:13px; }
+  /* An option's full ISO timestamp made this ~485px wide, which overflowed the 56px header at
+     1920; the option label is shortened to match (see startReplay in the script below). */
+  #trace { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+</style></head>
+<body>
+<header>
+  <div id="status">waiting for a call</div>
+  <div id="totals" class="mono"></div>
+  <div class="controls">
+    <span id="conn" class="mono"></span>
+    <button id="mode-live" class="on">Live</button><button id="mode-replay">Replay</button>
+    <select id="trace" hidden></select>
+    <button id="reset" hidden>Reset</button><button id="back" hidden>◀</button><button id="step" hidden>▶ step</button><button id="play" hidden>Play</button>
+    <select id="speed" hidden><option>1</option><option>2</option><option>4</option></select>
+    <label id="beatwrap" hidden>beat <input id="beat" type="number" value="800" min="0" step="100" style="width:80px"> ms</label>
+    <span id="note" class="mono" style="color:var(--muted);font-size:13px"></span>
+  </div>
+</header>
+<main>
+  <div class="col"><div class="panel conversation" id="conversation"></div><div class="panel state" id="state"></div></div>
+  <div class="col"><div class="panel" id="jev" style="flex:1"></div></div>
+</main>
+<script type="module">
+  // The page is served at /dashboard, so the module is loaded by absolute path: a relative
+  // './dashboard/view.js' would resolve differently when the page is opened at '/dashboard/'.
+  import { reduce, replayEvents } from '/dashboard/view.js';
+
+  /**
+   * Replay ticks are drawn against today's defaults, mirrored from src/core/thresholds.ts
+   * (DEFAULT_THRESHOLDS) -- keep the numbers here in step with that file. A live call takes the
+   * server's effective thresholds from the `call_started` event instead, so this block is only
+   * consulted in replay, where the trace does not record what it ran under (spec §3.4).
+   */
+  const DEFAULTS = {
+    // gate ladder
+    GATE_ADDRESSED: 0.7,
+    GATE_INTELLIGIBLE: 0.45,
+    GATE_COMPLETE: 0.6,
+    GATE_WANTS_HUMAN: 0.7,
+    GATE_FRUSTRATION_HIGH: 0.6,
+    // intent: the two rungs the ladder actually routes from -- outside a form and inside one
+    INTENT_EXPLICIT: 0.4,
+    INTENT_SWITCH: 0.85,
+    INTENT_TENTATIVE: 0.5,
+    INTENT_CHANGE: 0.6,
+    INTENT_SECOND: 0.6,
+    // slots
+    SLOT_DETECT: 0.6,
+    SLOT_CHOICE_CONFIRM: 0.45,
+    SLOT_CHANGE: 0.6,
+    PROVIDER_UNSURE: 0.45,
+    // confirmations and menus
+    CONFIRM_YES: 0.7,
+    CONFIRM_NO: 0.7,
+    MENU_NUMBER: 0.7,
+    // retry policy (the `asking … of N` line)
+    MAX_ATTEMPTS: 3,
+  };
+
+  const CAP_MS = 5_000;
+
+  const el = (id) => document.getElementById(id);
+  const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
+  const pct = (x) => `${Math.max(0, Math.min(1, Number(x) || 0)) * 100}%`;
+  const num = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+
+  const state = {
+    mode: 'live',
+    /** Live: the events received so far, the highest sequence number seen, and the call they belong to. */
+    events: [], lastSeq: -1, callSid: null, es: null,
+    /** Replay: the whole synthesized event list, how many of them are shown, and the trace they came from. */
+    all: [], cursor: 0, sid: null,
+    playing: false, timer: null,
+    /** Group names the viewer has opened by hand; kept across renders so a click sticks. */
+    open: new Set(),
+    view: reduce([]),
+    /** So a malformed event logs once per page load rather than spamming the console. */
+    renderErrorLogged: false,
+  };
+
+  const speed = () => Number(el('speed').value) || 1;
+  const beatMs = () => {
+    // Number('') is 0, not NaN, so an empty box would otherwise read as "no beat" rather than
+    // falling through to the default.
+    const raw = el('beat').value.trim();
+    if (raw === '') return 800;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : 800;
+  };
+
+  // ---------- rendering ----------
+
+  function convHtml(v) {
+    // The newest exchange is the highest turn index any spoken line carries; a between-turn
+    // marker is never the highlighted pair even when it belongs to that turn.
+    let newest = -1;
+    for (const l of v.lines) {
+      if (l.kind !== 'marker' && num(l.turn) !== null && l.turn > newest) newest = l.turn;
+    }
+    return v.lines.map((l) => {
+      if (l.kind === 'marker') return `<div class="line marker">${esc(l.text)}</div>`;
+      const now = num(l.turn) !== null && l.turn === newest ? ' now' : '';
+      const pid = l.promptId ? `<span class="pid mono">${esc(l.promptId)}</span>` : '';
+      return `<div class="line${now} ${l.kind === 'system' ? 'sys' : 'usr'}">${esc(l.text)}${pid}</div>`;
+    }).join('');
+  }
+
+  function stateHtml(v) {
+    const chips = (v.chips ?? []).map((c) => {
+      const label = c.label ? ` · ${esc(c.label)}` : '';
+      return `<span class="chip ${esc(c.state)}${c.changed ? ' changed' : ''}">${esc(c.id)}${label}</span>`;
+    }).join('');
+    const lines = [];
+    if (v.pending) lines.push(v.pending);
+    if (v.queued && v.queued.length) lines.push(`queued · ${v.queued.join(' · ')}`);
+    if (v.asking) lines.push(v.asking);
+    return `<div class="title">${esc(v.form ?? 'no form yet')}</div><div>${chips}</div>`
+      + lines.map((l) => `<div class="sline mono">${esc(l)}</div>`).join('');
+  }
+
+  function barHtml(row) {
+    const threshold = num(row.threshold);
+    const tick = threshold === null ? '' : `<em style="left:${pct(threshold)}"></em>`;
+    const p = num(row.p);
+    // The pulse means "the batch is still out". A row with an answer but no probability to draw
+    // (a score no gate compared, so there is no value/rule pair) gets an empty bar instead.
+    if (row.kind === 'pending') return `<div class="bar pending"><i></i>${tick}</div>`;
+    if (p === null) return `<div class="bar">${tick}</div>`;
+    // Green when the record called the row decisive, plain blue when it merely crossed its tick,
+    // grey when it did neither.
+    const cls = row.decisive ? 'hi' : threshold !== null && p >= threshold ? '' : 'lo';
+    return `<div class="bar"><i class="${cls}" style="width:${pct(p)}"></i>${tick}</div>`;
+  }
+
+  function valueHtml(row) {
+    const p = num(row.p);
+    // An answered row with no probability still has its answer: the winning level of a score.
+    if (p === null) return row.value ? esc(row.value) : '<span class="muted">…</span>';
+    if (row.kind === 'noul') return esc(row.value ?? p.toFixed(2));
+    return `${esc(row.value ?? '')} <span class="muted">${p.toFixed(2)}</span>`;
+  }
+
+  function rowHtml(row) {
+    const top = row.decisive && row.kind === 'choice' && row.top && row.top.length
+      ? `<div class="top">${row.top.map((t) => `<span class="${t.label === row.value ? 'win' : ''}">${esc(t.label)} ${(num(t.p) ?? 0).toFixed(2)}</span>`).join('')}</div>`
+      : '';
+    return `<div class="row"><span class="mono id" title="${esc(row.id)}">${esc(row.id)}</span>`
+      + `${barHtml(row)}<span class="mono val">${valueHtml(row)}</span>${top}</div>`;
+  }
+
+  function jevHtml(v) {
+    const jev = v.jev ?? { header: 'Jev', pending: false, groups: [], decision: '' };
+    const groups = (jev.groups ?? []).filter((g) => g && g.rows && g.rows.length);
+    const body = groups.map((g) => {
+      // A decisive group is always open; while the batch is still out every group is open, so the
+      // empty bars of the question batch are what appears.
+      const open = jev.pending || g.decisive || state.open.has(g.name);
+      const quiet = !open && g.quiet ? ` (${g.quiet} quiet)` : '';
+      return `<div class="grp" data-grp="${esc(g.name)}">${esc(g.name)}${quiet}</div>`
+        + (open ? g.rows.map(rowHtml).join('') : '');
+    }).join('');
+    const decision = jev.decision ? `<div class="decision mono">${esc(jev.decision)}</div>` : '';
+    return `<div class="jevhead mono">${esc(jev.header)}</div>${body}${decision}`;
+  }
+
+  function statusText(v) {
+    if (state.mode !== 'replay') return v.status;
+    if (!v.callSid) return 'waiting for a call';
+    // In replay the call's own id is more use than `live · replay`, but the end of the call still
+    // has to show (spec §3.1).
+    const ended = String(v.status).startsWith('ended') ? ` · ${v.status}` : '';
+    return `replay · ${v.callSid}${ended}`;
+  }
+
+  function render(v) {
+    state.view = v;
+    const t = v.totals ?? { askMs: 0, tokens: 0, usd: 0 };
+    el('status').textContent = statusText(v);
+    el('totals').textContent = `turn ${v.turnCount} · Jev ${Math.round(t.askMs)} ms · ${t.tokens.toLocaleString('en-US')} tokens · $${t.usd.toFixed(4)}`;
+    const conv = el('conversation');
+    conv.innerHTML = convHtml(v);
+    conv.scrollTop = conv.scrollHeight;
+    el('state').innerHTML = stateHtml(v);
+    el('jev').innerHTML = jevHtml(v);
+  }
+
+  el('jev').addEventListener('click', (e) => {
+    const head = e.target.closest ? e.target.closest('.grp') : null;
+    if (!head) return;
+    const name = head.dataset.grp;
+    if (state.open.has(name)) state.open.delete(name); else state.open.add(name);
+    render(state.view);
+  });
+
+  // ---------- live ----------
+
+  function startLive() {
+    stopPlay();
+    state.mode = 'live';
+    state.events = []; state.lastSeq = -1; state.callSid = null;
+    state.all = []; state.cursor = 0; state.sid = null;
+    showControls();
+    if (state.es) state.es.close();
+    const es = new EventSource('/dashboard/events');
+    state.es = es;
+    es.onopen = () => { el('conn').textContent = ''; };
+    es.onerror = () => { el('conn').textContent = 'reconnecting…'; };
+    es.onmessage = (m) => {
+      let event;
+      try { event = JSON.parse(m.data); } catch { return; }
+      if (!event || typeof event !== 'object') return;
+      el('conn').textContent = '';
+      // A new call resets both the list and the sequence watermark: the bus starts its history
+      // over, and a restarted server starts its numbering over too.
+      if (event.type === 'call_started' && event.callSid !== state.callSid) {
+        state.events = []; state.lastSeq = -1; state.callSid = event.callSid;
+      }
+      // The bus replays its whole history to every new subscriber, so a reconnect re-delivers
+      // events already held; the sequence number is what makes that idempotent.
+      const seq = num(event.seq);
+      if (seq !== null) {
+        if (seq <= state.lastSeq) return;
+        // A stalled viewer can have events dropped server-side (routes.ts skips writes once the
+        // backlog passes 1 MB); a gap in the sequence is the only sign of that reaching the page.
+        if (state.lastSeq > 0 && seq > state.lastSeq + 1) {
+          el('conn').textContent = `missed ${seq - state.lastSeq - 1} events, reload to catch up`;
+        }
+        state.lastSeq = seq;
+      }
+      state.events.push(event);
+      try {
+        render(reduce(state.events));
+      } catch (err) {
+        // A malformed event must not take down every render after it; drop just this one and keep
+        // showing the last view that worked.
+        if (!state.renderErrorLogged) { console.error('dashboard: failed to render event', event, err); state.renderErrorLogged = true; }
+        state.events.pop();
+      }
+    };
+    render(reduce(state.events));
+  }
+
+  // ---------- replay ----------
+
+  async function json(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async function startReplay() {
+    state.mode = 'replay';
+    if (state.es) { state.es.close(); state.es = null; }
+    el('conn').textContent = '';
+    showControls();
+    const rows = (await json('/dashboard/traces')) ?? [];
+    const list = Array.isArray(rows) ? rows : [];
+    const sel = el('trace');
+    // The full sid plus a full ISO timestamp made the widest option ~485px, which pushed the
+    // header past its 56px band at 1920 wide; the option itself carries only what fits, and the
+    // full sid lives in `title` for a hover.
+    sel.innerHTML = list.length
+      ? list.map((r) => {
+          const sid = esc(r.callSid);
+          const started = typeof r.startedAt === 'string' ? r.startedAt : null;
+          const time = started && started.length >= 16 ? started.slice(11, 16) : 'unknown';
+          return `<option value="${sid}" title="${sid}">${sid.slice(0, 10)}… · ${time} · ${esc(r.turns ?? 0)} turns</option>`;
+        }).join('')
+      : '<option value="">no traces yet</option>';
+    await pick(list.length ? String(list[0].callSid) : '');
+  }
+
+  async function pick(sid) {
+    stopPlay();
+    state.sid = sid; state.all = []; state.cursor = 0;
+    if (!sid) { render(reduce([])); return; }
+    const data = await json(`/dashboard/traces/${encodeURIComponent(sid)}`);
+    const records = data && Array.isArray(data.records) ? data.records : [];
+    const frames = data && Array.isArray(data.frames) ? data.frames : [];
+    state.all = replayEvents(records, frames, { from: 'replay', thresholds: DEFAULTS });
+    draw();
+  }
+
+  /** Cursor 0 shows nothing, 1 shows `call_started`; stepping back re-reduces from the start. */
+  function draw() {
+    render(reduce(state.all.slice(0, state.cursor)));
+  }
+
+  function step(delta) {
+    stopPlay();
+    state.cursor = Math.max(0, Math.min(state.all.length, state.cursor + delta));
+    draw();
+  }
+
+  /** How long to hold the screen before showing `all[i]`: the recorded gap, or the narration beat. */
+  function delayFor(i) {
+    const prev = state.all[i - 1];
+    if (!prev) return 0;
+    // The question batch is out for ~170 ms live, which is invisible; hold it for the beat.
+    if (prev.type === 'asked') return beatMs();
+    const gap = num(state.all[i].at) !== null && num(prev.at) !== null ? state.all[i].at - prev.at : 0;
+    return Math.min(CAP_MS, Math.max(0, gap)) / speed();
+  }
+
+  function tick() {
+    if (!state.playing) return;
+    if (state.cursor >= state.all.length) { setPlaying(false); return; }
+    const i = state.cursor;
+    state.timer = setTimeout(() => {
+      state.timer = null;
+      state.cursor = i + 1;
+      draw();
+      tick();
+    }, delayFor(i));
+  }
+
+  function setPlaying(on) {
+    state.playing = on && state.cursor < state.all.length;
+    el('play').textContent = state.playing ? 'Pause' : 'Play';
+    el('play').classList.toggle('on', state.playing);
+    if (state.playing) tick();
+  }
+
+  function stopPlay() {
+    state.playing = false;
+    if (state.timer !== null) { clearTimeout(state.timer); state.timer = null; }
+    el('play').textContent = 'Play';
+    el('play').classList.remove('on');
+  }
+
+  // ---------- chrome ----------
+
+  function showControls() {
+    const replay = state.mode === 'replay';
+    for (const id of ['trace', 'reset', 'back', 'step', 'play', 'speed', 'beatwrap']) el(id).hidden = !replay;
+    el('mode-live').classList.toggle('on', !replay);
+    el('mode-replay').classList.toggle('on', replay);
+    el('note').textContent = replay ? "thresholds: today's defaults" : '';
+  }
+
+  el('mode-live').addEventListener('click', () => { if (state.mode !== 'live') startLive(); });
+  el('mode-replay').addEventListener('click', () => { if (state.mode !== 'replay') void startReplay(); });
+  el('trace').addEventListener('change', (e) => void pick(e.target.value));
+  el('reset').addEventListener('click', () => { stopPlay(); state.cursor = 0; draw(); });
+  el('back').addEventListener('click', () => step(-1));
+  el('step').addEventListener('click', () => step(1));
+  el('play').addEventListener('click', () => (state.playing ? stopPlay() : setPlaying(true)));
+  el('speed').addEventListener('change', () => { if (state.playing) { stopPlay(); setPlaying(true); } });
+
+  window.addEventListener('keydown', (e) => {
+    // The beat box and the pickers keep their own keys.
+    const tag = e.target && e.target.tagName ? e.target.tagName : '';
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (state.mode !== 'replay') return;
+    // Whichever button was last clicked keeps focus; left there, Space/Enter would also fire the
+    // browser's own activation of that button on top of the handling below (a toggle undone by a
+    // second toggle looks like nothing happened). Blurring it makes these keys work no matter which
+    // button was clicked last.
+    const deactivate = () => {
+      e.preventDefault();
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    };
+    if (e.key === 'ArrowRight') { deactivate(); step(1); }
+    else if (e.key === 'ArrowLeft') { deactivate(); step(-1); }
+    else if (e.key === 'Home') { deactivate(); stopPlay(); state.cursor = 0; draw(); }
+    // ' ' is what a browser sends; 'Spacebar' is the old name, `code` the layout-independent one.
+    else if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') { deactivate(); if (state.playing) stopPlay(); else setPlaying(true); }
+  });
+
+  startLive();
+</script>
+</body></html>

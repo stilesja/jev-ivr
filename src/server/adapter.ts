@@ -5,6 +5,8 @@ import { playbackEstimateMs } from '../prompts/playback';
 import { runTurn } from '../run/turn';
 import type { CallEntry, SessionStore, SocketLike } from './sessions';
 import type { CallTokens } from './tokens';
+import type { DashboardBus } from './dashboard/bus';
+import { maskNumber, type DashboardEvent } from './dashboard/events';
 
 /** Spoken when a turn throws, so a failure is a retry rather than dead air. */
 export const TURN_ERROR_TEXT = 'Sorry, something went wrong on my end. Please say that again.';
@@ -129,6 +131,8 @@ function armNoInput(deps: AdapterDeps, entry: CallEntry, frames: readonly Outbou
         // A real turn ran between the arm and now (it bumped the generation), or the call is
         // over: either way the caller is not silent and this turn has nothing to say.
         if (e.ended || (noInputGeneration.get(e.callSid) ?? 0) !== generation) return;
+        // Published before the turn, so the page shows the pause and then what it produced.
+        publish(deps, { type: 'silence', callSid: e.callSid, at: Date.now(), promptId: e.session.lastPromptId });
         e.frames.write('in', silenceFrame());
         await turn(deps, e, silenceFrame());
       })
@@ -196,6 +200,19 @@ export interface AdapterDeps {
   noInputMs?: number;
   /** wav filename -> ms, from clipDurations(audioDir); how long a `play` frame is assumed to take. */
   clipDurations?: ReadonlyMap<string, number>;
+  /** The dashboard's event bus; absent when the dashboard is off. */
+  bus?: DashboardBus;
+  /** For the masked number on a handoff event. */
+  handoffNumber?: string;
+}
+
+/**
+ * Hand one call moment to the dashboard. A missing bus (the dashboard is off) makes every
+ * publishing site below a no-op, and a throwing subscriber is swallowed by the bus itself: a
+ * watcher of a call can never change the call.
+ */
+function publish(deps: AdapterDeps, event: DashboardEvent): void {
+  deps.bus?.publish(event);
 }
 
 export function newConnectionContext(token: string | null, socket: SocketLike | null = null): ConnectionContext {
@@ -273,6 +290,10 @@ async function turn(deps: AdapterDeps, entry: CallEntry, event: InboundFrame): P
     entry.session = run.result.session;
     const kind = run.result.decision.kind;
     ending = kind === 'complete' || kind === 'handoff';
+    if (run.result.decision.kind === 'handoff') {
+      publish(deps, { type: 'handoff', callSid: entry.callSid, at: Date.now(), reason: run.result.decision.reason, number: maskNumber(deps.handoffNumber) });
+    }
+    if (ending) publish(deps, { type: 'ended', callSid: entry.callSid, at: Date.now(), reason: kind === 'complete' ? 'completed' : 'handoff' });
     // Defensive: nothing can be armed here today, because whatever drove this turn cleared the
     // timer on its way in. Kept so a future path that arms and then ends cannot strand a timer.
     if (ending) clearNoInput(entry.callSid);
@@ -372,6 +393,7 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
       }
       const entry = deps.store.attach(frame.callSid, socket) ?? existing;
       entry.frames.write('log', { resumed: true, sessionId: frame.sessionId });
+      publish(deps, { type: 'reconnect', callSid: frame.callSid, at: Date.now(), attempt: entry.reconnects });
       await deps.store.enqueue(frame.callSid, async (e) => {
         if (!e.session.lastPromptText) return;
         const sent = await sendFrames(deps, e, [textFrame(e.session.lastPromptText, true)]);
@@ -383,6 +405,11 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
     }
     const entry = deps.store.create(frame.callSid, socket);
     entry.frames.write('in', frame);
+    // Ahead of the greeting turn, and it is what resets the bus's history: the page follows this call now.
+    publish(deps, {
+      type: 'call_started', callSid: frame.callSid, at: Date.now(),
+      from: maskNumber(frame.from), todayIso: entry.opts.todayIso, thresholds: entry.opts.thresholds,
+    });
     await deps.store.enqueue(frame.callSid, (e) => turn(deps, e, frame));
     return;
   }
@@ -406,6 +433,11 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
   // The caller is audibly there, so the no-input wait is over - before any of the early returns
   // below, because a partial prompt or a bare `#` is still a caller who is not silent.
   if (frame.type === 'prompt' || frame.type === 'dtmf' || frame.type === 'interrupt') clearNoInput(ctx.callSid);
+  // Before the ignore/turn split below: a digit the adapter drops is still a digit the caller pressed.
+  if (frame.type === 'dtmf') publish(deps, { type: 'dtmf', callSid: ctx.callSid, at: Date.now(), digit: frame.digit });
+  if (frame.type === 'interrupt') {
+    publish(deps, { type: 'interrupt', callSid: ctx.callSid, at: Date.now(), utteranceUntilInterrupt: frame.utteranceUntilInterrupt ?? null });
+  }
   // The slots have fixed digit lengths, so the keypad terminators carry no meaning yet.
   if (frame.type === 'dtmf' && (frame.digit === '#' || frame.digit === '*')) {
     entry.frames.write('log', { ignoredDigit: frame.digit });
@@ -447,6 +479,10 @@ export async function handleSocketClose(deps: AdapterDeps, ctx: ConnectionContex
     clearTimeout(timer);
     endGraceTimers.delete(ctx.callSid);
   }
+  // A close of the live socket of a call that never ended is not yet a hangup: the reconnect
+  // Twilio drives from `/cr-action` gets here too, and in that order (socket close, then the
+  // action webhook, then the new setup) this handler cannot tell the two apart. The action
+  // webhook can, so the `ended{hangup}` event is published there (`decideActionTwiml` in http.ts).
   // Nobody is listening on the other end; a re-ask would be played to a closed socket.
   clearNoInput(ctx.callSid);
   entry.frames.write('log', { socketClosed: true, ended: entry.ended });

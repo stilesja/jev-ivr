@@ -10,12 +10,15 @@ import { SessionStore } from './sessions';
 import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
 import { buildHints } from './hints';
+import { DashboardBus } from './dashboard/bus';
+import { makeObserver } from './dashboard/observer';
 import { newSession } from '../core/session';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
+import type { TurnObserver } from '../run/turn';
 import { clipVersions, discoverClips, recordableClips } from '../prompts/clips';
 import { clipDurations } from '../prompts/playback';
 import { coverage, readRecorded } from '../prompts/sheet';
@@ -25,6 +28,10 @@ export interface RunningServer {
   port: number;
   store: SessionStore;
   tokens: CallTokens;
+  /** The dashboard's event bus, or undefined when DASHBOARD=off. */
+  bus?: DashboardBus;
+  /** One pass of the idle sweep the evictor runs on its interval; exposed for tests. */
+  sweep(): void;
   close(): Promise<void>;
 }
 
@@ -87,13 +94,19 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   // fetches carries the content hash, so a regenerated clip is never served from Twilio's cache.
   const render = { clips: clipVersions(config.audioDir, clips), audioBase: `https://${config.publicHost}/audio/` };
 
-  const store = new SessionStore(
+  const bus = config.dashboard ? new DashboardBus() : undefined;
+  log(bus ? 'dashboard: /dashboard' : 'dashboard: off');
+
+  // Annotated because the factory below hands `store` to `makeObserver`, and an inferred type
+  // would be circular: the initializer references the very binding it is initializing.
+  const store: SessionStore = new SessionStore(
     (callSid) => {
       const file = safeFileStem(callSid);
       const trace = new TraceWriter(join(config.traceDir, `${file}.jsonl`));
+      const observe: TurnObserver | null = bus ? makeObserver(bus, store, callSid) : null;
       return {
         session: newSession(callSid, now()),
-        opts: { client, thresholds, todayIso: todayIso(), trace, now, render },
+        opts: { client, thresholds, todayIso: todayIso(), trace, now, render, observe },
         trace,
         frames: new FrameLog(join(config.traceDir, `${file}.frames.jsonl`), now),
       };
@@ -103,24 +116,39 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     config.sessionMaxAgeMs,
   );
   const tokens = new CallTokens(TOKEN_TTL_MS, now);
-  const deps = { config, store, tokens, hints: buildHints(), log };
+  const deps = { config, store, tokens, hints: buildHints(), log, bus };
 
   const server = createServer(createRequestHandler(deps));
   const wss = attachWebSocketServer(
     server,
-    { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs, noInputMs, clipDurations: durations },
+    { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs, noInputMs, clipDurations: durations, bus, handoffNumber: config.handoffNumber },
     overrides.setupTimeoutMs,
   );
-  const evictor = setInterval(() => {
-    for (const sid of store.evictIdle()) {
+  /**
+   * One pass of the idle sweep. Named and returned rather than inlined into the interval so a
+   * test can drive a tick without waiting a minute for one.
+   */
+  const sweep = (): void => {
+    // Read before the eviction: `evictIdle` deletes the entry, so afterwards there is no way to
+    // tell whether the call it closed was still live. It closes the socket too, but that close
+    // reaches `handleSocketClose` with the entry already gone, so nothing downstream would ever
+    // publish the end of an evicted call -- this is the only producer of reason 'error'.
+    const live = bus?.current() ?? null;
+    const wasLive = live ? store.get(live)?.ended === false : false;
+    const evicted = store.evictIdle();
+    for (const sid of evicted) {
       // An evicted call with a socket gets here again through the socket's own close, but one
       // whose socket had already gone would otherwise leave its no-input bookkeeping behind.
       forgetNoInput(sid);
       log(`${sid}: evicted idle session`);
     }
+    if (live && wasLive && evicted.includes(live)) {
+      bus?.publish({ type: 'ended', callSid: live, at: now(), reason: 'error' });
+    }
     const swept = tokens.evictExpired();
     if (swept) log(`swept ${swept} expired call tokens`);
-  }, EVICT_EVERY_MS);
+  };
+  const evictor = setInterval(sweep, EVICT_EVERY_MS);
   evictor.unref();
 
   // listen reports failure as an 'error' event, which is unhandled (and fatal) unless it is awaited here.
@@ -145,6 +173,8 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     port,
     store,
     tokens,
+    bus,
+    sweep,
     close: async () => {
       clearInterval(evictor);
       // Let turns that are already running finish (and flush their frames) before the sockets go away.
@@ -160,6 +190,9 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
         if (timer) clearTimeout(timer);
       }
       for (const c of wss.clients) c.terminate();
+      // `server.close` only stops new connections and then waits for the idle ones; an open SSE
+      // stream is never idle, so a connected dashboard page would hold shutdown open forever.
+      server.closeAllConnections();
       await new Promise<void>((resolve) => wss.close(() => server.close(() => resolve())));
     },
   };

@@ -2,11 +2,19 @@ import { performance } from 'node:perf_hooks';
 import type { InboundFrame } from '../channel/frames';
 import { plan, resolve, type TurnContext, type TurnError, type TurnResult } from '../core/turn';
 import type { Session } from '../core/session';
+import type { TurnState } from '../core/state';
 import type { Thresholds } from '../core/thresholds';
 import { JevClientError, type JevClient, type JevResponse, type JsonValue, type QuestionMap } from '../jev/types';
 import type { RenderContext } from '../prompts/render';
 import { buildTraceRecord, type TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
+
+export interface TurnObserver {
+  /** The request to the model is about to leave; `questions` is the object the client receives. */
+  asked(questions: QuestionMap, turnState: TurnState, at: number): void;
+  /** The turn is resolved; `record` is the trace record as written. Fires whether or not the model was asked. */
+  turn(record: TraceRecord, at: number): void;
+}
 
 export interface RunOptions {
   client: JevClient;
@@ -16,6 +24,8 @@ export interface RunOptions {
   now?: () => number;
   /** Server-only. The text harness scores `text` frames and must leave this unset. */
   render?: RenderContext | null;
+  /** A live watcher of the dialogue (the dashboard). Unset in the harness and the CLI. */
+  observe?: TurnObserver | null;
 }
 
 export function nowOf(opts: RunOptions): () => number {
@@ -40,6 +50,11 @@ export async function runTurn(session: Session, event: InboundFrame, opts: RunOp
   let error: TurnError | null = null;
   if (p.needsModel) {
     try {
+      opts.observe?.asked(p.questions!, p.turnState as TurnState, now());
+    } catch {
+      /* observers are best effort */
+    }
+    try {
       response = await opts.client.ask({
         state: p.turnState as unknown as JsonValue,
         questions: p.questions!,
@@ -63,5 +78,10 @@ export async function runTurn(session: Session, event: InboundFrame, opts: RunOp
     pricePerMtok: opts.thresholds.JEV_PRICE_PER_MTOK,
   });
   opts.trace?.write(record);
+  try {
+    opts.observe?.turn(record, now());
+  } catch {
+    /* observers are best effort */
+  }
   return { result, questions: p.questions, response, error, record };
 }

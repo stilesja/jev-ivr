@@ -46,6 +46,11 @@ export function buildTraceRecord(input: TraceInput): TraceRecord {
     frames: result.frames,
     form: result.session.form,
     slots: result.session.slots,
+    queued: [...result.session.queued],
+    // Copied, not aliased: `attempts` on the session's pendingConfirmation is mutated in place by
+    // later turns, and the dashboard holds records like this one in memory.
+    pendingConfirmation: result.session.pendingConfirmation ? { ...result.session.pendingConfirmation } : null,
+    promptedFor: result.session.promptedFor,
     timing,
     usage: {
       inputTokens,

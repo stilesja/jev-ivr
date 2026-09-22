@@ -14,6 +14,11 @@ import {
   type AdapterDeps,
 } from './adapter';
 import { SessionStore, type SocketLike } from './sessions';
+import { decideActionTwiml, type HttpDeps } from './http';
+import { loadConfig } from './config';
+import { DashboardBus } from './dashboard/bus';
+import type { DashboardEvent } from './dashboard/events';
+import { makeObserver } from './dashboard/observer';
 import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
 import { newSession } from '../core/session';
@@ -64,16 +69,22 @@ function corpusClient(): JevClient {
   return new FixtureStubClient(loadCorpus('fixtures/corpus.jsonl'), { sharpness: 0.9, fallback: new HeuristicStubClient() });
 }
 
-function deps(clientOverride?: JevClient, render?: RenderContext): AdapterDeps & { dir: string } {
+function deps(clientOverride?: JevClient, render?: RenderContext, bus?: DashboardBus): AdapterDeps & { dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'adapter-'));
   const client = clientOverride ?? corpusClient();
-  const store = new SessionStore((callSid) => ({
+  const store: SessionStore = new SessionStore((callSid) => ({
     session: newSession(callSid, 0),
-    opts: { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', trace: new TraceWriter(join(dir, `${callSid}.jsonl`)), now: () => 0, render: render ?? null },
+    opts: {
+      client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18',
+      trace: new TraceWriter(join(dir, `${callSid}.jsonl`)), now: () => 0, render: render ?? null,
+      // The same observer index.ts attaches, so a test of the adapter's own events sees them in
+      // the order the page will: the moment, then the turn it drove.
+      observe: bus ? makeObserver(bus, store, callSid) : null,
+    },
     trace: new TraceWriter(join(dir, `${callSid}.jsonl`)),
     frames: new FrameLog(join(dir, `${callSid}.frames.jsonl`), () => 0),
   }), 60_000, () => 0);
-  return { store, tokens: new CallTokens(60_000, () => 0), log: () => {}, dir };
+  return { store, tokens: new CallTokens(60_000, () => 0), log: () => {}, dir, ...(bus ? { bus } : {}) };
 }
 
 /** Same deps, but with the log captured and a send timeout short enough for a test. */
@@ -90,7 +101,7 @@ function graceDeps(endCloseGraceMs: number): AdapterDeps & { dir: string; lines:
   return { ...d, log: (line) => lines.push(line), lines, endCloseGraceMs };
 }
 
-const setupMsg = (callSid: string, sessionId = 'VX1') => JSON.stringify({ type: 'setup', sessionId, callSid, from: '+1', to: '+2', customParameters: {} });
+const setupMsg = (callSid: string, sessionId = 'VX1', from = '+1') => JSON.stringify({ type: 'setup', sessionId, callSid, from, to: '+2', customParameters: {} });
 const prompt = (t: string) => JSON.stringify({ type: 'prompt', voicePrompt: t, lang: 'en-US', last: true });
 const texts = (s: Fake) => s.sent.filter((m) => (m as { type: string }).type === 'text').map((m) => (m as { token: string }).token);
 type LogLine = { dir: string; msg: Record<string, unknown> };
@@ -402,8 +413,8 @@ describe('no-input timer', () => {
   const GREETING_DEADLINE = textEstimateMs(GREETING) + WAIT;
 
   /** deps with the no-input wait armed, and one measured clip so a play frame can be estimated. */
-  function noInputDeps(noInputMs = WAIT, render?: RenderContext, greetingClipMs = 2000): AdapterDeps & { dir: string } {
-    return { ...deps(undefined, render), noInputMs, clipDurations: new Map([['greeting.0.wav', greetingClipMs]]) };
+  function noInputDeps(noInputMs = WAIT, render?: RenderContext, greetingClipMs = 2000, bus?: DashboardBus): AdapterDeps & { dir: string } {
+    return { ...deps(undefined, render, bus), noInputMs, clipDurations: new Map([['greeting.0.wav', greetingClipMs]]) };
   }
 
   const clipRender: RenderContext = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
@@ -726,6 +737,20 @@ describe('no-input timer', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('publishes silence to the dashboard bus before the silence turn', async () => {
+    const bus = new DashboardBus();
+    const events: DashboardEvent[] = [];
+    bus.subscribe((e) => events.push(e));
+    const d = noInputDeps(WAIT, undefined, 2000, bus);
+    const { sock } = await greeted(d);
+    expect(events.map((e) => e.type)).toEqual(['call_started', 'turn']);
+    await vi.advanceTimersByTimeAsync(GREETING_DEADLINE);
+    expect(texts(sock)).toEqual([GREETING, NO_INPUT, ASK_INTENT]);
+    // The silence is announced before the turn it drives, so the page shows the pause, then the re-ask.
+    expect(events.map((e) => e.type)).toEqual(['call_started', 'turn', 'silence', 'turn']);
+    expect(events.find((e) => e.type === 'silence')).toMatchObject({ promptId: 'greeting' });
+  });
+
   it('is cleared by a socket close', async () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
@@ -790,5 +815,146 @@ describe('spokenDigits', () => {
     // Two lone four-digit runs with words between them are two ordinary numbers, not an identifier.
     expect(spokenDigits('1234 and 5678')).toBe('1234 and 5678');
     expect(spokenDigits('12345 and 56789')).toBe('1 2 3 4 5 and 5 6 7 8 9');
+  });
+});
+
+describe('dashboard publishing', () => {
+  /** Deps with a bus attached, and the collected events, in order. */
+  function busDeps(): { d: AdapterDeps & { dir: string }; events: DashboardEvent[] } {
+    const bus = new DashboardBus();
+    const events: DashboardEvent[] = [];
+    bus.subscribe((e) => events.push(e));
+    return { d: { ...deps(undefined, undefined, bus), handoffNumber: '+15558675309' }, events };
+  }
+  const types = (events: readonly DashboardEvent[]) => events.map((e) => e.type);
+
+  /**
+   * The `/cr-action` side of the same call: Twilio POSTs it once the relay session ends, and it is
+   * what decides a hangup from a reconnect. Shares this call's store, tokens and bus, so driving
+   * `decideActionTwiml` here is the real sequence a call goes through.
+   */
+  function actionDeps(d: AdapterDeps & { dir: string }): HttpDeps {
+    const config = loadConfig({
+      PUBLIC_HOST: 'demo.ngrok.app',
+      TWILIO_AUTH_TOKEN: 't',
+      HANDOFF_NUMBER: '+15558675309',
+      RECONNECT_LIMIT: '2',
+      AUDIO_DIR: d.dir,
+      TRACE_DIR: d.dir,
+    });
+    return { config, store: d.store, tokens: d.tokens, hints: '', log: () => {}, ...(d.bus ? { bus: d.bus } : {}) };
+  }
+
+  it('publishes the call lifecycle to the dashboard bus', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1', 'VX', '+18595222926'));
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '1' }));
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'What', durationUntilInterruptMs: 300 }));
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
+    expect(types(events).slice(0, 3)).toEqual(['call_started', 'turn', 'dtmf']);
+    expect(types(events)).toContain('interrupt');
+    // The dtmf publish sits above the `#`/`*` ignore branch on purpose: the page shows the
+    // keypress, and nothing follows it because no turn runs for a terminator.
+    expect(events.at(-1)).toMatchObject({ type: 'dtmf', digit: '#' });
+    expect(events[0]).toMatchObject({ type: 'call_started', callSid: 'CA1', from: '…2926', todayIso: '2026-09-18' });
+    expect((events[0] as { thresholds: Record<string, unknown> }).thresholds).toMatchObject({ ...DEFAULT_THRESHOLDS });
+    expect(events.find((e) => e.type === 'dtmf')).toMatchObject({ digit: '1' });
+    expect(events.find((e) => e.type === 'interrupt')).toMatchObject({ utteranceUntilInterrupt: 'What' });
+  });
+
+  it('masks the caller number on call_started and in the setup turn record', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    await handleSocketMessage(d, sock, newConnectionContext(d.tokens.mint('CA1'), sock), setupMsg('CA1', 'VX', '+18595222926'));
+    expect(events.find((e) => e.type === 'call_started')).toMatchObject({ from: '…2926' });
+    // The dashboard route is unauthenticated, so nothing on the bus may carry a whole caller
+    // number: the shared observer redacts the setup record on its way out. The trace file on disk
+    // keeps the raw one, and `/dashboard/traces/<sid>` redacts it the same way on the way back.
+    expect(JSON.stringify(events)).not.toContain('+18595222926');
+    const setupTurn = events.find((e) => e.type === 'turn');
+    expect(setupTurn).toMatchObject({ record: { event: { type: 'setup', from: '…2926', to: '…2' } } });
+  });
+
+  it('publishes handoff and then ended when a turn hands off', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt('I want to talk to a person'));
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end', handoffData: '{"reasonCode":"live-agent"}' });
+    expect(types(events).slice(-3)).toEqual(['turn', 'handoff', 'ended']);
+    expect(events.find((e) => e.type === 'handoff')).toMatchObject({ reason: 'live-agent', number: '…5309' });
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'handoff' });
+    // The socket close after the end frame is Twilio finishing up, not a hangup.
+    await handleSocketClose(d, ctx);
+    expect(types(events).filter((t) => t === 'ended')).toHaveLength(1);
+  });
+
+  it('publishes ended with reason completed when the form completes', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
+    await handleSocketMessage(d, sock, ctx, prompt('Jason Stiles'));
+    await handleSocketMessage(d, sock, ctx, prompt('March fifth nineteen eighty'));
+    await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end' });
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'completed' });
+    expect(types(events)).not.toContain('handoff');
+  });
+
+  // A socket close and the `/cr-action` POST that follows it are the same two steps whether the
+  // caller hung up or the relay session merely dropped; only the webhook's parameters differ, so
+  // only the webhook can tell them apart. These two tests are that fork.
+  it('publishes ended with reason hangup when /cr-action reports the caller hung up', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketClose(d, ctx);
+    // The close alone is not a hangup yet: the reconnect below reaches exactly this point too.
+    expect(types(events)).not.toContain('ended');
+    const action = decideActionTwiml(actionDeps(d), { CallSid: 'CA1', CallStatus: 'completed', SessionStatus: 'completed' });
+    expect(action.twiml).toContain('<Hangup/>');
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'hangup', callSid: 'CA1' });
+    expect(types(events).filter((t) => t === 'ended')).toHaveLength(1);
+  });
+
+  it('publishes a reconnect and no ended when /cr-action reconnects the call', async () => {
+    const { d, events } = busDeps();
+    const first = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), first);
+    await handleSocketMessage(d, first, ctx, setupMsg('CA1'));
+    await handleSocketClose(d, ctx);
+    // The live call's relay session ended, so /cr-action re-issues ConversationRelay TwiML and
+    // Twilio dials back in with the freshly minted token.
+    const action = decideActionTwiml(actionDeps(d), { CallSid: 'CA1', CallStatus: 'in-progress', SessionStatus: 'failed' });
+    expect(action.note).toBe('reconnect:1');
+    const token = /token=([0-9a-f]{32})/.exec(action.twiml)![1]!;
+    const second = fakeSocket();
+    await handleSocketMessage(d, second, newConnectionContext(token, second), setupMsg('CA1', 'VX2'));
+    expect(events.find((e) => e.type === 'reconnect')).toMatchObject({ attempt: 1 });
+    expect(types(events)).not.toContain('ended');
+  });
+
+  it('publishes none of its own events when no bus is attached to the deps', async () => {
+    const bus = new DashboardBus();
+    const publish = vi.spyOn(bus, 'publish');
+    // The bus is live and reachable — the store's observer still holds it, which is the store's
+    // wiring, not the adapter's — but the deps have none. `publish(deps, …)` reads `deps.bus` and
+    // nothing else, so every one of the adapter's own publishing sites has to be a no-op: only
+    // the observer's two turns reach the bus, and no call_started, handoff or ended does.
+    const d = { ...deps(undefined, undefined, bus), bus: undefined };
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt('I want to talk to a person'));
+    await handleSocketClose(d, ctx);
+    expect(publish.mock.calls.map(([e]) => e.type)).toEqual(['turn', 'asked', 'turn']);
+    expect(d.store.get('CA1')?.ended).toBe(true);
   });
 });

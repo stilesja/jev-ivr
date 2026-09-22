@@ -98,6 +98,18 @@ describe('loadConfig', () => {
     expect(describeConfig(loadConfig({ ...base, NO_INPUT_MS: '0' }))).toContain('no-input off');
   });
 
+  it('takes the dashboard switch, defaults it on, and rejects anything else', () => {
+    expect(loadConfig(base).dashboard).toBe(true);
+    expect(loadConfig({ ...base, DASHBOARD: 'on' }).dashboard).toBe(true);
+    expect(loadConfig({ ...base, DASHBOARD: 'off' }).dashboard).toBe(false);
+    expect(() => loadConfig({ ...base, DASHBOARD: 'yes' })).toThrow('DASHBOARD must be on or off, got "yes"');
+  });
+
+  it('describes the dashboard switch', () => {
+    expect(describeConfig(loadConfig(base))).toContain('dashboard on');
+    expect(describeConfig(loadConfig({ ...base, DASHBOARD: 'off' }))).toContain('dashboard OFF');
+  });
+
   it('rejects a PUBLIC_HOST with a path, query, or port', () => {
     expect(() => loadConfig({ ...base, PUBLIC_HOST: 'demo.ngrok.app/foo' })).toThrow(/bare hostname/);
     expect(loadConfig({ ...base, PUBLIC_HOST: 'https://demo.ngrok.app/' }).publicHost).toBe('demo.ngrok.app');

@@ -24,6 +24,8 @@ export interface ServerConfig {
   ttsVoice: string | null;
   /** Silence after a prompt's estimated playback before the caller is asked again; 0 disables. */
   noInputMs: number;
+  /** Serve the live call dashboard and publish call moments to its bus. */
+  dashboard: boolean;
 }
 
 type Env = Record<string, string | undefined>;
@@ -71,6 +73,8 @@ export function loadConfig(env: Env): ServerConfig {
   if (todayOverride && !/^\d{4}-\d{2}-\d{2}$/.test(todayOverride)) throw new Error(`TODAY_OVERRIDE must be YYYY-MM-DD, got "${todayOverride}"`);
   const sig = (env.SIGNATURE_CHECK ?? 'on').toLowerCase();
   if (sig !== 'on' && sig !== 'off') throw new Error(`SIGNATURE_CHECK must be on or off, got "${env.SIGNATURE_CHECK}"`);
+  const dash = (env.DASHBOARD ?? 'on').toLowerCase();
+  if (dash !== 'on' && dash !== 'off') throw new Error(`DASHBOARD must be on or off, got "${env.DASHBOARD}"`);
   const ttsProvider = env.TTS_PROVIDER?.trim() || null;
   const ttsVoice = env.TTS_VOICE?.trim() || null;
   if (ttsProvider && !(TTS_PROVIDERS as readonly string[]).includes(ttsProvider)) {
@@ -98,6 +102,7 @@ export function loadConfig(env: Env): ServerConfig {
     ttsProvider,
     ttsVoice,
     noInputMs: integer(env, 'NO_INPUT_MS', 7_000),
+    dashboard: dash === 'on',
   };
 }
 
@@ -119,6 +124,7 @@ export function describeConfig(c: ServerConfig): string {
     `reconnect limit ${c.reconnectLimit}`,
     `audio dir ${c.audioDir}`,
     c.noInputMs > 0 ? `no-input ${c.noInputMs} ms` : 'no-input off',
+    `dashboard ${c.dashboard ? 'on' : 'OFF'}`,
     c.ttsProvider && c.ttsVoice ? `tts ${c.ttsProvider} ${c.ttsVoice}` : 'tts default',
   ].join('  ');
 }

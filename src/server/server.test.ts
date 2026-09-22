@@ -6,6 +6,7 @@ import { startServer, type RunningServer, type ServerOverrides } from './index';
 import { loadConfig } from './config';
 import { FakeRelay } from '../testing/fakeRelay';
 import type { JevClient } from '../jev/types';
+import { maskNumber, type DashboardEvent } from './dashboard/events';
 
 let running: RunningServer | null = null;
 /** Temp dirs minted by makeConfig() for this test, swept up alongside the server it started. */
@@ -252,6 +253,136 @@ describe('server end to end', () => {
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
     expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(6);
     relay.assertKnownTypes();
+  });
+
+  it('streams the worked example to the dashboard while it runs', async () => {
+    const { relay, base, callSid } = await connected();
+    const res = await fetch(`${base}/dashboard/events`);
+    expect(res.headers.get('content-type')).toMatch(/text\/event-stream/);
+    const reader = res.body!.getReader();
+    // One decoder for the whole stream, in streaming mode: a masked number's `…` is three bytes
+    // and can land across two reads, and only whole `\n\n` blocks are parsed.
+    const dec = new TextDecoder();
+    let buf = '';
+    const events = () => buf.split('\n\n').slice(0, -1)
+      .filter((b) => b.includes('data: '))
+      .map((b) => JSON.parse(b.split('data: ')[1]!) as DashboardEvent);
+    // An open stream is a live connection: a failed assertion must not leave it holding the
+    // server open, or `afterEach`'s `running.close()` waits on it instead of reporting the failure.
+    try {
+      relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+      expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+      // The setup turn is turn 1, so the model's first turn — the one the `asked` event pairs with —
+      // is turn 2: read the stream until that turn's `turn` event has arrived.
+      const arrived = () => events().some((e) => e.type === 'turn' && e.record.turnIndex === 2);
+      while (!arrived()) buf += dec.decode((await reader.read()).value, { stream: true });
+      // A page opened mid-call gets the history first (the greeting turn asks nothing, so no `asked`
+      // precedes its `turn`), then the live turn.
+      expect(events().map((e) => e.type)).toEqual(['call_started', 'turn', 'asked', 'turn']);
+      expect(events().find((e) => e.type === 'asked')).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
+      expect(buf).toContain('"spoken":"What\'s your first and last name?"');
+      expect(buf).toMatch(/^id: 1\n/m);
+    } finally {
+      await reader.cancel();
+    }
+    relay.close();
+    expect(callSid).toBe('CA1');
+  });
+
+  it('shuts down while a dashboard stream is still open', async () => {
+    const { base } = await start();
+    const res = await fetch(`${base}/dashboard/events`);
+    // The `: connected` comment: the stream is established, so the connection is not idle.
+    await res.body!.getReader().read();
+    // `server.close()` only waits out idle connections, and an SSE stream never goes idle: without
+    // closeAllConnections this shutdown never finishes and the whole suite hangs on afterEach.
+    const timedOut = Symbol('timed out');
+    const closing = running!.close();
+    const outcome = await Promise.race([
+      closing.then(() => 'closed' as const),
+      new Promise<symbol>((r) => { setTimeout(() => r(timedOut), 2_000); }),
+    ]);
+    if (outcome === 'closed') running = null;
+    expect(outcome).toBe('closed');
+  });
+
+  it('answers 404 on /dashboard when the dashboard is off', async () => {
+    const { config } = makeConfig({ DASHBOARD: 'off', PORT: '0' });
+    running = await startServer(config, { log: () => {} });
+    const base = `http://127.0.0.1:${running.port}`;
+    expect((await fetch(`${base}/dashboard`)).status).toBe(404);
+    expect((await fetch(`${base}/dashboard/traces`)).status).toBe(404);
+  });
+
+  it('pins the index labels of one ordinary turn, where asked and turn agree', async () => {
+    const { relay } = await connected();
+    const events: DashboardEvent[] = [];
+    running!.bus!.subscribe((e) => events.push(e));
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+    const pick = <T extends DashboardEvent['type']>(t: T) => events.filter((e): e is Extract<DashboardEvent, { type: T }> => e.type === t);
+    const asked = pick('asked');
+    const turns = pick('turn');
+    expect(asked).toHaveLength(1);
+    // The setup turn asked nothing, so the model's first turn is the second turn of the call.
+    expect(asked[0]).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
+    // This turn is an ordinary one, so the two labels agree. That is not the general rule: a turn
+    // that resolves to ignore or hold leaves `asked` one ahead (see events.ts), which is why the
+    // page pairs the two events by arrival order rather than by this number.
+    expect(turns.at(-1)!.record.turnIndex).toBe(asked[0]!.turnIndex);
+    expect(turns.at(-1)!.spoken).toBe("What's your first and last name?");
+    expect(asked[0]!.questions).toHaveProperty('intent');
+    // The dashboard route is unauthenticated, so the raw record is never enough: the setup turn's
+    // event must already carry a masked caller number, not the whole one FakeRelay.setup sent.
+    expect(turns[0]!.record.event).toMatchObject({ type: 'setup', from: maskNumber('+15550000001'), to: maskNumber('+15550000002') });
+  });
+
+  it('publishes ended with reason error when a live call is evicted', async () => {
+    // `evictIdle` deletes the entry before the socket it closes reaches the adapter's close
+    // handler, so the sweep itself is the only place that can end an evicted call for the page.
+    let clock = 0;
+    const { config } = makeConfig({ SESSION_TTL_MS: '50', PORT: '0' });
+    running = await startServer(config, { log: () => {}, now: () => clock });
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForTexts(1);
+    const events: DashboardEvent[] = [];
+    running.bus!.subscribe((e) => events.push(e));
+    // Well past the idle TTL, on the server's own clock. `sweep` is the evictor's per-tick body,
+    // called directly so the test does not wait out the minute-long interval.
+    clock = 10_000;
+    running.sweep();
+    expect(running.store.get('CA1')).toBeUndefined();
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'error', callSid: 'CA1', at: 10_000 });
+    expect(events.filter((e) => e.type === 'ended')).toHaveLength(1);
+    relay.close();
+  });
+
+  it('does not publish an ended for a call that had already ended when it was evicted', async () => {
+    let clock = 0;
+    const { config } = makeConfig({ SESSION_TTL_MS: '50', PORT: '0' });
+    running = await startServer(config, { log: () => {}, now: () => clock });
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForTexts(1);
+    const events: DashboardEvent[] = [];
+    running.bus!.subscribe((e) => events.push(e));
+    // A call that ended on its own published its own `ended`; the sweep that later reclaims the
+    // entry must not add a second one.
+    running.store.end('CA1');
+    clock = 10_000;
+    running.sweep();
+    expect(running.store.get('CA1')).toBeUndefined();
+    expect(events.filter((e) => e.type === 'ended')).toHaveLength(0);
+    relay.close();
+  });
+
+  it('has no bus when the dashboard is off', async () => {
+    const { config } = makeConfig({ DASHBOARD: 'off', PORT: '0' });
+    running = await startServer(config, { log: () => {} });
+    expect(running.bus).toBeUndefined();
   });
 
   it('closes the socket itself if Twilio never does within the grace period after end', async () => {
