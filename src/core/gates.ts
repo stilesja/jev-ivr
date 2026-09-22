@@ -14,21 +14,55 @@ export interface GateRow {
   decided: boolean;
 }
 
+/**
+ * The rung the frustration gate reached (spec 2026-09-22 §2): `ack` for the first frustrated turn,
+ * `offer` for the second. A handoff is a verdict of its own, and a turn that is not frustrated --
+ * or one that is answering the offer -- carries nothing.
+ *
+ * Only the verdicts that let the call go on carry it: the turn prepends the acknowledgment to the
+ * prompt it was going to play, or replaces that prompt with the offer, and neither makes sense for
+ * a turn that says nothing (`ignore`, `hold`), one that is already leaving (`handoff`), or a replay
+ * of the last prompt.
+ */
+export type FrustrationRung = 'ack' | 'offer';
+interface Frustrated {
+  frustration?: FrustrationRung;
+}
+
 export type Verdict =
   | { kind: 'ignore' }
   | { kind: 'hold' }
-  | { kind: 'nomatch' }
+  | ({ kind: 'nomatch' } & Frustrated)
   | { kind: 'handoff'; reason: string }
-  | { kind: 'confirmed'; queue?: FormId }
-  | { kind: 'rejected'; queue?: FormId }
-  | { kind: 'confirm_unanswered'; queue?: FormId }
-  | { kind: 'change_slot'; slot: SlotId; queue?: FormId }
+  | ({ kind: 'confirmed'; queue?: FormId } & Frustrated)
+  | ({ kind: 'rejected'; queue?: FormId } & Frustrated)
+  | ({ kind: 'confirm_unanswered'; queue?: FormId } & Frustrated)
+  | ({ kind: 'change_slot'; slot: SlotId; queue?: FormId } & Frustrated)
   | { kind: 'replay' }
-  | { kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit'; queue?: FormId }
-  | { kind: 'queue'; intent: FormId }
-  | { kind: 'disambiguate_intent'; a: Intent; b: Intent }
-  | { kind: 'intent_failed' }
-  | { kind: 'proceed' };
+  | ({ kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit'; queue?: FormId } & Frustrated)
+  | ({ kind: 'queue'; intent: FormId } & Frustrated)
+  | ({ kind: 'disambiguate_intent'; a: Intent; b: Intent } & Frustrated)
+  | ({ kind: 'intent_failed' } & Frustrated)
+  | ({ kind: 'proceed' } & Frustrated);
+
+/** The rung a verdict carries, if it is one of the kinds that can carry one. */
+export function frustrationOf(verdict: Verdict): FrustrationRung | undefined {
+  return 'frustration' in verdict ? verdict.frustration : undefined;
+}
+
+/** Stamp the rung onto the verdict the gates settled on, where that verdict can carry it. */
+function withFrustration(verdict: Verdict, rung: FrustrationRung | null): Verdict {
+  if (rung === null) return verdict;
+  switch (verdict.kind) {
+    case 'ignore':
+    case 'hold':
+    case 'handoff':
+    case 'replay':
+      return verdict;
+    default:
+      return { ...verdict, frustration: rung };
+  }
+}
 
 export interface GateResult {
   rows: GateRow[];
@@ -44,6 +78,19 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
       verdict = v;
       row.decided = true;
     }
+    rows.push(row);
+  };
+  /**
+   * The verdict an earlier gate has already settled on, if any. Read through a function so that
+   * TypeScript uses `verdict`'s declared type: it is only ever assigned inside these closures, so
+   * straight-line narrowing would have it as `null` everywhere below.
+   */
+  const settled = (): Verdict | null => verdict;
+  /** Take the verdict away from the gate that settled it: this row decided the turn instead. */
+  const resettle = (row: GateRow, v: Verdict): void => {
+    for (const r of rows) r.decided = false;
+    verdict = v;
+    row.decided = true;
     rows.push(row);
   };
   const info = (gate: string, value: number | null, outcome = 'info'): void => {
@@ -75,22 +122,49 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     else rows.push({ gate: 'utteranceComplete', value: v, threshold: t.GATE_COMPLETE, passed, outcome: 'noted', decided: false });
   }
 
-  // 4. wants human
+  // 4. wants human. At the transfer offer this gate sees the yes before the confirmation gate
+  // does -- "yes, connect me" is an explicit request for a person -- so the reason has to say
+  // which transfer it is: the caller is accepting the one we offered a frustrated caller, not
+  // asking out of the blue, and `frustrated` is what plays the line the offer promised.
   {
     const v = noulValue(answers, 'wantsHuman');
     const passed = v < t.GATE_WANTS_HUMAN;
+    const reason = session.pendingConfirmation?.target === 'transfer' ? 'frustrated' : 'live-agent';
     const row = { gate: 'wantsHuman', value: v, threshold: t.GATE_WANTS_HUMAN, passed, outcome: passed ? 'pass' : 'handoff', decided: false };
-    passed ? rows.push(row) : decide(row, { kind: 'handoff', reason: 'live-agent' });
+    passed ? rows.push(row) : decide(row, { kind: 'handoff', reason });
   }
 
-  // 5. frustration escalation (before intent; see Deviation note)
+  // 5. frustration escalation (before intent; see Deviation note). The gate reads the rung off the
+  // count the session carries; only the handoff is a verdict of its own, and the turn does the
+  // bookkeeping (spec 2026-09-22 §2). A repeated attempt no longer matters.
+  let frustrationRung: FrustrationRung | null = null;
   {
     const f = answers.frustration;
     const high = isScore(f) ? (f.probabilities.high ?? 0) : 0;
-    const repeat = ts.turn.attempt !== 'first';
-    const passed = !(high >= t.GATE_FRUSTRATION_HIGH && repeat);
-    const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed, outcome: passed ? (high >= t.GATE_FRUSTRATION_HIGH ? 'first_attempt' : 'pass') : 'handoff', decided: false };
-    passed ? rows.push(row) : decide(row, { kind: 'handoff', reason: 'frustrated' });
+    const frustrated = high >= t.GATE_FRUSTRATION_HIGH;
+    // The caller answering the offer is not counted again, however crossly they answer it.
+    const atOffer = session.pendingConfirmation?.target === 'transfer';
+    const count = frustrated && !atOffer ? session.frustratedTurns + 1 : session.frustratedTurns;
+    const rung = !frustrated || atOffer ? 'pass'
+      : count === 1 ? 'ack'
+        : count === 2 && !session.transferDeclined ? 'offer'
+          : 'handoff';
+    const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed: rung !== 'handoff', outcome: rung, decided: false };
+    if (rung !== 'handoff') rows.push(row);
+    // The third rung is a verdict of its own, and `decide` is first-wins, so a verdict an earlier
+    // gate already settled has to be answered for rather than quietly swallowing the transfer.
+    else if (settled()?.kind === 'ignore') {
+      // Gate 1 heard side speech: the outburst was not aimed at us, so there is nothing to
+      // transfer out of and the row says so. The turn is not counted either -- `withFrustration`
+      // never stamps an `ignore`, so the rung comes round again when the caller is talking to us.
+      rows.push({ ...row, passed: true, outcome: 'not_addressed' });
+    } else if (settled()?.kind === 'nomatch') {
+      // Gate 2 could not make out the words, but a caller this upset for the third time gets a
+      // person anyway: the rung takes the verdict off the re-ask. The `intelligible` row keeps
+      // its failure and loses only the credit for deciding the turn.
+      resettle(row, { kind: 'handoff', reason: 'frustrated' });
+    } else decide(row, { kind: 'handoff', reason: 'frustrated' });
+    frustrationRung = rung === 'ack' || rung === 'offer' ? rung : null;
   }
 
   // 6. pending confirmation. Intent and slot readbacks decide here. The summary (target form)
@@ -105,10 +179,12 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     const isForm = pending.target === 'form';
     const yes = noulValue(answers, 'confirmsYes');
     const no = noulValue(answers, 'confirmsNo');
+    // The transfer offer takes anything that is not a yes as a no (spec 2026-09-22 §3): the caller
+    // who answers it with a doctor's name, or with nothing much, is not asked it a second time.
     if (yes >= t.CONFIRM_YES && yes >= no) {
       confirmationRow = { gate: 'confirmation', value: yes, threshold: t.CONFIRM_YES, passed: true, outcome: 'confirmed', decided: false };
       if (isForm) { formConfirm = 'confirmed'; rows.push(confirmationRow); } else decide(confirmationRow, { kind: 'confirmed' });
-    } else if (no >= t.CONFIRM_NO) {
+    } else if (no >= t.CONFIRM_NO || pending.target === 'transfer') {
       confirmationRow = { gate: 'confirmation', value: no, threshold: t.CONFIRM_NO, passed: true, outcome: 'rejected', decided: false };
       if (isForm) { formConfirm = 'rejected'; rows.push(confirmationRow); } else decide(confirmationRow, { kind: 'rejected' });
     } else {
@@ -281,5 +357,5 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
   }
 
   // `verdict` is only ever assigned inside the `decide` closure, so TypeScript narrows it to null here; the `??` is load-bearing at runtime.
-  return { rows, verdict: verdict ?? routeVerdict };
+  return { rows, verdict: withFrustration(verdict ?? routeVerdict, frustrationRung) };
 }

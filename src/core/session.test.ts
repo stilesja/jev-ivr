@@ -47,6 +47,31 @@ describe('session', () => {
     expect(clone.slots.date.window).not.toBe(s.slots.date.window);
   });
 
+  it('starts with no frustrated turns and the transfer offer never declined', () => {
+    const s = newSession('s1', 0);
+    expect(s.frustratedTurns).toBe(0);
+    expect(s.transferDeclined).toBe(false);
+  });
+
+  it('cloneSession copies the transfer offer, attempts and all, by value', () => {
+    const s = newSession('s1', 0);
+    s.pendingConfirmation = { target: 'transfer', attempts: 1 };
+    s.frustratedTurns = 2;
+    const clone = cloneSession(s);
+    clone.pendingConfirmation = { target: 'transfer', attempts: 2 };
+    clone.frustratedTurns = 3;
+    expect(s.pendingConfirmation).toEqual({ target: 'transfer', attempts: 1 });
+    expect(s.frustratedTurns).toBe(2);
+  });
+
+  it('counts no attempts against the transfer offer', () => {
+    const s = newSession('s1', 0);
+    s.promptedFor = 'confirm';
+    s.pendingConfirmation = { target: 'transfer', attempts: 1 };
+    // The offer's own silences are counted on the pending object, not on the intent ladder.
+    expect(currentAttempts(s)).toBe(0);
+  });
+
   it('has five slots, including name and dob', () => {
     const s = newSession('s1', 0);
     expect(Object.keys(s.slots).sort()).toEqual(['date', 'dob', 'memberId', 'name', 'provider']);

@@ -150,6 +150,22 @@ describe('seedCorpusSession', () => {
     expect(s.pendingConfirmation).toBeNull();
   });
 
+  it('seeds the transfer offer pending, mid-form, with two frustrated turns behind it', () => {
+    const entry = parseCorpus('{"id":"ft-1","text":"keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no"}')[0]!;
+    const s = seedCorpusSession(newSession('ft-1', 0), entry);
+    expect(s.form).toBe('reschedule');
+    // The question the caller was on is still open, so a declined offer has somewhere to go back to.
+    expect(s.slots.name.value).toBe('jason stiles');
+    expect(s.slots.dob.value).toBe('1980-03-05');
+    expect(s.slots.provider.value).toBeNull();
+    expect(s.pendingConfirmation).toEqual({ target: 'transfer', attempts: 0 });
+    expect(s.promptedFor).toBe('confirm');
+    expect(s.lastPromptId).toBe('offer_transfer');
+    expect(s.lastPromptOptions).toEqual(['yes', 'no']);
+    expect(s.lastPromptText).toContain('connect you to a person');
+    expect(s.frustratedTurns).toBe(2);
+  });
+
   it('leaves a no_form session untouched', () => {
     const untouched = newSession('c1', 0);
     expect(seedCorpusSession(untouched, entries[0]!)).toBe(untouched);

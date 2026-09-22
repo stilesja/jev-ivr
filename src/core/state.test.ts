@@ -37,6 +37,13 @@ describe('buildTurnState', () => {
     expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).pendingConfirmation).toEqual({ target: 'memberId', value: '4471 8293' });
   });
 
+  it('shows the transfer offer to the model as what a yes buys', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.pendingConfirmation = { target: 'transfer', attempts: 0 };
+    expect(buildTurnState(s, { text: 'yes', isFinal: true, dtmf: null }, 0).pendingConfirmation)
+      .toEqual({ target: 'transfer', value: 'connect you to a person' });
+  });
+
   it('shows a form confirmation to the model as the form label', () => {
     const s = newSession('s', 0);
     s.form = 'reschedule';

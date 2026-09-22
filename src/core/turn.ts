@@ -9,7 +9,7 @@ import { candidateSpans, candidateWordSpans } from './spans';
 import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
-import { evaluateGates, type GateRow, type Verdict } from './gates';
+import { evaluateGates, frustrationOf, type FrustrationRung, type GateRow, type Verdict } from './gates';
 import { applyDtmf, fillSlots, nextPrompt, pendingSlotConfirmation, retryStep, type Ack, type FillEvent, type FillResult } from './fia';
 import type { Decision, HandoffDecision, PromptDecision } from './decision';
 import type { Thresholds } from './thresholds';
@@ -231,6 +231,36 @@ function failAttempt(s: Session, target: 'intent' | 'confirm' | SlotId, t: Thres
   return prompt(toDtmf ? `ask_${target}_dtmf` : `ask_${target}_retry`, target, {}, acks);
 }
 
+const ACK_FRUSTRATION: Ack = { promptId: 'ack_frustration', vars: {} };
+
+/** "Would you like me to connect you to a person, or keep going?" (spec 2026-09-22 §3). */
+function offerTransfer(acks: Ack[] = []): PromptDecision {
+  return prompt('offer_transfer', 'confirm', {}, acks, ['yes', 'no']);
+}
+
+type TransferConfirmation = Extract<PendingConfirmation, { target: 'transfer' }>;
+
+/**
+ * The offer turned down: by a no, by an answer that is neither a yes nor a no, or by a second
+ * silence. It is not offered again on this call, and the caller goes back to the question they
+ * were on -- declining costs them no attempt, since they did answer the question we asked.
+ */
+function declineTransfer(s: Session, t: Thresholds, pc: TransferConfirmation, acks: Ack[]): Decision {
+  s.transferDeclined = true;
+  // A confirmation the offer displaced comes back rather than being dropped: an explicit intent
+  // confirm still holds the caller's request, and a summary still holds its attempt count. `count`
+  // is false -- declining answered the offer, so it is not a turn dodged on the question beneath.
+  if (pc.resume) {
+    s.pendingConfirmation = pc.resume;
+    return reaskConfirmation(s, t, acks, false);
+  }
+  s.pendingConfirmation = null;
+  if (s.form) return continueForm(s, acks, null);
+  // The offer can be made before any task is started, where the form loop has nothing to ask:
+  // the plain intent question comes back, not the "Sorry, I didn't catch that" retry.
+  return prompt('ask_intent', 'intent', {}, acks);
+}
+
 /**
  * A confirmation the caller did not answer stands; re-ask it until the retry policy runs out.
  * `count` is false when the turn spent itself adding a request rather than dodging the
@@ -252,6 +282,14 @@ function reaskConfirmation(s: Session, t: Thresholds, acks: Ack[] = [], count = 
       return prompt(`ask_${pc.slot}_dtmf`, pc.slot, {}, acks);
     }
     return prompt(`confirm_${pc.slot}`, pc.slot, { [pc.slot]: pc.display }, acks, ['yes', 'no']);
+  }
+  if (pc.target === 'transfer') {
+    // Only silence gets here: the gate settles every spoken answer to the offer, as a transfer or
+    // as a decline, so `count` never has anything to say about it. The offer never walks to the
+    // keypad or to an agent -- a second silence declines it and the call carries on (spec §3).
+    pc.attempts += 1;
+    if (pc.attempts >= 2) return declineTransfer(s, t, pc, acks);
+    return offerTransfer(acks);
   }
   if (pc.target === 'form') {
     if (!count) return summaryPrompt(s, pc.form, acks);
@@ -340,6 +378,8 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         const acks = enqueue(s, verdict.queue);
         return { decision: completeForm(s, pc.form, acks), events: [] };
       }
+      // The offer was accepted: the transfer the caller was offered is the one they get.
+      if (pc.target === 'transfer') return { decision: handoff(s, 'frustrated'), events: [] };
       if (pc.intent === 'agent') return { decision: handoff(s, 'live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
       // Fill from what the caller originally said, not from the "yes".
@@ -360,6 +400,13 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         s.pendingConfirmation = pc;
         if (pc.askedChange === true) return { decision: reaskConfirmation(s, t, acks), events: fill.events };
         return { decision: askChange(pc, acks), events: fill.events };
+      }
+      if (pc.target === 'transfer') {
+        // Spec 2026-09-22 §3: the answer is an ordinary utterance as well, so whatever it filled
+        // stands and the form loop asks whatever is next -- "no, keep going" re-asks the question
+        // the caller was on, and "keep going, it's Dr. Chen" answers it on the way past.
+        const fill = fillSlots(s, answers, ctx, s.form ? slotsFor(s.form) : allSlots());
+        return { decision: declineTransfer(s, t, pc, fill.acks), events: fill.events };
       }
       if (pc.target === 'slot') {
         // A declined readback means the spoken path failed; go straight to the keypad,
@@ -499,6 +546,25 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
   }
 }
 
+/**
+ * The frustration rungs the gate reached, applied to what the turn was going to say anyway
+ * (spec 2026-09-22 §2). Only a prompt can carry them: a decision that ends the call says its own
+ * line, and an ignored or held turn says nothing at all, so neither is a place to react.
+ */
+function escalate(s: Session, decision: Decision, rung: FrustrationRung | undefined): Decision {
+  if (rung === undefined || decision.kind !== 'prompt') return decision;
+  if (rung === 'ack') return { ...decision, acks: [ACK_FRUSTRATION, ...decision.acks] };
+  // The offer takes the place of the question this turn would have asked. What the turn filled or
+  // routed stands, and the question comes back once the offer is answered -- from the form loop,
+  // or, where this turn had armed a confirmation of its own, from `resume` (spec §3).
+  const displaced = s.pendingConfirmation;
+  s.pendingConfirmation = displaced !== null && displaced.target !== 'transfer'
+    ? { target: 'transfer', attempts: 0, resume: displaced }
+    : { target: 'transfer', attempts: 0 };
+  s.promptedFor = 'confirm';
+  return offerTransfer(decision.acks);
+}
+
 function handleFailure(s: Session): Decision {
   s.consecutiveFailures += 1;
   if (s.consecutiveFailures >= 2) return handoff(s, 'system-failure');
@@ -568,7 +634,12 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       s.consecutiveFailures = 0;
       const ctx = slotContext(s, event.voicePrompt, tc);
       const { rows, verdict } = evaluateGates(s, turnState, answers, tc.thresholds);
-      const { decision, events } = handleVerdict(s, verdict, answers, ctx, tc);
+      // The gate worked the rung out from the count but left the count alone; the turn owns the
+      // bookkeeping, and only a verdict that carries a rung is a frustrated turn to count.
+      const rung = frustrationOf(verdict);
+      if (rung !== undefined) s.frustratedTurns += 1;
+      const { decision: resolved, events } = handleVerdict(s, verdict, answers, ctx, tc);
+      const decision = escalate(s, resolved, rung);
       rows.push(...slotRows(events, tc.thresholds));
       bookkeep(s, decision, verdict.kind);
       // The barge-in has now been reported to the model; it does not carry into the next turn.

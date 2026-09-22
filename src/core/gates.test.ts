@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateGates } from './gates';
+import { evaluateGates, frustrationOf } from './gates';
 import { newSession, setForm, type Session } from './session';
 import { buildTurnState } from './state';
 import { DEFAULT_THRESHOLDS } from './thresholds';
@@ -28,6 +28,14 @@ function run(session: Session, answers: AnswerMap, isFinal = true) {
   return evaluateGates(session, ts, answers, T);
 }
 
+/** Mid-form, with the transfer offer waiting for an answer (spec 2026-09-22 §3). */
+function atOffer(): Session {
+  const s = setForm(newSession('s', 0), 'reschedule');
+  s.pendingConfirmation = { target: 'transfer', attempts: 0 };
+  s.promptedFor = 'confirm';
+  return s;
+}
+
 describe('evaluateGates', () => {
   it('ignores side speech', () => {
     const r = run(newSession('s', 0), baseAnswers({ addressedToSystem: noul(0.2) }));
@@ -50,13 +58,117 @@ describe('evaluateGates', () => {
     expect(run(newSession('s', 0), baseAnswers({ wantsHuman: noul(0.9) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
   });
 
-  it('escalates high frustration on a repeat attempt but not on the first', () => {
-    const angry = baseAnswers({ frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }) });
-    expect(run(newSession('s', 0), angry).verdict.kind).toBe('route');
-    const s = newSession('s', 0);
-    s.promptedFor = 'intent';
-    s.intentAttempts = 1;
-    expect(run(s, angry).verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+  describe('frustration rungs', () => {
+    const angry = (over: AnswerMap = {}) => baseAnswers({ frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }), ...over });
+    const frustrationRow = (r: ReturnType<typeof run>) => r.rows.find((g) => g.gate === 'frustration');
+
+    it('acknowledges the first frustrated turn, on any attempt', () => {
+      const first = run(newSession('s', 0), angry());
+      expect(first.verdict).toMatchObject({ kind: 'route', intent: 'reschedule', frustration: 'ack' });
+      expect(frustrationRow(first)).toMatchObject({ value: 0.7, threshold: T.GATE_FRUSTRATION_HIGH, passed: true, outcome: 'ack', decided: false });
+      // The old rule -- high frustration on a repeated attempt hands off at once -- is gone.
+      const s = newSession('s', 0);
+      s.promptedFor = 'intent';
+      s.intentAttempts = 1;
+      expect(run(s, angry()).verdict).toMatchObject({ kind: 'route', frustration: 'ack' });
+    });
+
+    it('offers a transfer on the second frustrated turn', () => {
+      const s = newSession('s', 0);
+      s.frustratedTurns = 1;
+      const r = run(s, angry());
+      expect(r.verdict).toMatchObject({ kind: 'route', frustration: 'offer' });
+      expect(frustrationRow(r)).toMatchObject({ passed: true, outcome: 'offer', decided: false });
+    });
+
+    it('hands off on the third frustrated turn', () => {
+      const s = newSession('s', 0);
+      s.frustratedTurns = 2;
+      const r = run(s, angry());
+      expect(r.verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+      expect(frustrationRow(r)).toMatchObject({ passed: false, outcome: 'handoff', decided: true });
+    });
+
+    it('hands off on the second frustrated turn when the offer was already declined', () => {
+      const s = newSession('s', 0);
+      s.frustratedTurns = 1;
+      s.transferDeclined = true;
+      expect(run(s, angry()).verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+    });
+
+    it('transfers on the third rung even when the words came through garbled', () => {
+      // Gate 2 settles a `nomatch` first and `decide` is first-wins, so the rung has to take the
+      // verdict off it: a caller this upset for the third time gets a person either way.
+      const s = newSession('s', 0);
+      s.frustratedTurns = 2;
+      const r = run(s, angry({ intelligible: noul(0.1) }));
+      expect(r.verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+      expect(frustrationRow(r)).toMatchObject({ passed: false, outcome: 'handoff', decided: true });
+      // The intelligible row keeps its failure and loses only the credit for the verdict.
+      expect(r.rows.find((g) => g.gate === 'intelligible')).toMatchObject({ passed: false, outcome: 'nomatch', decided: false });
+    });
+
+    it('does not transfer on an outburst that was not addressed to it, and says so in the row', () => {
+      const s = newSession('s', 0);
+      s.frustratedTurns = 2;
+      const r = run(s, angry({ addressedToSystem: noul(0.1) }));
+      expect(r.verdict).toEqual({ kind: 'ignore' });
+      expect(frustrationRow(r)).toMatchObject({ passed: true, outcome: 'not_addressed', decided: false });
+      // No rung on the verdict is what keeps `frustratedTurns` where it was: side speech is not
+      // a turn the caller spent on us.
+      expect(frustrationOf(r.verdict)).toBeUndefined();
+    });
+
+    it('does not count the turn that answers the offer', () => {
+      const s = atOffer();
+      s.frustratedTurns = 2;
+      const r = run(s, angry({ confirmsYes: noul(0.9), confirmsNo: noul(0.05) }));
+      // Counting it would hand off the caller who is telling us, crossly, to keep going.
+      expect(r.verdict).toEqual({ kind: 'confirmed' });
+      expect(frustrationRow(r)).toMatchObject({ passed: true, outcome: 'pass' });
+    });
+
+    it('ignores mild frustration', () => {
+      const r = run(newSession('s', 0), baseAnswers({ frustration: score({ none: 0.3, mild: 0.6, high: 0.1 }) }));
+      expect(r.verdict).toEqual({ kind: 'route', intent: 'reschedule', confirm: 'none' });
+      expect(frustrationRow(r)).toMatchObject({ passed: true, outcome: 'pass' });
+    });
+  });
+
+  describe('the transfer offer', () => {
+    it('confirms on yes and declines on anything else', () => {
+      expect(run(atOffer(), baseAnswers({ confirmsYes: noul(0.9), confirmsNo: noul(0.05) })).verdict).toEqual({ kind: 'confirmed' });
+      expect(run(atOffer(), baseAnswers({ confirmsYes: noul(0.05), confirmsNo: noul(0.9) })).verdict).toEqual({ kind: 'rejected' });
+      // Spec 2026-09-22 §3: an answer that is neither a yes nor a no declines the offer as well,
+      // rather than leaving it pending and asking it again.
+      const neither = run(atOffer(), baseAnswers({ confirmsYes: noul(0.1), confirmsNo: noul(0.1), intent: choice({ none: 0.9, other: 0.1 }) }));
+      expect(neither.verdict).toEqual({ kind: 'rejected' });
+      expect(neither.rows.find((g) => g.gate === 'confirmation')).toMatchObject({ outcome: 'rejected', decided: true });
+    });
+
+    it('keeps the frustrated reason when the yes also reads as asking for a person', () => {
+      // "yes, connect me" trips the wantsHuman gate, which runs before the confirmation gate.
+      // The caller is accepting the transfer we offered, so the reason -- and the line that plays
+      // with it -- is the frustrated one, not the generic live-agent handoff.
+      const s = atOffer();
+      s.frustratedTurns = 2;
+      const r = run(s, baseAnswers({
+        wantsHuman: noul(0.9), confirmsYes: noul(0.9), confirmsNo: noul(0.05),
+        frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }),
+      }));
+      expect(r.verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+      expect(r.rows.find((g) => g.gate === 'wantsHuman')).toMatchObject({ passed: false, outcome: 'handoff', decided: true });
+      // And it is still the turn that answers the offer, so it is not a frustrated turn to count,
+      // however crossly it was said: `frustratedTurns` is the turn's own bookkeeping, driven by a
+      // rung on the verdict, and the gate passes rather than reaching for a third rung.
+      expect(frustrationOf(r.verdict)).toBeUndefined();
+      expect(r.rows.find((g) => g.gate === 'frustration')).toMatchObject({ passed: true, outcome: 'pass' });
+    });
+
+    it('still hands off as live-agent when no transfer is pending', () => {
+      const s = setForm(newSession('s', 0), 'reschedule');
+      expect(run(s, baseAnswers({ wantsHuman: noul(0.9) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
+    });
   });
 
   it('routes silently, with implicit confirm, or with explicit confirm by band', () => {

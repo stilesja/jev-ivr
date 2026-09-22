@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { plan, resolve, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
+import { INTENT_LABELS } from '../domain/intents';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import { promptFrame, dtmfFrames, setupFrame, silenceFrame, type InterruptFrame } from '../channel/frames';
 import { choice, noul, score } from '../testing/answers';
@@ -8,6 +9,7 @@ import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
 import { spokenText } from '../prompts/render';
 import type { DateWindow } from './extract/date';
+import type { Ack } from './fia';
 
 const tc: TurnContext = { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
 
@@ -886,6 +888,139 @@ describe('final confirm', () => {
     expect(r.session.promptedFor).toBe('confirm');
     // The failure is not a dodged summary: the ladder keeps its place.
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+});
+
+/**
+ * Spec 2026-09-22 §2: the rungs a frustrated caller walks -- an acknowledgment, then the offer of
+ * a transfer, then the transfer. The texts here are ones the heuristic stub scores as high
+ * frustration ("ridiculous", "useless", "ugh"), the same way the corpus labels do.
+ */
+describe('frustration escalation', () => {
+  const OPENER = 'ugh, I already told you, I need to reschedule my appointment';
+  const ANGRY = 'ugh, come on, third time now';
+  const ACK: Ack = { promptId: 'ack_frustration', vars: {} };
+  const OFFER = { kind: 'prompt', promptId: 'offer_transfer', target: 'confirm', options: ['yes', 'no'] };
+  /** Frustrated at the greeting, then frustrated again at the name question. */
+  const TO_OFFER: Turn[] = [OPENER, ANGRY];
+  const HIGH = score({ none: 0.1, mild: 0.2, high: 0.7 });
+
+  it('acknowledges the first frustrated turn before the question it was going to ask anyway', () => {
+    const r = afterTurns([OPENER]);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', acks: [ACK] });
+    expect(r.session.form).toBe('reschedule');
+    expect(r.session.frustratedTurns).toBe(1);
+  });
+
+  it('offers a transfer on the second frustrated turn, in place of the next question', () => {
+    const r = afterTurns(TO_OFFER);
+    expect(r.decision).toMatchObject(OFFER);
+    expect(r.session.pendingConfirmation).toEqual({ target: 'transfer', attempts: 0 });
+    expect(r.session.frustratedTurns).toBe(2);
+    expect(spokenText(r.decision)).toContain('Would you like me to connect you to a person');
+  });
+
+  it('transfers on yes', () => {
+    const r = afterTurns([...TO_OFFER, 'yes']);
+    expect(r.decision).toMatchObject({ kind: 'handoff', reason: 'frustrated' });
+    expect(spokenText(r.decision)).toContain('Let me get you to someone who can help.');
+  });
+
+  it('goes back to the question it was on when the offer is declined', () => {
+    const r = afterTurns([...TO_OFFER, 'no']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', target: 'name' });
+    expect(r.session.pendingConfirmation).toBeNull();
+    expect(r.session.transferDeclined).toBe(true);
+    // Answering the offer is not itself a frustrated turn.
+    expect(r.session.frustratedTurns).toBe(2);
+  });
+
+  /**
+   * The offer takes the place of whatever the turn was going to ask, including a confirmation the
+   * same turn had just armed. Declining brings that confirmation back rather than dropping it, so
+   * the caller's request -- or the summary's place in its ladder -- survives the detour (spec §3).
+   */
+  it('brings back the explicit intent confirmation the offer displaced', () => {
+    const s = started();
+    s.frustratedTurns = 1;
+    const offered = say(s, 'ugh, come on, maybe reschedule', {
+      frustration: HIGH,
+      intent: choice({ reschedule: 0.65, none: 0.35 }),
+      intentTentative: noul(0.9),
+    });
+    expect(offered.decision).toMatchObject(OFFER);
+    expect(offered.session.pendingConfirmation).toMatchObject({
+      target: 'transfer', attempts: 0, resume: { target: 'intent', intent: 'reschedule' },
+    });
+    const back = say(offered.session, 'no', { confirmsYes: noul(0.05), confirmsNo: noul(0.9) });
+    expect(back.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit', target: 'intent' });
+    expect(varsOf(back.decision).intentLabel).toBe(INTENT_LABELS.reschedule);
+    expect(back.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'reschedule' });
+    expect(back.session.transferDeclined).toBe(true);
+    // Declining is an answer, not a dodge: the confirmation's ladder is where it was.
+    expect(back.session.intentAttempts).toBe(0);
+  });
+
+  it('brings back the summary the offer displaced, with its attempt count intact', () => {
+    const s = afterTurns(HAPPY).session;
+    s.frustratedTurns = 1;
+    // A frustrated turn that answers the summary with nothing spends a rung on it; the offer then
+    // takes the place of the re-asked summary.
+    const offered = say(s, 'ugh, come on, third time now', { frustration: HIGH, intentChange: ANSWERING });
+    expect(offered.decision).toMatchObject(OFFER);
+    expect(offered.session.pendingConfirmation)
+      .toEqual({ target: 'transfer', attempts: 0, resume: { target: 'form', form: 'reschedule', attempts: 1 } });
+    const back = say(offered.session, 'keep going', { confirmsYes: noul(0.05), confirmsNo: noul(0.9) });
+    expect(back.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
+    expect(back.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
+  });
+
+  it('transfers on the next frustrated turn once the offer has been declined', () => {
+    expect(afterTurns([...TO_OFFER, 'no', ANGRY]).decision).toMatchObject({ kind: 'handoff', reason: 'frustrated' });
+  });
+
+  it('keeps what the answer to the offer says, and asks the next slot', () => {
+    // At the provider question, frustrated twice, then an answer that is neither yes nor no:
+    // the offer is declined, the doctor it named is kept, and the day is what is left to ask.
+    const steps: Turn[] = ['I need to reschedule my appointment', 'Jason Stiles', 'March fifth nineteen eighty', OPENER, ANGRY];
+    const offered = afterTurns(steps);
+    expect(offered.decision).toMatchObject(OFFER);
+    const r = afterTurns([...steps, 'keep going, it is Dr. Chen']);
+    expect(r.session.slots.provider.value).toBe('chen');
+    expect(r.session.transferDeclined).toBe(true);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_date', target: 'date' });
+  });
+
+  it('never attaches the acknowledgment to a decision that ends the call', () => {
+    // A frustrated yes at the summary completes the form; the completion line says it all.
+    const r = afterTurns([...HAPPY, 'yes, finally, what a ridiculous system']);
+    expect(r.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed', acks: [] });
+    expect(r.session.frustratedTurns).toBe(1);
+  });
+
+  it('plays the acknowledgment at most once per call', () => {
+    const turns = runTurns([OPENER, 'Jason Stiles', ANGRY]);
+    expect(turns[0]!.decision).toMatchObject({ promptId: 'ask_name', acks: [ACK] });
+    expect(turns[1]!.decision).toMatchObject({ promptId: 'ask_dob', acks: [] });
+    expect(turns[2]!.decision).toMatchObject(OFFER);
+  });
+
+  it('re-asks the offer after one silence and declines it after two, without a keypad rung', () => {
+    const s = afterTurns(TO_OFFER).session;
+    const one = resolve(s, silenceFrame(), null, tc);
+    expect(one.decision).toMatchObject({ kind: 'prompt', promptId: 'offer_transfer', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.session.pendingConfirmation).toEqual({ target: 'transfer', attempts: 1 });
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(two.session.pendingConfirmation).toBeNull();
+    expect(two.session.transferDeclined).toBe(true);
+  });
+
+  it('ignores the keypad at the offer', () => {
+    const s = afterTurns(TO_OFFER).session;
+    const r = resolve(s, dtmfFrames('1')[0]!, null, tc);
+    expect(r.decision).toEqual({ kind: 'ignore' });
+    expect(r.session.pendingConfirmation).toEqual({ target: 'transfer', attempts: 0 });
   });
 });
 

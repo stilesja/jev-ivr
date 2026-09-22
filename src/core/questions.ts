@@ -61,9 +61,9 @@ function alwaysOn(): QuestionMap {
       type: 'score',
       instructions: 'Read asr.text. How frustrated does the caller sound?',
       levels: [
-        { label: 'none', description: 'Calm or neutral wording' },
-        { label: 'mild', description: 'Complains about waiting, repeats a request with irritation, or says come on or seriously' },
-        { label: 'high', description: 'Swears, insults the system, says this is ridiculous, or threatens to hang up or complain' },
+        { label: 'none', description: 'Calm or neutral wording, including a plain request made once' },
+        { label: 'mild', description: 'A sigh, an ugh, a come on or a seriously attached to an otherwise plain request, or a complaint about waiting, with no sign the caller is repeating themselves' },
+        { label: 'high', description: 'The caller says they already said or told us something, counts the attempts as in for the third time, asks are you kidding me, calls it ridiculous, swears, insults the system, or threatens to hang up or complain' },
       ],
     },
     urgency: {

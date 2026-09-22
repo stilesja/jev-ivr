@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { summaryVars, type TurnResult } from '../core/turn';
 import { emptySlot, missingSlots, newSession, setForm, type Session } from '../core/session';
-import { confirmForm, contextForm, type CorpusEntry } from '../jev/corpus';
+import { confirmForm, contextForm, offerTransfer, type CorpusEntry } from '../jev/corpus';
 import { JevClientError, type JevClient } from '../jev/types';
 import { promptText } from '../prompts/render';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
@@ -57,6 +57,7 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry): Session
   const form = contextForm(entry.context)!;
   setForm(session, form);
   const confirming = confirmForm(entry.context) !== null;
+  const offering = offerTransfer(entry.context);
   // An entry that targets a later slot starts from a form that already has the earlier ones; a confirm_
   // entry starts from a form that has every slot, since the summary is only asked once the form is full.
   // Computed once, before any slot is filled: recomputing missingSlots(session) per iteration would chase
@@ -78,6 +79,17 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry): Session
     session.lastPromptId = promptId;
     session.lastPromptText = promptText(promptId, summaryVars(session));
     session.lastPromptOptions = ['yes', 'no'];
+    return session;
+  }
+  if (offering) {
+    // The frustrated caller has been offered a transfer and has not answered it yet: two frustrated
+    // turns behind them, the question `prompted` names still to come back to (spec 2026-09-22 §5).
+    session.pendingConfirmation = { target: 'transfer', attempts: 0 };
+    session.promptedFor = 'confirm';
+    session.lastPromptId = 'offer_transfer';
+    session.lastPromptText = promptText('offer_transfer', {});
+    session.lastPromptOptions = ['yes', 'no'];
+    session.frustratedTurns = 2;
     return session;
   }
   const slot = stopAt ?? null;

@@ -43,7 +43,23 @@ export type PendingConfirmation =
    * The question is free at most once per summary: the keypad's 2 can ask for it again, and each
    * of those spends a rung.
    */
-  | { target: 'form'; form: FormId; attempts: number; askedChange?: boolean };
+  | { target: 'form'; form: FormId; attempts: number; askedChange?: boolean }
+  /**
+   * The transfer offered to a frustrated caller (spec 2026-09-22 §3). `attempts` counts silences
+   * at the offer only: every spoken answer settles it, a yes as a transfer and anything else as a
+   * decline, so the offer is asked at most twice and never walks to the keypad or to an agent.
+   */
+  | {
+      target: 'transfer';
+      attempts: number;
+      /**
+       * the confirmation the offer displaced, where the same turn had just armed one: an explicit
+       * intent confirm, a slot readback, or a form summary with its attempt count. Declining the
+       * offer restores it and asks it again, so neither the caller's request nor the ladder's place
+       * in it is lost to the detour. Never itself a transfer: the offer is not made at the offer.
+       */
+      resume?: PendingConfirmation;
+    };
 
 export interface Interrupt {
   utteranceUntilInterrupt: string;
@@ -75,6 +91,14 @@ export interface Session {
   /** the barge-in that cut off the last prompt, until the next prompt turn consumes it */
   lastInterrupt: Interrupt | null;
   consecutiveFailures: number;
+  /**
+   * Turns on this call the frustration gate scored high (spec 2026-09-22 §2). The count is the
+   * rung: one is acknowledged, two is offered a transfer, three is transferred. The turn that
+   * answers the offer is not counted.
+   */
+  frustratedTurns: number;
+  /** the caller turned the transfer offer down; it is not offered again on this call */
+  transferDeclined: boolean;
   ended: boolean;
 }
 
@@ -86,6 +110,16 @@ export function emptySlot(): SlotState {
 
 function cloneSlot(s: SlotState): SlotState {
   return { ...s, window: s.window ? { ...s.window } : null };
+}
+
+/**
+ * The confirmation a transfer offer displaced is copied too: restoring it hands back an object a
+ * later turn may count attempts on, and that must not reach back into the session we were handed.
+ */
+function clonePending(pc: PendingConfirmation | null): PendingConfirmation | null {
+  if (pc === null) return null;
+  if (pc.target === 'transfer' && pc.resume) return { ...pc, resume: { ...pc.resume } };
+  return { ...pc };
 }
 
 export function emptySlots(): Record<SlotId, SlotState> {
@@ -113,6 +147,8 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
     dtmfBuffer: '',
     lastInterrupt: null,
     consecutiveFailures: 0,
+    frustratedTurns: 0,
+    transferDeclined: false,
     ended: false,
   };
 }
@@ -134,7 +170,7 @@ export function cloneSession(s: Session): Session {
     lastPromptOptions: [...s.lastPromptOptions],
     history: s.history.map((h) => ({ ...h })),
     caller: { ...s.caller },
-    pendingConfirmation: s.pendingConfirmation ? { ...s.pendingConfirmation } : null,
+    pendingConfirmation: clonePending(s.pendingConfirmation),
     queued: [...s.queued],
     completed: [...s.completed],
     lastInterrupt: s.lastInterrupt ? { ...s.lastInterrupt } : null,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirmForm, contextForm, loadCorpus, normalizeText, parseCorpus, type CorpusEntry } from './corpus';
+import { confirmForm, contextForm, loadCorpus, normalizeText, offerTransfer, parseCorpus, type CorpusEntry } from './corpus';
 import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { spokenToDigits } from '../core/extract/spokenNumber';
 import { DATE_MODES, MONTHS, WEEKDAYS, QUALIFIERS, RELATIVE_DAYS, WINDOWS } from '../core/extract/date';
@@ -18,9 +18,12 @@ describe('fixtures/corpus.jsonl', () => {
 
   it('uses valid contexts', () => {
     for (const e of corpus) {
-      // no_form, a form, or the confirm_ context of a form that asks a summary -- what the validator takes.
+      // no_form, a form, the confirm_ context of a form that asks a summary, or the transfer
+      // offer -- what the validator takes.
       expect(e.context === 'no_form' || contextForm(e.context) !== null, `${e.id}: ${e.context}`).toBe(true);
-      if (e.prompted) expect(FORM_INTENTS, e.id).toContain(e.context);
+      // A prompted slot needs a question the caller is on: a form in progress, or the offer made
+      // during one (spec 2026-09-22 §5).
+      if (e.prompted) expect([...FORM_INTENTS, 'offer_transfer'], e.id).toContain(e.context);
     }
   });
 
@@ -150,7 +153,7 @@ describe('parseCorpus', () => {
   });
 
   it('rejects confirm labels off a confirm context, changeSlot for a slot not on the form, and secondIntent in a form', () => {
-    expect(() => parseCorpus('{"id":"x","text":"yes","intent":"none","context":"reschedule","confirm":"yes"}')).toThrow(/confirm needs a confirm_ context/);
+    expect(() => parseCorpus('{"id":"x","text":"yes","intent":"none","context":"reschedule","confirm":"yes"}')).toThrow(/confirm needs a confirm_ or offer_transfer context/);
     expect(() => parseCorpus('{"id":"x","text":"the day","intent":"none","context":"confirm_cancel","changeSlot":"date"}')).toThrow(/not on form cancel/);
     expect(() => parseCorpus('{"id":"x","text":"x","intent":"reschedule","context":"reschedule","secondIntent":"billing"}')).toThrow(/secondIntent needs no_form/);
     expect(() => parseCorpus('{"id":"x","text":"x","intent":"none","context":"confirm_billing"}')).toThrow(/unknown context/);
@@ -191,5 +194,12 @@ describe('parseCorpus', () => {
 
   it('resolves confirm_billing to null: billing hands off and has no summary prompt', () => {
     expect(contextForm('confirm_billing')).toBeNull();
+  });
+
+  it('resolves offer_transfer to the form the offer is made inside, without being a confirm_ context', () => {
+    expect(contextForm('offer_transfer')).toBe('reschedule');
+    expect(confirmForm('offer_transfer')).toBeNull();
+    expect(offerTransfer('offer_transfer')).toBe(true);
+    expect(offerTransfer('confirm_reschedule')).toBe(false);
   });
 });
