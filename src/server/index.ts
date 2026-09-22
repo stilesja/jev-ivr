@@ -10,12 +10,15 @@ import { SessionStore } from './sessions';
 import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
 import { buildHints } from './hints';
+import { DashboardBus } from './dashboard/bus';
 import { newSession } from '../core/session';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { buildClient, DEFAULT_CORPUS_FILE } from '../run/client';
 import { localDateIso } from '../run/clock';
 import type { JevClient } from '../jev/types';
 import { TraceWriter } from '../trace/writer';
+import type { TurnObserver } from '../run/turn';
+import { spokenText } from '../prompts/render';
 import { clipVersions, discoverClips, recordableClips } from '../prompts/clips';
 import { clipDurations } from '../prompts/playback';
 import { coverage, readRecorded } from '../prompts/sheet';
@@ -25,6 +28,8 @@ export interface RunningServer {
   port: number;
   store: SessionStore;
   tokens: CallTokens;
+  /** The dashboard's event bus, or undefined when DASHBOARD=off. */
+  bus?: DashboardBus;
   close(): Promise<void>;
 }
 
@@ -87,13 +92,28 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   // fetches carries the content hash, so a regenerated clip is never served from Twilio's cache.
   const render = { clips: clipVersions(config.audioDir, clips), audioBase: `https://${config.publicHost}/audio/` };
 
+  const bus = config.dashboard ? new DashboardBus() : undefined;
+  log(bus ? 'dashboard: /dashboard' : 'dashboard: off');
+
   const store = new SessionStore(
     (callSid) => {
       const file = safeFileStem(callSid);
       const trace = new TraceWriter(join(config.traceDir, `${file}.jsonl`));
+      // The turn index the record of the turn now starting will carry. `bookkeep` increments the
+      // session's counter before the record is built, so the record of the first turn is 1 and the
+      // live session's counter is one behind. Read from the store, not from the resources object
+      // below: the store spreads these into its own entry, and it is the entry's `session` the
+      // adapter replaces after every turn. (`history` is no substitute: HISTORY_WINDOW caps it.)
+      const askedTurnIndex = () => (store.get(callSid)?.session.turnIndex ?? 0) + 1;
+      const observe: TurnObserver | null = bus
+        ? {
+            asked: (questions, turnState, at) => bus.publish({ type: 'asked', callSid, at, turnIndex: askedTurnIndex(), questions, turnState }),
+            turn: (record, at) => bus.publish({ type: 'turn', callSid, at, record, spoken: spokenText(record.decision) }),
+          }
+        : null;
       return {
         session: newSession(callSid, now()),
-        opts: { client, thresholds, todayIso: todayIso(), trace, now, render },
+        opts: { client, thresholds, todayIso: todayIso(), trace, now, render, observe },
         trace,
         frames: new FrameLog(join(config.traceDir, `${file}.frames.jsonl`), now),
       };
@@ -108,7 +128,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   const server = createServer(createRequestHandler(deps));
   const wss = attachWebSocketServer(
     server,
-    { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs, noInputMs, clipDurations: durations },
+    { store, tokens, log, endCloseGraceMs: overrides.endCloseGraceMs, noInputMs, clipDurations: durations, bus, handoffNumber: config.handoffNumber },
     overrides.setupTimeoutMs,
   );
   const evictor = setInterval(() => {
@@ -145,6 +165,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     port,
     store,
     tokens,
+    bus,
     close: async () => {
       clearInterval(evictor);
       // Let turns that are already running finish (and flush their frames) before the sockets go away.

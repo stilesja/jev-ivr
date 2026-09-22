@@ -6,6 +6,7 @@ import { startServer, type RunningServer, type ServerOverrides } from './index';
 import { loadConfig } from './config';
 import { FakeRelay } from '../testing/fakeRelay';
 import type { JevClient } from '../jev/types';
+import type { DashboardEvent } from './dashboard/events';
 
 let running: RunningServer | null = null;
 /** Temp dirs minted by makeConfig() for this test, swept up alongside the server it started. */
@@ -252,6 +253,29 @@ describe('server end to end', () => {
     expect(existsSync(join(traceDir, `${callSid}.frames.jsonl`))).toBe(true);
     expect(readFileSync(join(traceDir, `${callSid}.jsonl`), 'utf8').trim().split('\n')).toHaveLength(6);
     relay.assertKnownTypes();
+  });
+
+  it('pairs the asked and turn events of one turn by turnIndex, and skips the bus when off', async () => {
+    const { relay } = await connected();
+    const events: DashboardEvent[] = [];
+    running!.bus!.subscribe((e) => events.push(e));
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+    const pick = <T extends DashboardEvent['type']>(t: T) => events.filter((e): e is Extract<DashboardEvent, { type: T }> => e.type === t);
+    const asked = pick('asked');
+    const turns = pick('turn');
+    expect(asked).toHaveLength(1);
+    // The setup turn asked nothing, so the model's first turn is the second turn of the call.
+    expect(asked[0]).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
+    expect(turns.at(-1)!.record.turnIndex).toBe(asked[0]!.turnIndex);
+    expect(turns.at(-1)!.spoken).toBe("What's your first and last name?");
+    expect(asked[0]!.questions).toHaveProperty('intent');
+  });
+
+  it('has no bus when the dashboard is off', async () => {
+    const { config } = makeConfig({ DASHBOARD: 'off', PORT: '0' });
+    running = await startServer(config, { log: () => {} });
+    expect(running.bus).toBeUndefined();
   });
 
   it('closes the socket itself if Twilio never does within the grace period after end', async () => {

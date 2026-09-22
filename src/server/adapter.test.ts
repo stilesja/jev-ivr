@@ -14,6 +14,8 @@ import {
   type AdapterDeps,
 } from './adapter';
 import { SessionStore, type SocketLike } from './sessions';
+import { DashboardBus } from './dashboard/bus';
+import type { DashboardEvent } from './dashboard/events';
 import { CallTokens } from './tokens';
 import { FrameLog } from './frameLog';
 import { newSession } from '../core/session';
@@ -23,7 +25,8 @@ import { FixtureStubClient } from '../jev/fixtureStub';
 import { HeuristicStubClient } from '../jev/heuristicStub';
 import type { JevClient } from '../jev/types';
 import { textEstimateMs } from '../prompts/playback';
-import { promptText, type RenderContext } from '../prompts/render';
+import { promptText, spokenText, type RenderContext } from '../prompts/render';
+import type { TurnObserver } from '../run/turn';
 import { TraceWriter } from '../trace/writer';
 
 type Fake = SocketLike & { sent: unknown[]; closed: { code?: number; reason?: string } | null };
@@ -64,16 +67,31 @@ function corpusClient(): JevClient {
   return new FixtureStubClient(loadCorpus('fixtures/corpus.jsonl'), { sharpness: 0.9, fallback: new HeuristicStubClient() });
 }
 
-function deps(clientOverride?: JevClient, render?: RenderContext): AdapterDeps & { dir: string } {
+function deps(clientOverride?: JevClient, render?: RenderContext, bus?: DashboardBus): AdapterDeps & { dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'adapter-'));
   const client = clientOverride ?? corpusClient();
-  const store = new SessionStore((callSid) => ({
+  const store: SessionStore = new SessionStore((callSid) => ({
     session: newSession(callSid, 0),
-    opts: { client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18', trace: new TraceWriter(join(dir, `${callSid}.jsonl`)), now: () => 0, render: render ?? null },
+    opts: {
+      client, thresholds: { ...DEFAULT_THRESHOLDS }, todayIso: '2026-09-18',
+      trace: new TraceWriter(join(dir, `${callSid}.jsonl`)), now: () => 0, render: render ?? null,
+      // The same observer index.ts attaches, so a test of the adapter's own events sees them in
+      // the order the page will: the moment, then the turn it drove.
+      observe: bus ? observer(bus, store, callSid) : null,
+    },
     trace: new TraceWriter(join(dir, `${callSid}.jsonl`)),
     frames: new FrameLog(join(dir, `${callSid}.frames.jsonl`), () => 0),
   }), 60_000, () => 0);
-  return { store, tokens: new CallTokens(60_000, () => 0), log: () => {}, dir };
+  return { store, tokens: new CallTokens(60_000, () => 0), log: () => {}, dir, ...(bus ? { bus } : {}) };
+}
+
+/** A copy of the observer src/server/index.ts builds, so these tests exercise the real wiring. */
+function observer(bus: DashboardBus, store: SessionStore, callSid: string): TurnObserver {
+  return {
+    asked: (questions, turnState, at) =>
+      bus.publish({ type: 'asked', callSid, at, turnIndex: (store.get(callSid)?.session.turnIndex ?? 0) + 1, questions, turnState }),
+    turn: (record, at) => bus.publish({ type: 'turn', callSid, at, record, spoken: spokenText(record.decision) }),
+  };
 }
 
 /** Same deps, but with the log captured and a send timeout short enough for a test. */
@@ -90,7 +108,7 @@ function graceDeps(endCloseGraceMs: number): AdapterDeps & { dir: string; lines:
   return { ...d, log: (line) => lines.push(line), lines, endCloseGraceMs };
 }
 
-const setupMsg = (callSid: string, sessionId = 'VX1') => JSON.stringify({ type: 'setup', sessionId, callSid, from: '+1', to: '+2', customParameters: {} });
+const setupMsg = (callSid: string, sessionId = 'VX1', from = '+1') => JSON.stringify({ type: 'setup', sessionId, callSid, from, to: '+2', customParameters: {} });
 const prompt = (t: string) => JSON.stringify({ type: 'prompt', voicePrompt: t, lang: 'en-US', last: true });
 const texts = (s: Fake) => s.sent.filter((m) => (m as { type: string }).type === 'text').map((m) => (m as { token: string }).token);
 type LogLine = { dir: string; msg: Record<string, unknown> };
@@ -402,8 +420,8 @@ describe('no-input timer', () => {
   const GREETING_DEADLINE = textEstimateMs(GREETING) + WAIT;
 
   /** deps with the no-input wait armed, and one measured clip so a play frame can be estimated. */
-  function noInputDeps(noInputMs = WAIT, render?: RenderContext, greetingClipMs = 2000): AdapterDeps & { dir: string } {
-    return { ...deps(undefined, render), noInputMs, clipDurations: new Map([['greeting.0.wav', greetingClipMs]]) };
+  function noInputDeps(noInputMs = WAIT, render?: RenderContext, greetingClipMs = 2000, bus?: DashboardBus): AdapterDeps & { dir: string } {
+    return { ...deps(undefined, render, bus), noInputMs, clipDurations: new Map([['greeting.0.wav', greetingClipMs]]) };
   }
 
   const clipRender: RenderContext = { clips: new Map([['greeting.0', 'greeting.0.wav']]), audioBase: 'https://h/audio/' };
@@ -726,6 +744,20 @@ describe('no-input timer', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('publishes silence to the dashboard bus before the silence turn', async () => {
+    const bus = new DashboardBus();
+    const events: DashboardEvent[] = [];
+    bus.subscribe((e) => events.push(e));
+    const d = noInputDeps(WAIT, undefined, 2000, bus);
+    const { sock } = await greeted(d);
+    expect(events.map((e) => e.type)).toEqual(['call_started', 'turn']);
+    await vi.advanceTimersByTimeAsync(GREETING_DEADLINE);
+    expect(texts(sock)).toEqual([GREETING, NO_INPUT, ASK_INTENT]);
+    // The silence is announced before the turn it drives, so the page shows the pause, then the re-ask.
+    expect(events.map((e) => e.type)).toEqual(['call_started', 'turn', 'silence', 'turn']);
+    expect(events.find((e) => e.type === 'silence')).toMatchObject({ promptId: 'greeting' });
+  });
+
   it('is cleared by a socket close', async () => {
     const d = noInputDeps();
     const { sock, ctx } = await greeted(d);
@@ -790,5 +822,107 @@ describe('spokenDigits', () => {
     // Two lone four-digit runs with words between them are two ordinary numbers, not an identifier.
     expect(spokenDigits('1234 and 5678')).toBe('1234 and 5678');
     expect(spokenDigits('12345 and 56789')).toBe('1 2 3 4 5 and 5 6 7 8 9');
+  });
+});
+
+describe('dashboard publishing', () => {
+  /** Deps with a bus attached, and the collected events, in order. */
+  function busDeps(): { d: AdapterDeps & { dir: string }; events: DashboardEvent[] } {
+    const bus = new DashboardBus();
+    const events: DashboardEvent[] = [];
+    bus.subscribe((e) => events.push(e));
+    return { d: { ...deps(undefined, undefined, bus), handoffNumber: '+15558675309' }, events };
+  }
+  const types = (events: readonly DashboardEvent[]) => events.map((e) => e.type);
+
+  it('publishes the call lifecycle to the dashboard bus', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1', 'VX', '+18595222926'));
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '1' }));
+    await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'interrupt', utteranceUntilInterrupt: 'What', durationUntilInterruptMs: 300 }));
+    expect(types(events).slice(0, 3)).toEqual(['call_started', 'turn', 'dtmf']);
+    expect(types(events)).toContain('interrupt');
+    expect(events[0]).toMatchObject({ type: 'call_started', callSid: 'CA1', from: '…2926', todayIso: '2026-09-18' });
+    expect((events[0] as { thresholds: Record<string, unknown> }).thresholds).toMatchObject({ ...DEFAULT_THRESHOLDS });
+    expect(events.find((e) => e.type === 'dtmf')).toMatchObject({ digit: '1' });
+    expect(events.find((e) => e.type === 'interrupt')).toMatchObject({ utteranceUntilInterrupt: 'What' });
+  });
+
+  it('masks the caller number on call_started, while the turn record keeps the raw setup frame', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    await handleSocketMessage(d, sock, newConnectionContext(d.tokens.mint('CA1'), sock), setupMsg('CA1', 'VX', '+18595222926'));
+    expect(events.find((e) => e.type === 'call_started')).toMatchObject({ from: '…2926' });
+    // Deliberate, and pinned so the page's author knows: a `turn` event carries the trace record
+    // verbatim (spec 2.2), and the record's setup frame holds the real number, exactly as the
+    // trace on disk does. What the page shows is the page's business; the live stream and a
+    // replayed trace have to agree, so neither is redacted here.
+    expect(JSON.stringify(events)).toContain('+18595222926');
+  });
+
+  it('publishes handoff and then ended when a turn hands off', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt('I want to talk to a person'));
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end', handoffData: '{"reasonCode":"live-agent"}' });
+    expect(types(events).slice(-3)).toEqual(['turn', 'handoff', 'ended']);
+    expect(events.find((e) => e.type === 'handoff')).toMatchObject({ reason: 'live-agent', number: '…5309' });
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'handoff' });
+    // The socket close after the end frame is Twilio finishing up, not a hangup.
+    await handleSocketClose(d, ctx);
+    expect(types(events).filter((t) => t === 'ended')).toHaveLength(1);
+  });
+
+  it('publishes ended with reason completed when the form completes', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week"));
+    await handleSocketMessage(d, sock, ctx, prompt('Jason Stiles'));
+    await handleSocketMessage(d, sock, ctx, prompt('March fifth nineteen eighty'));
+    await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
+    await handleSocketMessage(d, sock, ctx, prompt('yes'));
+    expect(sock.sent.at(-1)).toMatchObject({ type: 'end' });
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'completed' });
+    expect(types(events)).not.toContain('handoff');
+  });
+
+  it('publishes ended with reason hangup when the socket closes mid-call', async () => {
+    const { d, events } = busDeps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketClose(d, ctx);
+    expect(events.at(-1)).toMatchObject({ type: 'ended', reason: 'hangup', callSid: 'CA1' });
+  });
+
+  it('publishes a reconnect with its attempt number', async () => {
+    const { d, events } = busDeps();
+    const first = fakeSocket();
+    const token = d.tokens.mint('CA1');
+    const ctx = newConnectionContext(token, first);
+    await handleSocketMessage(d, first, ctx, setupMsg('CA1'));
+    // What /cr-action does before Twilio dials back in.
+    const entry = d.store.get('CA1')!;
+    entry.reconnects += 1;
+    const second = fakeSocket();
+    await handleSocketMessage(d, second, newConnectionContext(token, second), setupMsg('CA1', 'VX2'));
+    expect(events.find((e) => e.type === 'reconnect')).toMatchObject({ attempt: 1 });
+    expect(types(events)).not.toContain('ended');
+  });
+
+  it('publishes nothing at all when no bus is attached', async () => {
+    const d = deps();
+    const sock = fakeSocket();
+    const ctx = newConnectionContext(d.tokens.mint('CA1'), sock);
+    await handleSocketMessage(d, sock, ctx, setupMsg('CA1'));
+    await handleSocketMessage(d, sock, ctx, prompt('I want to talk to a person'));
+    await handleSocketClose(d, ctx);
+    expect(d.store.get('CA1')?.ended).toBe(true);
   });
 });
