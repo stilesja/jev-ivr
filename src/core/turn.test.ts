@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { plan, resolve, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
+import { INTENT_LABELS } from '../domain/intents';
 import { DEFAULT_THRESHOLDS } from './thresholds';
 import { promptFrame, dtmfFrames, setupFrame, silenceFrame, type InterruptFrame } from '../channel/frames';
 import { choice, noul, score } from '../testing/answers';
@@ -902,6 +903,7 @@ describe('frustration escalation', () => {
   const OFFER = { kind: 'prompt', promptId: 'offer_transfer', target: 'confirm', options: ['yes', 'no'] };
   /** Frustrated at the greeting, then frustrated again at the name question. */
   const TO_OFFER: Turn[] = [OPENER, ANGRY];
+  const HIGH = score({ none: 0.1, mild: 0.2, high: 0.7 });
 
   it('acknowledges the first frustrated turn before the question it was going to ask anyway', () => {
     const r = afterTurns([OPENER]);
@@ -931,6 +933,46 @@ describe('frustration escalation', () => {
     expect(r.session.transferDeclined).toBe(true);
     // Answering the offer is not itself a frustrated turn.
     expect(r.session.frustratedTurns).toBe(2);
+  });
+
+  /**
+   * The offer takes the place of whatever the turn was going to ask, including a confirmation the
+   * same turn had just armed. Declining brings that confirmation back rather than dropping it, so
+   * the caller's request -- or the summary's place in its ladder -- survives the detour (spec §3).
+   */
+  it('brings back the explicit intent confirmation the offer displaced', () => {
+    const s = started();
+    s.frustratedTurns = 1;
+    const offered = say(s, 'ugh, come on, maybe reschedule', {
+      frustration: HIGH,
+      intent: choice({ reschedule: 0.65, none: 0.35 }),
+      intentTentative: noul(0.9),
+    });
+    expect(offered.decision).toMatchObject(OFFER);
+    expect(offered.session.pendingConfirmation).toMatchObject({
+      target: 'transfer', attempts: 0, resume: { target: 'intent', intent: 'reschedule' },
+    });
+    const back = say(offered.session, 'no', { confirmsYes: noul(0.05), confirmsNo: noul(0.9) });
+    expect(back.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit', target: 'intent' });
+    expect(varsOf(back.decision).intentLabel).toBe(INTENT_LABELS.reschedule);
+    expect(back.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'reschedule' });
+    expect(back.session.transferDeclined).toBe(true);
+    // Declining is an answer, not a dodge: the confirmation's ladder is where it was.
+    expect(back.session.intentAttempts).toBe(0);
+  });
+
+  it('brings back the summary the offer displaced, with its attempt count intact', () => {
+    const s = afterTurns(HAPPY).session;
+    s.frustratedTurns = 1;
+    // A frustrated turn that answers the summary with nothing spends a rung on it; the offer then
+    // takes the place of the re-asked summary.
+    const offered = say(s, 'ugh, come on, third time now', { frustration: HIGH, intentChange: ANSWERING });
+    expect(offered.decision).toMatchObject(OFFER);
+    expect(offered.session.pendingConfirmation)
+      .toEqual({ target: 'transfer', attempts: 0, resume: { target: 'form', form: 'reschedule', attempts: 1 } });
+    const back = say(offered.session, 'keep going', { confirmsYes: noul(0.05), confirmsNo: noul(0.9) });
+    expect(back.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
+    expect(back.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
   });
 
   it('transfers on the next frustrated turn once the offer has been declined', () => {

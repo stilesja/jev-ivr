@@ -49,7 +49,17 @@ export type PendingConfirmation =
    * at the offer only: every spoken answer settles it, a yes as a transfer and anything else as a
    * decline, so the offer is asked at most twice and never walks to the keypad or to an agent.
    */
-  | { target: 'transfer'; attempts: number };
+  | {
+      target: 'transfer';
+      attempts: number;
+      /**
+       * the confirmation the offer displaced, where the same turn had just armed one: an explicit
+       * intent confirm, a slot readback, or a form summary with its attempt count. Declining the
+       * offer restores it and asks it again, so neither the caller's request nor the ladder's place
+       * in it is lost to the detour. Never itself a transfer: the offer is not made at the offer.
+       */
+      resume?: PendingConfirmation;
+    };
 
 export interface Interrupt {
   utteranceUntilInterrupt: string;
@@ -102,6 +112,16 @@ function cloneSlot(s: SlotState): SlotState {
   return { ...s, window: s.window ? { ...s.window } : null };
 }
 
+/**
+ * The confirmation a transfer offer displaced is copied too: restoring it hands back an object a
+ * later turn may count attempts on, and that must not reach back into the session we were handed.
+ */
+function clonePending(pc: PendingConfirmation | null): PendingConfirmation | null {
+  if (pc === null) return null;
+  if (pc.target === 'transfer' && pc.resume) return { ...pc, resume: { ...pc.resume } };
+  return { ...pc };
+}
+
 export function emptySlots(): Record<SlotId, SlotState> {
   return { name: emptySlot(), dob: emptySlot(), memberId: emptySlot(), provider: emptySlot(), date: emptySlot() };
 }
@@ -150,7 +170,7 @@ export function cloneSession(s: Session): Session {
     lastPromptOptions: [...s.lastPromptOptions],
     history: s.history.map((h) => ({ ...h })),
     caller: { ...s.caller },
-    pendingConfirmation: s.pendingConfirmation ? { ...s.pendingConfirmation } : null,
+    pendingConfirmation: clonePending(s.pendingConfirmation),
     queued: [...s.queued],
     completed: [...s.completed],
     lastInterrupt: s.lastInterrupt ? { ...s.lastInterrupt } : null,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateGates } from './gates';
+import { evaluateGates, frustrationOf } from './gates';
 import { newSession, setForm, type Session } from './session';
 import { buildTurnState } from './state';
 import { DEFAULT_THRESHOLDS } from './thresholds';
@@ -94,6 +94,29 @@ describe('evaluateGates', () => {
       s.frustratedTurns = 1;
       s.transferDeclined = true;
       expect(run(s, angry()).verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+    });
+
+    it('transfers on the third rung even when the words came through garbled', () => {
+      // Gate 2 settles a `nomatch` first and `decide` is first-wins, so the rung has to take the
+      // verdict off it: a caller this upset for the third time gets a person either way.
+      const s = newSession('s', 0);
+      s.frustratedTurns = 2;
+      const r = run(s, angry({ intelligible: noul(0.1) }));
+      expect(r.verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+      expect(frustrationRow(r)).toMatchObject({ passed: false, outcome: 'handoff', decided: true });
+      // The intelligible row keeps its failure and loses only the credit for the verdict.
+      expect(r.rows.find((g) => g.gate === 'intelligible')).toMatchObject({ passed: false, outcome: 'nomatch', decided: false });
+    });
+
+    it('does not transfer on an outburst that was not addressed to it, and says so in the row', () => {
+      const s = newSession('s', 0);
+      s.frustratedTurns = 2;
+      const r = run(s, angry({ addressedToSystem: noul(0.1) }));
+      expect(r.verdict).toEqual({ kind: 'ignore' });
+      expect(frustrationRow(r)).toMatchObject({ passed: true, outcome: 'not_addressed', decided: false });
+      // No rung on the verdict is what keeps `frustratedTurns` where it was: side speech is not
+      // a turn the caller spent on us.
+      expect(frustrationOf(r.verdict)).toBeUndefined();
     });
 
     it('does not count the turn that answers the offer', () => {

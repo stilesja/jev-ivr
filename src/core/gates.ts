@@ -80,6 +80,19 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     }
     rows.push(row);
   };
+  /**
+   * The verdict an earlier gate has already settled on, if any. Read through a function so that
+   * TypeScript uses `verdict`'s declared type: it is only ever assigned inside these closures, so
+   * straight-line narrowing would have it as `null` everywhere below.
+   */
+  const settled = (): Verdict | null => verdict;
+  /** Take the verdict away from the gate that settled it: this row decided the turn instead. */
+  const resettle = (row: GateRow, v: Verdict): void => {
+    for (const r of rows) r.decided = false;
+    verdict = v;
+    row.decided = true;
+    rows.push(row);
+  };
   const info = (gate: string, value: number | null, outcome = 'info'): void => {
     rows.push({ gate, value, threshold: null, passed: true, outcome, decided: false });
   };
@@ -133,8 +146,20 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
         : count === 2 && !session.transferDeclined ? 'offer'
           : 'handoff';
     const row = { gate: 'frustration', value: high, threshold: t.GATE_FRUSTRATION_HIGH, passed: rung !== 'handoff', outcome: rung, decided: false };
-    if (rung === 'handoff') decide(row, { kind: 'handoff', reason: 'frustrated' });
-    else rows.push(row);
+    if (rung !== 'handoff') rows.push(row);
+    // The third rung is a verdict of its own, and `decide` is first-wins, so a verdict an earlier
+    // gate already settled has to be answered for rather than quietly swallowing the transfer.
+    else if (settled()?.kind === 'ignore') {
+      // Gate 1 heard side speech: the outburst was not aimed at us, so there is nothing to
+      // transfer out of and the row says so. The turn is not counted either -- `withFrustration`
+      // never stamps an `ignore`, so the rung comes round again when the caller is talking to us.
+      rows.push({ ...row, passed: true, outcome: 'not_addressed' });
+    } else if (settled()?.kind === 'nomatch') {
+      // Gate 2 could not make out the words, but a caller this upset for the third time gets a
+      // person anyway: the rung takes the verdict off the re-ask. The `intelligible` row keeps
+      // its failure and loses only the credit for deciding the turn.
+      resettle(row, { kind: 'handoff', reason: 'frustrated' });
+    } else decide(row, { kind: 'handoff', reason: 'frustrated' });
     frustrationRung = rung === 'ack' || rung === 'offer' ? rung : null;
   }
 

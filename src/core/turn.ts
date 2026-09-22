@@ -238,13 +238,22 @@ function offerTransfer(acks: Ack[] = []): PromptDecision {
   return prompt('offer_transfer', 'confirm', {}, acks, ['yes', 'no']);
 }
 
+type TransferConfirmation = Extract<PendingConfirmation, { target: 'transfer' }>;
+
 /**
  * The offer turned down: by a no, by an answer that is neither a yes nor a no, or by a second
  * silence. It is not offered again on this call, and the caller goes back to the question they
  * were on -- declining costs them no attempt, since they did answer the question we asked.
  */
-function declineTransfer(s: Session, acks: Ack[]): Decision {
+function declineTransfer(s: Session, t: Thresholds, pc: TransferConfirmation, acks: Ack[]): Decision {
   s.transferDeclined = true;
+  // A confirmation the offer displaced comes back rather than being dropped: an explicit intent
+  // confirm still holds the caller's request, and a summary still holds its attempt count. `count`
+  // is false -- declining answered the offer, so it is not a turn dodged on the question beneath.
+  if (pc.resume) {
+    s.pendingConfirmation = pc.resume;
+    return reaskConfirmation(s, t, acks, false);
+  }
   s.pendingConfirmation = null;
   if (s.form) return continueForm(s, acks, null);
   // The offer can be made before any task is started, where the form loop has nothing to ask:
@@ -279,7 +288,7 @@ function reaskConfirmation(s: Session, t: Thresholds, acks: Ack[] = [], count = 
     // as a decline, so `count` never has anything to say about it. The offer never walks to the
     // keypad or to an agent -- a second silence declines it and the call carries on (spec §3).
     pc.attempts += 1;
-    if (pc.attempts >= 2) return declineTransfer(s, acks);
+    if (pc.attempts >= 2) return declineTransfer(s, t, pc, acks);
     return offerTransfer(acks);
   }
   if (pc.target === 'form') {
@@ -397,7 +406,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // stands and the form loop asks whatever is next -- "no, keep going" re-asks the question
         // the caller was on, and "keep going, it's Dr. Chen" answers it on the way past.
         const fill = fillSlots(s, answers, ctx, s.form ? slotsFor(s.form) : allSlots());
-        return { decision: declineTransfer(s, fill.acks), events: fill.events };
+        return { decision: declineTransfer(s, t, pc, fill.acks), events: fill.events };
       }
       if (pc.target === 'slot') {
         // A declined readback means the spoken path failed; go straight to the keypad,
@@ -546,8 +555,12 @@ function escalate(s: Session, decision: Decision, rung: FrustrationRung | undefi
   if (rung === undefined || decision.kind !== 'prompt') return decision;
   if (rung === 'ack') return { ...decision, acks: [ACK_FRUSTRATION, ...decision.acks] };
   // The offer takes the place of the question this turn would have asked. What the turn filled or
-  // routed stands, and the question comes back from the form loop once the offer is answered.
-  s.pendingConfirmation = { target: 'transfer', attempts: 0 };
+  // routed stands, and the question comes back once the offer is answered -- from the form loop,
+  // or, where this turn had armed a confirmation of its own, from `resume` (spec §3).
+  const displaced = s.pendingConfirmation;
+  s.pendingConfirmation = displaced !== null && displaced.target !== 'transfer'
+    ? { target: 'transfer', attempts: 0, resume: displaced }
+    : { target: 'transfer', attempts: 0 };
   s.promptedFor = 'confirm';
   return offerTransfer(decision.acks);
 }

@@ -570,7 +570,12 @@ and on every record the trace route returns — before it leaves the server.
     the offer, "Would you like me to connect you to a person, or keep
     going?" Say "keep going" and expect the birthday question again. On
     another call, repeat through the offer and say "yes": expect "Let me get
-    you to someone who can help." then the transfer to `HANDOFF_NUMBER`.
+    you to someone who can help." then the transfer to `HANDOFF_NUMBER`. Be
+    frustrated on a turn that also answers the question ("this is ridiculous,
+    Jason Stiles") so the acknowledgment is followed by the next question
+    rather than the retry text. Expect the cassette to re-key every turn that
+    follows a first-rung outburst: the acknowledgment becomes part of the
+    prompt the model sees.
 
 Things to note on the first real call, per the spec's open questions: whether
 `speechModel="flux"` is accepted alongside partial prompts, how long Deepgram

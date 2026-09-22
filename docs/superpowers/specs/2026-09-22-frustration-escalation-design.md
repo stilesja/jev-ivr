@@ -27,7 +27,7 @@ Consecutive frustrated turns step through the rungs one per turn: a caller who i
 `offer_transfer` is a yes/no confirmation with a new pending-confirmation target `transfer`. The model sees `pendingConfirmation: { target: 'transfer', value: 'connect you to a person' }`, and the existing `confirmsYes` / `confirmsNo` questions decide it.
 
 - **Yes** → handoff, reason `frustrated`.
-- **No, or an answer that is neither** → `transferDeclined = true`, the confirmation clears, and the turn is processed as an ordinary utterance: content in it fills slots or routes, and the next prompt is whatever the form loop would ask now (the question the caller was on, or the next missing slot). A bare "no" or "keep going" therefore re-asks the question they were on.
+- **No, or an answer that is neither** → `transferDeclined = true`, the confirmation clears, and the turn is processed as an ordinary utterance: content in it fills slots (a new intent said while declining is not routed; the caller can ask again after the question), and the next prompt is whatever the form loop would ask now (the question the caller was on, or the next missing slot). A bare "no" or "keep going" therefore re-asks the question they were on.
 - **Silence** at the offer: "I didn't hear anything." then the offer once more; a second silence counts as declining and continues. The offer never walks to the keypad or the agent rung.
 - The keypad is not offered for this question.
 
