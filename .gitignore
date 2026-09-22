@@ -9,3 +9,6 @@ traces/
 .DS_Store
 assets/audio/candidates/
 *.tmp
+
+# brainstorming visual companion sessions
+.superpowers/
