@@ -42,7 +42,7 @@
 - Modify: `src/run/turn.ts`, `src/trace/types.ts`, `src/trace/writer.ts`
 - Test: `src/run/turn.test.ts` (create if absent; check `ls src/run/*.test.ts` first and add to an existing file if one covers `runTurn`)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // src/run/turn.test.ts (append to the existing file if there is one)
@@ -110,12 +110,12 @@ describe('runTurn observer', () => {
 
 Check the exact constructor and export names before running: `grep -n "export class\|export const DEFAULT_CORPUS_FILE\|export function newSession\|export function promptFrame\|class JevClientError" src/jev/fixtureStub.ts src/jev/corpus.ts src/core/session.ts src/channel/frames.ts src/jev/types.ts`, and the setup-frame shape in `src/channel/frames.ts` (use `setupFrame(...)` if a helper exists). Adjust the test to the real names; do not invent new helpers.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm vitest run src/run/turn.test.ts`
 Expected: FAIL on `observe` not being a known option / `record.queued` undefined.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `src/trace/types.ts`, inside `TraceRecord` after `slots`:
 
@@ -175,12 +175,12 @@ and after `opts.trace?.write(record);`:
 
 Import `TurnState` from `../core/state`. An observer that throws must not break the turn: wrap both calls in `try { ... } catch { /* observers are best effort */ }`.
 
-- [ ] **Step 4: Run the tests, the suite, typecheck, regress**
+- [x] **Step 4: Run the tests, the suite, typecheck, regress**
 
 Run: `pnpm vitest run src/run/turn.test.ts && pnpm test && pnpm typecheck && pnpm regress`
 Expected: all pass; regress `no changes` (the expected files compare outcomes, not whole records; if `fixtures/expected` shows a diff, the outcome extractor copies the whole record and the three fields must be excluded there instead of removed).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/run/turn.ts src/run/turn.test.ts src/trace/types.ts src/trace/writer.ts
@@ -197,7 +197,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Create: `src/server/dashboard/events.ts`, `src/server/dashboard/bus.ts`
 - Test: `src/server/dashboard/bus.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/server/dashboard/bus.test.ts
@@ -268,12 +268,12 @@ describe('maskNumber', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm vitest run src/server/dashboard/bus.test.ts`
 Expected: FAIL, module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // src/server/dashboard/events.ts
@@ -354,12 +354,12 @@ export class DashboardBus {
 }
 ```
 
-- [ ] **Step 4: Run tests and typecheck**
+- [x] **Step 4: Run tests and typecheck**
 
 Run: `pnpm vitest run src/server/dashboard/bus.test.ts && pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/server/dashboard/events.ts src/server/dashboard/bus.ts src/server/dashboard/bus.test.ts
@@ -376,7 +376,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Modify: `src/server/adapter.ts`, `src/server/index.ts`, `src/server/config.ts`
 - Test: `src/server/adapter.test.ts`, `src/server/config.test.ts`
 
-- [ ] **Step 1: Read first** `src/server/adapter.ts` in full (about 470 lines) and the existing test scaffolding in `src/server/adapter.test.ts` (how a fake `deps`, store and socket are built). The moments to publish are all already there:
+- [x] **Step 1: Read first** `src/server/adapter.ts` in full (about 470 lines) and the existing test scaffolding in `src/server/adapter.test.ts` (how a fake `deps`, store and socket are built). The moments to publish are all already there:
 
 | moment | where in adapter.ts | event |
 | --- | --- | --- |
@@ -391,7 +391,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 `asked` and `turn` come from the observer (Task 1), not the adapter: `index.ts` attaches it.
 
-- [ ] **Step 2: Write the failing tests** in `src/server/adapter.test.ts`, following the file's existing helpers for building `deps` and a fake socket. Add `bus: new DashboardBus()` to the deps the helpers build (keep it optional in `AdapterDeps` so other tests need no change) and a subscriber that collects `event.type`:
+- [x] **Step 2: Write the failing tests** in `src/server/adapter.test.ts`, following the file's existing helpers for building `deps` and a fake socket. Add `bus: new DashboardBus()` to the deps the helpers build (keep it optional in `AdapterDeps` so other tests need no change) and a subscriber that collects `event.type`:
 
 ```ts
 it('publishes the call lifecycle to the dashboard bus', async () => {
@@ -421,12 +421,12 @@ it('publishes handoff and ended when a turn hands off, and ended on a hangup', a
 
 Fill the two sketched tests with the file's real helpers; the point of each is the event sequence. Also in `src/server/config.test.ts`: `DASHBOARD=off` → `config.dashboard === false`; unset → `true`; any other value → a config error naming `DASHBOARD` (follow how the file tests other switches such as `SIGNATURE_CHECK`).
 
-- [ ] **Step 3: Run to verify they fail**
+- [x] **Step 3: Run to verify they fail**
 
 Run: `pnpm vitest run src/server/adapter.test.ts src/server/config.test.ts`
 Expected: FAIL (no `bus` in deps, no `dashboard` in config).
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 `src/server/config.ts`: add `dashboard: boolean` to `ServerConfig`, read `DASHBOARD` (`off` → false, unset or `on` → true, else error), print it in the startup config summary like the other booleans.
 
@@ -466,12 +466,12 @@ Then one `publish(deps, { type: ..., callSid, at: Date.now(), ... })` at each mo
 
 Import `spokenText` from `../prompts/render`.
 
-- [ ] **Step 5: Run tests, suite, typecheck, regress**
+- [x] **Step 5: Run tests, suite, typecheck, regress**
 
 Run: `pnpm vitest run src/server && pnpm test && pnpm typecheck && pnpm regress`
 Expected: PASS, `no changes`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/server/adapter.ts src/server/adapter.test.ts src/server/index.ts src/server/config.ts src/server/config.test.ts
@@ -489,7 +489,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Modify: `src/server/http.ts` (delegate `/dashboard*` when `config.dashboard`), `src/server/index.ts` (pass `bus` and `traceDir` into `HttpDeps`)
 - Test: `src/server/dashboard/routes.test.ts`, one end-to-end test in `src/server/server.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // src/server/dashboard/routes.test.ts
@@ -600,12 +600,12 @@ And in `src/server/server.test.ts`, after the worked-example test:
 
 (The greeting turn asks no questions, so no `asked` precedes its `turn`.)
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `pnpm vitest run src/server/dashboard/routes.test.ts`
 Expected: FAIL, module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // src/server/dashboard/routes.ts
@@ -693,12 +693,12 @@ export function handleDashboardRequest(req: IncomingMessage, res: ServerResponse
 
 `src/server/index.ts`: `const deps = { config, store, tokens, hints: buildHints(), log, bus };` and log `dashboard: /dashboard` or `dashboard: off` at startup.
 
-- [ ] **Step 4: Run the tests, suite, typecheck**
+- [x] **Step 4: Run the tests, suite, typecheck**
 
 Run: `pnpm vitest run src/server && pnpm test && pnpm typecheck`
 Expected: PASS. Note: `tsc` must not choke on importing nothing from `view.js` here (routes read it as a file, not a module).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/server/dashboard/routes.ts src/server/dashboard/routes.test.ts src/server/dashboard/page.html src/server/dashboard/view.js src/server/http.ts src/server/index.ts src/server/server.test.ts
@@ -716,7 +716,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Create: `src/server/dashboard/view.d.ts` (types for the TS tests), `src/server/dashboard/view.test.ts`
 - Modify: `tsconfig.json` only if `tsc` refuses the `.js` import even with the `.d.ts` beside it (then add `"allowJs": true`), and the lint/format config if the repo has one (check `package.json` scripts; there is no eslint or prettier config today, so nothing to add)
 
-- [ ] **Step 1: Write the failing tests.** Fixture events come from a real run: the test runs the harness's fixture stub through `runTurn` over a scripted call and collects the observer's events, so the view is tested against real records.
+- [x] **Step 1: Write the failing tests.** Fixture events come from a real run: the test runs the harness's fixture stub through `runTurn` over a scripted call and collects the observer's events, so the view is tested against real records.
 
 ```ts
 // src/server/dashboard/view.test.ts
@@ -854,12 +854,12 @@ describe('row helpers', () => {
 
 Check the exact names of `dtmfFrames`, `silenceFrame`, `FixtureStubClient`, `DEFAULT_CORPUS_FILE`, and whether the setup frame needs a helper; adjust. The expected group list assumes the current forms (name, dob, provider, date); read `src/domain/forms.ts`.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `pnpm vitest run src/server/dashboard/view.test.ts`
 Expected: FAIL (placeholder module).
 
-- [ ] **Step 3: Implement `view.js`**
+- [x] **Step 3: Implement `view.js`**
 
 ```js
 // src/server/dashboard/view.js
@@ -1103,12 +1103,12 @@ export function groupRows(rows: Row[], formSlots: string[], pending: unknown): G
 export function thresholdFor(id: string, thresholds: Partial<Thresholds>): number | null;
 ```
 
-- [ ] **Step 4: Run the tests, suite, typecheck**
+- [x] **Step 4: Run the tests, suite, typecheck**
 
 Run: `pnpm vitest run src/server/dashboard && pnpm test && pnpm typecheck`
 Expected: PASS. If `tsc` reports it cannot find the module `./view.js`, add `"allowJs": true` to `tsconfig.json` compilerOptions (and confirm `include` still covers `src`); if that pulls the `.js` into the program with errors, keep `allowJs` off and make sure `view.d.ts` sits beside `view.js` with the same base name, which TypeScript resolves for a `.js` import.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/server/dashboard/view.js src/server/dashboard/view.d.ts src/server/dashboard/view.test.ts src/server/dashboard/routes.ts src/server/dashboard/routes.test.ts tsconfig.json
@@ -1127,7 +1127,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Replace: `src/server/dashboard/page.html`
 - Test: none automated beyond the routes test serving it; checked by hand against a replay and a live call (Task 8)
 
-- [ ] **Step 1: Write the page.** One file. Requirements it must meet, all from the spec §3 and §4:
+- [x] **Step 1: Write the page.** One file. Requirements it must meet, all from the spec §3 and §4:
 
 - Dark theme, `1920×1080` layout: a 56 px header strip, then a two-column grid (`1fr 1fr`, 24 px gap, 24 px padding). Base font 18 px system sans; monospace for ids and numbers. Colors as CSS variables: background `#0f1115`, panel `#171a21`, border `#2a2f3a`, text `#d7dae0`, muted `#8b93a7`, system line `#9fc5ff`, caller line `#ffd58a`, filled `#3ccf7a`, partial `#ffb454`, bar `#4f8cff`, quiet `#5a6172`, threshold tick `#ffd58a`.
 - Header: status (left), `turn N` and running totals (`Jev 620 ms · 12,400 tokens · $0.0006`) (center), mode toggle Live / Replay and, in replay, the trace picker (`<select>` filled from `/dashboard/traces`), buttons Reset · Step back · Step · Play/Pause, speed `<select>` 1x/2x/4x, and a numeric input for the `asked` beat (default 800 ms), plus a small note `thresholds: today's defaults` (right).
@@ -1194,11 +1194,11 @@ Write it in full; a starting skeleton follows, to be completed rather than copie
 
 Note the module path: the page is served at `/dashboard` so a relative `./dashboard/view.js` resolves to `/dashboard/view.js`; if the page is opened at `/dashboard/` (trailing slash) the relative path would differ, so use the absolute `/dashboard/view.js`.
 
-- [ ] **Step 2: Check it by hand in replay.** Start the server against a fixture trace: `TRACE_DIR=$(pwd)/fixtures/dashboard-sample NO_INPUT_MS=0 pnpm serve` is not needed; instead write a small script step: run `pnpm cli --scenarios fixtures/scenarios --trace /tmp/dash/replay.jsonl` is also not the right shape (one file for many scenarios). Simplest: `pnpm cli --trace /tmp/dash/CAdemo.jsonl` and type the worked example, `/silence` once, then `dtmf:03051980` at a birthday prompt; that writes a trace with one session. Copy it to a temp `TRACE_DIR`, start `pnpm serve` with that `TRACE_DIR` and `PUBLIC_HOST=localhost`, open `http://localhost:3000/dashboard`, switch to Replay, pick the trace, step through with the arrow keys. There is no frame log for a CLI trace, so between-turn markers will be absent there; that is expected. Fix anything that throws or renders wrongly; the console must be clean.
+- [x] **Step 2: Check it by hand in replay.** Start the server against a fixture trace: `TRACE_DIR=$(pwd)/fixtures/dashboard-sample NO_INPUT_MS=0 pnpm serve` is not needed; instead write a small script step: run `pnpm cli --scenarios fixtures/scenarios --trace /tmp/dash/replay.jsonl` is also not the right shape (one file for many scenarios). Simplest: `pnpm cli --trace /tmp/dash/CAdemo.jsonl` and type the worked example, `/silence` once, then `dtmf:03051980` at a birthday prompt; that writes a trace with one session. Copy it to a temp `TRACE_DIR`, start `pnpm serve` with that `TRACE_DIR` and `PUBLIC_HOST=localhost`, open `http://localhost:3000/dashboard`, switch to Replay, pick the trace, step through with the arrow keys. There is no frame log for a CLI trace, so between-turn markers will be absent there; that is expected. Fix anything that throws or renders wrongly; the console must be clean.
 
-- [ ] **Step 3: `pnpm test && pnpm typecheck`** (the routes test serves the real page now).
+- [x] **Step 3: `pnpm test && pnpm typecheck`** (the routes test serves the real page now).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/server/dashboard/page.html
@@ -1211,9 +1211,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 7: README and the deviation record
 
-- [ ] README: under "Phone line (Twilio ConversationRelay)" add a `### Dashboard` subsection: the URL (`https://PUBLIC_HOST/dashboard`, or `http://localhost:3000/dashboard` on the machine running the server), what the two columns show in two sentences, Live vs Replay, the keys (Space, arrows, Home), the speed and beat controls, `DASHBOARD=off`, and that the page shows only what the trace stores with the caller number masked. Add `DASHBOARD` to the config list. Mention the two new optional trace fields in the trace paragraph. In "Layout", add `src/server/dashboard` with one line.
-- [ ] Append `## Deviations recorded during execution` to this plan with what changed per task (at minimum: the `spokenText` field on the trace route, the decision-line rule, any `tsconfig` change, and anything a review asked for).
-- [ ] Commit: `docs: the live call dashboard; record plan deviations`.
+- [x] README: under "Phone line (Twilio ConversationRelay)" add a `### Dashboard` subsection: the URL (`https://PUBLIC_HOST/dashboard`, or `http://localhost:3000/dashboard` on the machine running the server), what the two columns show in two sentences, Live vs Replay, the keys (Space, arrows, Home), the speed and beat controls, `DASHBOARD=off`, and that the page shows only what the trace stores with the caller number masked. Add `DASHBOARD` to the config list. Mention the two new optional trace fields in the trace paragraph. In "Layout", add `src/server/dashboard` with one line.
+- [x] Append `## Deviations recorded during execution` to this plan with what changed per task (at minimum: the `spokenText` field on the trace route, the decision-line rule, any `tsconfig` change, and anything a review asked for).
+- [x] Commit: `docs: the live call dashboard; record plan deviations`.
 
 ---
 
@@ -1231,3 +1231,200 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Spec coverage: §2.1 (Task 1), §2.2 (Tasks 2 and 3), §2.3 (Task 4), §2.4 and §3 (Tasks 5 and 6), §4 (Task 6), §5 (each task's tests; the replay-equals-live test in Task 5), §6 (Task 8), §7 (Task 7).
 - Names used across tasks: `TurnObserver`, `RunOptions.observe`, `DashboardBus`, `DashboardEvent`, `maskNumber`, `handleDashboardRequest`, `DashboardDeps`, `reduce`, `replayEvents`, `decisiveRows`, `groupRows`, `thresholdFor`, `spokenText`, config `dashboard`, env `DASHBOARD`, routes `/dashboard`, `/dashboard/view.js`, `/dashboard/events`, `/dashboard/traces`, `/dashboard/traces/<sid>`, trace fields `queued`, `pendingConfirmation`, `promptedFor`, route field `spokenText`.
 - Known judgment calls left to the implementer, each to be recorded as a deviation if taken differently: the `turnIndex` on `asked` (Task 3), whether `tsconfig` needs `allowJs` (Task 5), and the exact `decisionLine` wording (Task 5 test pins `dob filled 1980-03-05` and `next: date_narrow_window`).
+
+---
+
+## Deviations recorded during execution
+
+Tasks 1–7 are done on branch `dashboard`; Task 8 is Jason's. Each heading names
+the commit the work landed in. The plan text above is left as written, so this
+section is the record of where the implementation went elsewhere and why.
+
+### Before the first task
+
+- The trace record gained a third optional field beyond the spec's two:
+  `queued`, `pendingConfirmation` **and** `promptedFor`. The spec listed none of
+  them; replay needs all three, because the queue line, the pending line and the
+  "asking …" line cannot be recovered from the decision alone.
+- `/dashboard/traces/<sid>` returns each record with an added `spokenText`. The
+  browser has no prompt manifest, so the prompt text has to be rendered on the
+  server; live events already carry it as `spoken`, and the view maps the two
+  names onto one field.
+
+### Task 1 — observer hook and the trace fields (`755c83c`)
+
+- `FormId` lives in `src/domain/intents`, not `src/domain/forms`; `JevClientError`
+  is `(message, cause)`; `FixtureStubClient` takes a loaded corpus
+  (`FixtureStubClient(loadCorpus(DEFAULT_CORPUS_FILE), …)`) and `DEFAULT_CORPUS_FILE`
+  is exported from `src/run/client`, not `src/jev/corpus`. The `setupFrame` helper
+  exists and was used. Tests were appended to the existing `src/run/turn.test.ts`.
+- **The first turn's `record.turnIndex` is 1, not 0**: `bookkeep` increments the
+  session counter before the record is built. Every later index claim in the plan
+  is off by one against this; the setup turn is turn 1 and the first model turn is
+  turn 2.
+- `tsconfig.json` was not touched, here or later: `include` is `src/**/*.ts` and no
+  TypeScript file imports `view.js` as a module, so `allowJs` was never needed.
+
+### Task 2 — events and the bus (`8d146cb`)
+
+Implemented verbatim from the plan; no deviations.
+
+### Task 3 — the adapter publishes, the server wires the bus (`51b425a`)
+
+- `asked.turnIndex` is `store.get(callSid).session.turnIndex + 1`, read through the
+  store rather than a closure over the `CallResources` object: `SessionStore.create`
+  spreads the object, so a closure would freeze the session at call setup.
+  `turnState.history.length` (the plan's fallback) is wrong because it saturates at
+  `HISTORY_WINDOW = 3`.
+- On a turn that resolves to ignore or hold, `bookkeep` returns early and does not
+  increment, so `asked` is one ahead of the `turn` that follows it. **`turnIndex` is
+  a label, not a key**: the page pairs an `asked` with the next `turn` by arrival
+  order. This is documented on the event variant itself.
+- Timestamps are `Date.now()`; `AdapterDeps` has no clock to borrow.
+- Found while testing: the `turn` event carried the raw setup frame, i.e. the whole
+  caller number. Fixed in `fe3868a`.
+
+### Fix commit `fe3868a` — Task 1 review
+
+- Assertions inside an observer callback were swallowed by `runTurn`'s
+  best-effort `try/catch`: the tests now capture in the callback and assert after
+  the `await`. A test that a throwing observer does not break the turn was added.
+- `writer.ts` aliased `pendingConfirmation`, whose `attempts` is mutated in place
+  on later turns, so an old record's pending line would change under it; it is
+  copied now.
+- `redactRecord` / `redactFrameLine` added to `events.ts`; `turn` events publish
+  the redacted record. The trace on disk is unchanged — redaction is on the way
+  out to the page, not on the way in to the file.
+
+### Task 4 — routes (`923b107`)
+
+- The end-to-end SSE test waits for `record.turnIndex === 2`, the first model turn.
+- Frames are returned as `{ ...redactFrameLine(line), line }`, keeping the frame
+  log's line number through the redaction, which widens the type back.
+- `decodeURIComponent` is guarded and a bad sid 404s before it can reach `join`.
+- `ReplayRecord = TraceRecord & { spokenText: string }` is the route's record type.
+
+### Fix commit `b1f6598` — Tasks 2 and 3 review
+
+- `bus.subscribe`'s history replay was not exception-isolated while the fan-out
+  was; both now go through one private `deliver()`.
+- **The hangup model in the plan was wrong.** A relay-side reconnect is driven by
+  `/cr-action` *after* the relay session ends, so the socket close that the plan
+  wanted to read as a hangup happens on a reconnect too. `ended{hangup}` is now
+  published from `decideActionTwiml` branch (b) in `http.ts` — the one place that
+  can tell a caller hangup from a reconnect — and the adapter's close handler
+  publishes nothing. The old `adapter.test.ts` assertion was vacuous (it never
+  closed the socket).
+- An evicted live call published nothing, and `reason: 'error'` had no producer at
+  all. The evictor body is now `sweep()` on `RunningServer`, and it publishes
+  `ended{error}` when the bus's live call is evicted before it ended. It has to
+  read liveness *before* `evictIdle`, which deletes the entry.
+- `makeObserver(bus, store, callSid)` was extracted to
+  `src/server/dashboard/observer.ts` and is used by both `index.ts` and the adapter
+  tests; the tests' own copy had already drifted (no `redactRecord`, asserting the
+  raw number).
+- `seq` moved off `Base` onto a `PublishedEvent` the bus owns, so only published
+  events carry one.
+
+### Task 5 — the view module (`a7e3e91`)
+
+- **Gate ids come from `ALWAYS_ON_IDS` in `src/core/questions.ts`**, not from the
+  plan's hand-written list, which named three ids that do not exist and missed
+  nine that do. `thresholdFor` maps the real threshold names and returns `null`
+  for informational rows rather than inventing a tick.
+- Turn labels are the recorded 1-based index, with no `+ 1` anywhere.
+- Dead turns (ignore/hold, no questions) contribute only their marker: `runTurn`
+  writes a record for interrupt and error frames too, with a repeated `turnIndex`.
+- `ended` is reversible: an `asked`, a `reconnect` or a consulting turn un-ends the
+  call, because `/cr-action` publishes `hangup` before a reconnect is known.
+- `decisionLine` names only the slots that moved (`dob filled 1980-03-05`,
+  `date → next week`, `date cleared`) — the plan's wording, pinned by its test.
+- `ALL_SLOTS` / `FORM_SLOTS` are exported and pinned against `src/domain`, so a new
+  slot cannot silently fall out of the groups. `MAX_ATTEMPTS` comes from the
+  thresholds rather than a constant in the view.
+- The fixtures build their events through `makeObserver` and a real bus, so the
+  tested sequence is the one the server publishes. The correction script is
+  corpus-backed (`rs-02` → name → dob → `sw-07` → Tuesday → `fc-07`).
+
+### Fix commit `c3c8a09` — Task 4 review
+
+- **Redaction was incomplete on `/dashboard/traces/<sid>`, found against real
+  traces.** The `/cr-action` frame line is `{ route: '/cr-action', ...params }`
+  with no `msg.type`, so `From`/`To`/`Caller`/`Called`, the `*City|State|Zip|Country`
+  geo fields and `AccountSid` all passed straight through, and setup lines and
+  records kept `forwardedFrom`, `accountSid` and `callerName`. Redaction is now
+  `redactDeep` by key name, case-insensitively, to depth 6, over every frame line
+  and the record's `event` — deliberately not `turnState`, whose name ends in
+  "State" and would be shredded by the geo-suffix rule. After the change, a scan of
+  47 frame logs and 49 traces on disk found zero caller numbers and zero account
+  ids.
+- A corrupt trailing line 500'd a whole trace; parsing is per line and tolerant
+  now, and the listing counts corrupt lines. A missing trace directory returns `[]`
+  instead of 500ing. `HEAD /dashboard` is allowed rather than 405.
+- An open SSE stream held shutdown open forever (`server.close` waits for idle
+  connections and a stream is never idle): `closeAllConnections()` runs before
+  `close()`. SSE writes are skipped when `res.writableLength` is over 1 MB.
+- The listing stats and sorts by mtime before reading the 50 newest, rather than
+  reading every file whole.
+
+### Task 6 — the page (`3ccc5f9`)
+
+- 371 lines as committed; checked by hand in a browser on port 3999 against a scripted
+  nine-record trace: no console messages, and the lines, chips, groups, correction
+  flashes and replay controls all verified.
+- Deviations from the plan's requirement list: the replay status string is
+  overridden to `replay · <sid>`; empty groups are not rendered at all (so the
+  confirmation group appears on the answer turn); bars have three colours
+  (decisive green, crossed-tick blue, quiet grey); a `#conn` span shows
+  `reconnecting…`; Space matches `e.code` as well as `e.key`; and the beat is
+  **not** divided by the speed select — it is a narration setting, not part of the
+  recorded pace.
+- Not covered by the by-hand check: live mode against real events, the reconnecting
+  note on screen, and a saved screenshot (an open SSE stream keeps a headless load
+  from finishing).
+
+### Fix commit `536e653` — Task 5 review
+
+- The confirmation group was off by one turn: it is grouped by the ask-time state
+  (`r.turnState?.pendingConfirmation ?? r.pendingConfirmation`), while the state
+  panel's pending line stays post-turn.
+- Score rows take their probability and threshold from the record's matching gate
+  row (the level probability), else `null`.
+- The intent tick is not `INTENT_ROUTE`, which is never applied at run time: it is
+  `INTENT_SWITCH` inside a form and `INTENT_EXPLICIT` outside one, the values the
+  gate ladder actually compares against. The test that pinned `INTENT_ROUTE` was
+  wrong and was fixed.
+- `reduce` rebuilds its accumulator on a second `call_started`, so a second call in
+  one page session does not inherit the first one's lines.
+- A non-consulted turn no longer blanks the Jev column: the last consultation stays
+  on screen and only the header and decision line update.
+- Replay gained the two endings it never produced: `handoff` parsed from
+  `handoffData.reasonCode` (with `ended.reason` from the same code), and a caller
+  hangup mapped from a log line with `socketClosed` when no end frame was seen. The
+  replayed reconnect attempt is a counter rather than a hardcoded 1.
+- A consulted turn whose answers are `null` shows the error name in the header
+  instead of a column of blank bars. The pending line keeps its subject
+  (`summary (reschedule) · attempt 1`, `date next week`, `reschedule`).
+
+### Seams worth keeping for the framework
+
+These are the pieces designed to outlive this dashboard, and the shape to reuse
+when the codebase is generalized into an IVR-app framework:
+
+- **`TurnObserver` / `RunOptions.observe`** (`src/run/turn.ts`): the one seam a live
+  watcher of a dialogue attaches to, best-effort and unable to affect a turn. The
+  trace writer consumes the same two moments.
+- **`DashboardBus`** (`src/server/dashboard/bus.ts`): a per-process, per-call event
+  bus with bounded history and isolated delivery. Nothing in it is dashboard-specific
+  beyond the event union.
+- **`makeObserver(bus, store, callSid)`** (`.../observer.ts`): the adapter, the
+  server and the tests all build their observer here, which is what stopped the
+  tests' copy from drifting away from the real one a second time.
+- **`redactDeep`** (`.../events.ts`): redaction by key name over arbitrary objects,
+  the right shape for any unauthenticated read of recorded call data.
+- **`view.js` as a pure reducer**: `reduce(events)` and `replayEvents(records, frames)`
+  are pure functions with no imports, so the browser and vitest run the same code and
+  live and replay share one renderer.
+- **`fixtures.scripted`** (`.../fixtures.ts`): drives real turns through the real
+  observer and bus to produce test events, so the view is tested against records the
+  server would actually publish rather than hand-written ones.

@@ -1,7 +1,7 @@
 # Design: Live call dashboard
 
 **Date:** 2026-09-21
-**Status:** approved in conversation; implementation plan to follow
+**Status:** implemented on branch `dashboard`; see the plan's deviation record
 **Depends on:** name and date of birth (PR #10), the practice-name greeting (PR #11)
 
 ## 1. Purpose
@@ -45,7 +45,7 @@ Events (`src/server/dashboard/events.ts`), each with `type`, `callSid`, `at` (ep
 | `interrupt` | `utteranceUntilInterrupt` when Twilio supplies it | adapter, on an interrupt frame |
 | `reconnect` | `attempt` | adapter, on a reconnect setup |
 | `handoff` | `reason`, `number` masked | adapter, on the end frame with handoff data |
-| `ended` | `reason` (`completed`, `hangup`, `handoff`, `error`) | adapter, on end or socket close after end |
+| `ended` | `reason` (`completed`, `hangup`, `handoff`, `error`) | adapter, in the turn that ends the call (`completed`, `handoff`); the `/cr-action` webhook when Twilio reports the call ended without a reconnect, which is the only place a caller hangup is distinguishable from a relay-side reconnect (`hangup`); the idle evictor in `index.ts`, when the bus's live call is evicted before it ended (`error`, its only producer) |
 
 The adapter already has every one of these moments; publishing is one line at each. `turn` events also carry the rendered prompt text for each outbound `text`/`play` frame, taken from the record's frames plus the render context, so the page never needs the manifest.
 
@@ -56,7 +56,9 @@ All on the existing HTTP server (src/server/http.ts), disabled when `DASHBOARD=o
 - `GET /dashboard`: the page, a single static HTML file at `src/server/dashboard/page.html`, served with `Cache-Control: no-store`.
 - `GET /dashboard/events`: server-sent events. On connect the client receives the bus history, then live events. Each SSE message is one JSON event; `id` is the event's sequence number; heartbeat comment every 15 s.
 - `GET /dashboard/traces`: JSON list of `{ callSid, startedAt, turns, sizeBytes }` from `traces/*.jsonl`, newest first, capped at 50.
-- `GET /dashboard/traces/<callSid>`: JSON `{ records: TraceRecord[], frames: FrameLogLine[] }` from `traces/<callSid>.jsonl` and `traces/<callSid>.frames.jsonl`. `callSid` is validated with the existing `safeFileStem` rule; anything else is 404.
+- `GET /dashboard/traces/<callSid>`: JSON `{ records: TraceRecord[], frames: FrameLogLine[] }` from `traces/<callSid>.jsonl` and `traces/<callSid>.frames.jsonl`. `callSid` is validated with the existing `safeFileStem` rule; anything else is 404. Each returned record also carries `spokenText`, the prompt text as the caller heard it, because the browser has no prompt manifest to render it from.
+
+Redaction on this route and on published `turn` events is by key name, not by frame type: the `/cr-action` form post has no `msg.type` to switch on, so every record and every frame line is walked and the caller-identity keys (`from`/`to`/`From`/`To`/`Caller`/`Called`/`forwardedFrom`, `callerName`, `accountSid` and the `*City`/`*State`/`*Zip`/`*Country` geo lookups) are masked or dropped at every level. The trace on disk is untouched.
 
 The routes are unauthenticated like `/health`. The ngrok URL is not shared beyond the demo; the env switch exists for the day it is.
 

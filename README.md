@@ -241,7 +241,9 @@ Dates are resolved in `TIMEZONE` (default: the host's zone), so a caller at
 8pm Pacific who says "tomorrow" means the next calendar day where they are,
 not where UTC has already got to. `SESSION_TTL_MS` is how long an idle call
 session is kept, `SESSION_MAX_AGE_MS` the hard cap on any one session.
-`TODAY_OVERRIDE` pins the date for a demo.
+`TODAY_OVERRIDE` pins the date for a demo. `DASHBOARD` is `on` (the default) or
+`off`, and anything else fails startup; `off` serves no dashboard (see
+"Dashboard" below).
 
 No input: if the caller says and presses nothing after a prompt finishes
 playing, the server treats the silence as an unanswered turn on whatever was
@@ -416,6 +418,44 @@ provider, so set `TTS_PROVIDER` and `TTS_VOICE` (Google, Amazon, or
 ElevenLabs) to the closest voice to keep the seams on names, birthdays,
 member IDs and dates as quiet as possible.
 
+### Dashboard
+
+A page that shows what the system is doing during a call, served by the same
+server at `https://PUBLIC_HOST/dashboard` (or `http://localhost:3000/dashboard`
+on the machine running the server). It reads what the trace already records and
+never influences a turn.
+
+The left column is the call as the caller had it: the conversation line by line
+with the prompt id beside each system line and quiet markers between turns
+(silence, keypad digits, an interrupt, a reconnect, a transfer), and under it the
+form state — the active form, its slots as chips that go empty, partial, then
+filled, and a line each for the pending confirmation, a queued task and the slot
+being asked. The right column is that turn's question batch grouped by role
+(`gates`, `intent`, `confirmation` while one is pending, then one group per slot
+on the form), each row the question id with its probability as a bar and its
+threshold as a tick, with the top options and their probabilities under a
+decisive choice row; quiet groups collapse to a count and open on click, and the
+bottom line names the gate that decided, the slots that moved and the next
+prompt.
+
+Two modes from the toolbar. **Live** subscribes to the server's event stream and
+follows the most recent call, so a page opened mid-call catches up on what it
+missed. **Replay** picks a finished call from `traces/` and walks it: Space plays
+and pauses, ArrowRight steps one event, ArrowLeft steps back, Home resets to the
+start of the call. Play runs at the call's recorded pace, with a 1x/2x/4x speed
+select and a five-second cap on any gap — except for the beat, which is how long
+the outgoing question batch is held on screen with empty bars before the answers
+fill in (800 ms by default, adjustable in the toolbar; live it is the model's own
+~170 ms, which is too fast to see). A replayed call is drawn with today's
+threshold ticks, not the ones it was recorded under, which the toolbar says.
+
+`DASHBOARD=off` turns the page off: no bus, nothing published, and every
+`/dashboard` route 404s.
+
+The page shows only what the trace stores, and every caller number is masked to
+its last four digits — on the setup frame, on the `/cr-action` webhook's fields
+and on every record the trace route returns — before it leaves the server.
+
 ### Live-call checklist
 
 1. `ngrok http --domain=PUBLIC_HOST 3000` in one terminal; `pnpm serve` in another.
@@ -425,73 +465,79 @@ member IDs and dates as quiet as possible.
 3. `curl https://PUBLIC_HOST/health` before dialing. It should answer
    `{"ok":true,"sessions":0,"retained":0}`; anything else means ngrok and the
    server are not actually connected, which is easier to see here than on a call.
-4. Call the number. You should hear the greeting within a second.
-5. Call again and stay quiet after the greeting: expect "I didn't hear
+4. Open `https://PUBLIC_HOST/dashboard` full screen at 1920 by 1080 before you
+   dial, and watch it during the call: it should say `waiting for a call`, then
+   `live · …NNNN` on the setup frame. Leave it open for the whole call. A call
+   left idle long enough for the server's `sweep` to evict its session ends on
+   the page as `ended · error`, which is the only way an evicted live call is
+   reported there.
+5. Call the number. You should hear the greeting within a second.
+6. Call again and stay quiet after the greeting: expect "I didn't hear
    anything." then the question again, then the keypad menu, then the
-   transfer to `HANDOFF_NUMBER` — the same ladder step 18 walks by saying
+   transfer to `HANDOFF_NUMBER` — the same ladder step 19 walks by saying
    something unrecognized instead. Partial results are on: watch the server
    log for the one-per-connection "dropped a non-final prompt" line while you
    speak, and confirm that starting to talk during a long pause stops the
    re-ask rather than racing it.
-6. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
+7. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
    week." Expect: "What's your first and last name?"
-7. Say "Jason Stiles". Expect "And your date of birth?" — the name fills
+8. Say "Jason Stiles". Expect "And your date of birth?" — the name fills
    silently, with no readback of its own; it is confirmed only in the summary
-   (step 9).
-8. Say "March fifth, nineteen eighty". Expect the window question on its own,
+   (step 10).
+9. Say "March fifth, nineteen eighty". Expect the window question on its own,
    again with no readback: "next week. Which day works for you?"
-9. Say "Tuesday". Expect the summary question: "Your appointment with Dr. Chen
-   would move to Tuesday, September 22, for Jason Stiles, born March 5th,
-   1980. Shall I make that change?" Listen to how the year comes out: a lone
-   four-digit run is left to TTS to read as a year, so it should say "nineteen
-   eighty", not "one nine eight zero".
-10. Call again and give the birthday without a year: say "Jason Stiles", then
+10. Say "Tuesday". Expect the summary question: "Your appointment with Dr. Chen
+    would move to Tuesday, September 22, for Jason Stiles, born March 5th,
+    1980. Shall I make that change?" Listen to how the year comes out: a lone
+    four-digit run is left to TTS to read as a year, so it should say "nineteen
+    eighty", not "one nine eight zero".
+11. Call again and give the birthday without a year: say "Jason Stiles", then
     "March fifth". Expect "And what year?"; answer "nineteen eighty" and expect
     the day question to follow.
-11. Keypad birthday: call again, get to "And your date of birth?", and stay
+12. Keypad birthday: call again, get to "And your date of birth?", and stay
     quiet twice. Expect the question again, then "Please enter your date of
     birth on the keypad: two digits for the month, two for the day, and four
     for the year." Press `03051980` and expect the day question. There is no
     keypad rung for the name: staying quiet three times at "What's your first
     and last name?" transfers instead.
-12. Call again and say all of it at once: "I need to reschedule my appointment
+13. Call again and say all of it at once: "I need to reschedule my appointment
     with Dr. Chen next week, this is Jason Stiles, born March 5th 1980."
     Expect the day question directly — "next week. Which day works for you?" —
     with neither the name nor the birthday asked. (This narrowed phrasing holds
     on the live line. Typed into the REPL, the heuristic stub drops the window
     once a year is present and asks the plain day question instead.)
-13. Call again, repeat through step 9, then stay quiet at the summary
+14. Call again, repeat through step 10, then stay quiet at the summary
     question: expect "I didn't hear anything." then the summary question
     again, then the keypad offer ("Press 1 to confirm, or 2 to change
     something."), then the transfer.
-14. Call again, repeat through step 9, then say "yes". Expect "Your
+15. Call again, repeat through step 10, then say "yes". Expect "Your
     appointment is moved." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
     finish the queued clips, and Twilio closes it and hits `/cr-action` with
     `SessionStatus=ended`.
-15. Call again, repeat through step 9, then say "no, Thursday" instead of
+16. Call again, repeat through step 10, then say "no, Thursday" instead of
     "yes". Expect the summary question again, now naming Thursday instead of
     Tuesday. Then try "no, it's Jason Miles": expect the summary again with
     the new name. Say "yes" to finish.
-16. Call again and say: "I need to reschedule my appointment with Dr.
+17. Call again and say: "I need to reschedule my appointment with Dr.
     Alvarez for next Thursday, and also I have a question about my bill."
     Expect "Sure, we'll ask about billing after this." before the name
     question. Give the name and birthday, say "yes" at the summary, and expect
     "Now, let's ask about billing." followed by "What's your member ID?" — a
     chained billing task collects its own ID before the handoff, because the
     scheduling form never asked for one.
-17. Call again and say "I have a question about my bill" on its own. Expect
+18. Call again and say "I have a question about my bill" on its own. Expect
     "What's your member ID?", the eight digits spoken or keyed, then the
     billing handoff: billing is the one form that still identifies the caller
     by member ID.
-18. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
-19. Call again, say "what are your hours" three times. Expect the open
+19. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
+20. Call again, say "what are your hours" three times. Expect the open
     reprompt, the keypad menu, then the transfer.
-20. Call again, get as far as the date-of-birth question, then kill `pnpm serve`
+21. Call again, get as far as the date-of-birth question, then kill `pnpm serve`
     (Ctrl-C) and start it again. ConversationRelay's session fails, `/cr-action`
     reconnects, and the caller hears the last prompt again. Repeat the kill more
     than `RECONNECT_LIMIT` times on one call: the next callback stops
     reconnecting, apologizes, and dials `HANDOFF_NUMBER`.
-21. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
+22. Replay the call: `pnpm cli --replay traces/<CallSid>.frames.jsonl`
     and compare its decisions with `traces/<CallSid>.jsonl`.
 
 Things to note on the first real call, per the spec's open questions: whether
@@ -538,7 +584,11 @@ turn to check against `JEV_TIMEOUT_MS` before trusting the default.
   them). A `retained` count that keeps climbing means calls are not ending.
 - Every call writes `traces/<CallSid>.jsonl` (trace records) and
   `traces/<CallSid>.frames.jsonl` (raw socket messages and webhooks); the
-  file names are sanitized from the call SID, not used verbatim.
+  file names are sanitized from the call SID, not used verbatim. A record also
+  carries three optional fields the dashboard reads — `queued` (the queued
+  forms), `pendingConfirmation` and `promptedFor` (what the turn's prompt asked
+  for). They were added for the dashboard, so a trace recorded before them
+  replays without them: the queue, pending and asking lines are simply absent.
 - Frame logs contain caller phone numbers (`From`/`To`) and error stacks, so
   treat `traces/` as sensitive and don't share its contents raw.
 - Startup logs `no-input: 7000 ms after playback (N clip durations)` (the
@@ -556,6 +606,8 @@ turn to check against `JEV_TIMEOUT_MS` before trusting the default.
     src/trace         JSONL trace record
     src/run           runTurn, client builder, local-date clock (shared by the CLI and the server)
     src/server        Twilio ConversationRelay server: config, http, ws, adapter, sessions
+    src/server/dashboard  the live call dashboard: events, bus, observer, routes,
+                          view.js (the pure reducer), page.html, fixtures
     src/harness-text  CLI, runner, metrics, regression
     fixtures          corpus, scenarios, recorded outcomes
     assets/audio      recorded prompt clips (<clipId>.wav/.mp3), discovered by filename
