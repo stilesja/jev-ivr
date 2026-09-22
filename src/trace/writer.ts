@@ -46,6 +46,9 @@ export function buildTraceRecord(input: TraceInput): TraceRecord {
     frames: result.frames,
     form: result.session.form,
     slots: result.session.slots,
+    queued: [...result.session.queued],
+    pendingConfirmation: result.session.pendingConfirmation,
+    promptedFor: result.session.promptedFor,
     timing,
     usage: {
       inputTokens,

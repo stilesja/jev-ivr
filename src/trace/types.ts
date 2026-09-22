@@ -3,8 +3,9 @@ import type { AnswerMap, AnswerSource, QuestionMap } from '../jev/types';
 import type { TurnState } from '../core/state';
 import type { GateRow } from '../core/gates';
 import type { Decision } from '../core/decision';
-import type { SlotState } from '../core/session';
+import type { PendingConfirmation, SlotState } from '../core/session';
 import type { SlotId } from '../domain/forms';
+import type { FormId } from '../domain/intents';
 
 export type TraceSource = AnswerSource | 'dtmf' | 'silence' | 'error' | 'none';
 
@@ -42,4 +43,8 @@ export interface TraceRecord {
   slots: Record<SlotId, SlotState>;
   timing: TraceTiming;
   usage: TraceUsage;
+  /** Added 2026-09-21 for the dashboard; optional so records written before then still load. */
+  queued?: FormId[];
+  pendingConfirmation?: PendingConfirmation | null;
+  promptedFor?: 'intent' | 'confirm' | SlotId | null;
 }
