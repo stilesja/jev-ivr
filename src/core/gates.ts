@@ -122,12 +122,16 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     else rows.push({ gate: 'utteranceComplete', value: v, threshold: t.GATE_COMPLETE, passed, outcome: 'noted', decided: false });
   }
 
-  // 4. wants human
+  // 4. wants human. At the transfer offer this gate sees the yes before the confirmation gate
+  // does -- "yes, connect me" is an explicit request for a person -- so the reason has to say
+  // which transfer it is: the caller is accepting the one we offered a frustrated caller, not
+  // asking out of the blue, and `frustrated` is what plays the line the offer promised.
   {
     const v = noulValue(answers, 'wantsHuman');
     const passed = v < t.GATE_WANTS_HUMAN;
+    const reason = session.pendingConfirmation?.target === 'transfer' ? 'frustrated' : 'live-agent';
     const row = { gate: 'wantsHuman', value: v, threshold: t.GATE_WANTS_HUMAN, passed, outcome: passed ? 'pass' : 'handoff', decided: false };
-    passed ? rows.push(row) : decide(row, { kind: 'handoff', reason: 'live-agent' });
+    passed ? rows.push(row) : decide(row, { kind: 'handoff', reason });
   }
 
   // 5. frustration escalation (before intent; see Deviation note). The gate reads the rung off the

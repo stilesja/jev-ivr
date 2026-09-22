@@ -145,6 +145,30 @@ describe('evaluateGates', () => {
       expect(neither.verdict).toEqual({ kind: 'rejected' });
       expect(neither.rows.find((g) => g.gate === 'confirmation')).toMatchObject({ outcome: 'rejected', decided: true });
     });
+
+    it('keeps the frustrated reason when the yes also reads as asking for a person', () => {
+      // "yes, connect me" trips the wantsHuman gate, which runs before the confirmation gate.
+      // The caller is accepting the transfer we offered, so the reason -- and the line that plays
+      // with it -- is the frustrated one, not the generic live-agent handoff.
+      const s = atOffer();
+      s.frustratedTurns = 2;
+      const r = run(s, baseAnswers({
+        wantsHuman: noul(0.9), confirmsYes: noul(0.9), confirmsNo: noul(0.05),
+        frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }),
+      }));
+      expect(r.verdict).toEqual({ kind: 'handoff', reason: 'frustrated' });
+      expect(r.rows.find((g) => g.gate === 'wantsHuman')).toMatchObject({ passed: false, outcome: 'handoff', decided: true });
+      // And it is still the turn that answers the offer, so it is not a frustrated turn to count,
+      // however crossly it was said: `frustratedTurns` is the turn's own bookkeeping, driven by a
+      // rung on the verdict, and the gate passes rather than reaching for a third rung.
+      expect(frustrationOf(r.verdict)).toBeUndefined();
+      expect(r.rows.find((g) => g.gate === 'frustration')).toMatchObject({ passed: true, outcome: 'pass' });
+    });
+
+    it('still hands off as live-agent when no transfer is pending', () => {
+      const s = setForm(newSession('s', 0), 'reschedule');
+      expect(run(s, baseAnswers({ wantsHuman: noul(0.9) })).verdict).toEqual({ kind: 'handoff', reason: 'live-agent' });
+    });
   });
 
   it('routes silently, with implicit confirm, or with explicit confirm by band', () => {
