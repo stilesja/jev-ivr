@@ -126,7 +126,7 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
     config.sessionMaxAgeMs,
   );
   const tokens = new CallTokens(TOKEN_TTL_MS, now);
-  const deps = { config, store, tokens, hints: buildHints(), log };
+  const deps = { config, store, tokens, hints: buildHints(), log, bus };
 
   const server = createServer(createRequestHandler(deps));
   const wss = attachWebSocketServer(

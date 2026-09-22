@@ -255,6 +255,39 @@ describe('server end to end', () => {
     relay.assertKnownTypes();
   });
 
+  it('streams the worked example to the dashboard while it runs', async () => {
+    const { relay, base, callSid } = await connected();
+    const res = await fetch(`${base}/dashboard/events`);
+    expect(res.headers.get('content-type')).toMatch(/text\/event-stream/);
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    const events = () => buf.split('\n\n').filter((b) => b.includes('data: ')).map((b) => JSON.parse(b.split('data: ')[1]!) as DashboardEvent);
+    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+    // The setup turn is turn 1, so the model's first turn — the one the `asked` event pairs with —
+    // is turn 2: read the stream until that turn's `turn` event has arrived.
+    const arrived = () => events().some((e) => e.type === 'turn' && e.record.turnIndex === 2);
+    while (!arrived()) buf += dec.decode((await reader.read()).value);
+    // A page opened mid-call gets the history first (the greeting turn asks nothing, so no `asked`
+    // precedes its `turn`), then the live turn.
+    expect(events().map((e) => e.type)).toEqual(['call_started', 'turn', 'asked', 'turn']);
+    expect(events().find((e) => e.type === 'asked')).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
+    expect(buf).toContain('"spoken":"What\'s your first and last name?"');
+    expect(buf).toMatch(/^id: 1\n/m);
+    await reader.cancel();
+    relay.close();
+    expect(callSid).toBe('CA1');
+  });
+
+  it('answers 404 on /dashboard when the dashboard is off', async () => {
+    const { config } = makeConfig({ DASHBOARD: 'off', PORT: '0' });
+    running = await startServer(config, { log: () => {} });
+    const base = `http://127.0.0.1:${running.port}`;
+    expect((await fetch(`${base}/dashboard`)).status).toBe(404);
+    expect((await fetch(`${base}/dashboard/traces`)).status).toBe(404);
+  });
+
   it('pairs the asked and turn events of one turn by turnIndex, and skips the bus when off', async () => {
     const { relay } = await connected();
     const events: DashboardEvent[] = [];

@@ -6,6 +6,8 @@ import { validateTwilioSignature } from './signature';
 import { apologizeAndDialTwiml, connectRelayTwiml, dialTwiml, hangupTwiml } from './twiml';
 import type { SessionStore } from './sessions';
 import type { CallTokens } from './tokens';
+import type { DashboardBus } from './dashboard/bus';
+import { handleDashboardRequest } from './dashboard/routes';
 import { AUDIO_TYPES, CLIP_FILE } from '../prompts/clips';
 
 export interface HttpDeps {
@@ -14,6 +16,8 @@ export interface HttpDeps {
   tokens: CallTokens;
   hints: string;
   log: (line: string) => void;
+  /** The dashboard's event bus, absent when DASHBOARD=off; without it the routes 404 like any other path. */
+  bus?: DashboardBus;
 }
 
 const MAX_BODY = 64 * 1024;
@@ -174,6 +178,7 @@ export function createRequestHandler(deps: HttpDeps): (req: IncomingMessage, res
   return (req, res) => {
     void (async () => {
       const path = (req.url ?? '/').split('?')[0] ?? '/';
+      if (deps.bus && handleDashboardRequest(req, res, { bus: deps.bus, traceDir: deps.config.traceDir, enabled: deps.config.dashboard })) return;
       if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/audio/')) {
         serveClip(req, res, deps.config.audioDir, path.slice('/audio/'.length));
         return;
