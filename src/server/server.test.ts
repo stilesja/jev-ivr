@@ -260,24 +260,50 @@ describe('server end to end', () => {
     const res = await fetch(`${base}/dashboard/events`);
     expect(res.headers.get('content-type')).toMatch(/text\/event-stream/);
     const reader = res.body!.getReader();
+    // One decoder for the whole stream, in streaming mode: a masked number's `…` is three bytes
+    // and can land across two reads, and only whole `\n\n` blocks are parsed.
     const dec = new TextDecoder();
     let buf = '';
-    const events = () => buf.split('\n\n').filter((b) => b.includes('data: ')).map((b) => JSON.parse(b.split('data: ')[1]!) as DashboardEvent);
-    relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
-    // The setup turn is turn 1, so the model's first turn — the one the `asked` event pairs with —
-    // is turn 2: read the stream until that turn's `turn` event has arrived.
-    const arrived = () => events().some((e) => e.type === 'turn' && e.record.turnIndex === 2);
-    while (!arrived()) buf += dec.decode((await reader.read()).value);
-    // A page opened mid-call gets the history first (the greeting turn asks nothing, so no `asked`
-    // precedes its `turn`), then the live turn.
-    expect(events().map((e) => e.type)).toEqual(['call_started', 'turn', 'asked', 'turn']);
-    expect(events().find((e) => e.type === 'asked')).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
-    expect(buf).toContain('"spoken":"What\'s your first and last name?"');
-    expect(buf).toMatch(/^id: 1\n/m);
-    await reader.cancel();
+    const events = () => buf.split('\n\n').slice(0, -1)
+      .filter((b) => b.includes('data: '))
+      .map((b) => JSON.parse(b.split('data: ')[1]!) as DashboardEvent);
+    // An open stream is a live connection: a failed assertion must not leave it holding the
+    // server open, or `afterEach`'s `running.close()` waits on it instead of reporting the failure.
+    try {
+      relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
+      expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+      // The setup turn is turn 1, so the model's first turn — the one the `asked` event pairs with —
+      // is turn 2: read the stream until that turn's `turn` event has arrived.
+      const arrived = () => events().some((e) => e.type === 'turn' && e.record.turnIndex === 2);
+      while (!arrived()) buf += dec.decode((await reader.read()).value, { stream: true });
+      // A page opened mid-call gets the history first (the greeting turn asks nothing, so no `asked`
+      // precedes its `turn`), then the live turn.
+      expect(events().map((e) => e.type)).toEqual(['call_started', 'turn', 'asked', 'turn']);
+      expect(events().find((e) => e.type === 'asked')).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
+      expect(buf).toContain('"spoken":"What\'s your first and last name?"');
+      expect(buf).toMatch(/^id: 1\n/m);
+    } finally {
+      await reader.cancel();
+    }
     relay.close();
     expect(callSid).toBe('CA1');
+  });
+
+  it('shuts down while a dashboard stream is still open', async () => {
+    const { base } = await start();
+    const res = await fetch(`${base}/dashboard/events`);
+    // The `: connected` comment: the stream is established, so the connection is not idle.
+    await res.body!.getReader().read();
+    // `server.close()` only waits out idle connections, and an SSE stream never goes idle: without
+    // closeAllConnections this shutdown never finishes and the whole suite hangs on afterEach.
+    const timedOut = Symbol('timed out');
+    const closing = running!.close();
+    const outcome = await Promise.race([
+      closing.then(() => 'closed' as const),
+      new Promise<symbol>((r) => { setTimeout(() => r(timedOut), 2_000); }),
+    ]);
+    if (outcome === 'closed') running = null;
+    expect(outcome).toBe('closed');
   });
 
   it('answers 404 on /dashboard when the dashboard is off', async () => {

@@ -190,6 +190,9 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
         if (timer) clearTimeout(timer);
       }
       for (const c of wss.clients) c.terminate();
+      // `server.close` only stops new connections and then waits for the idle ones; an open SSE
+      // stream is never idle, so a connected dashboard page would hold shutdown open forever.
+      server.closeAllConnections();
       await new Promise<void>((resolve) => wss.close(() => server.close(() => resolve())));
     },
   };
