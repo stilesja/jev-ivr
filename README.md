@@ -1,4 +1,7 @@
 # jev-ivr
+> **Read the full write-up:** [Jev IVR: A Phone Line You Can Talk To](https://stiles.one/jev-ivr/)
+>
+> More of my work: [Hedge build log](https://stiles.one/hedge/build/) | [Essays on AI](https://stiles.one/essays/)
 
 A mixed-initiative voice IVR front end driven by a fast, calibrated,
 non-generative decision model (TypeSafe's Jev), demonstrated on a healthcare
