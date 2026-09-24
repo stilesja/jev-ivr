@@ -114,6 +114,13 @@ describe('loadConfig', () => {
     expect(describeConfig(loadConfig({ ...base, CLIPS: 'on' }))).toContain('clips on');
   });
 
+  it('takes the Jev timeout, defaults it to the core threshold, and rejects a non-positive value', () => {
+    expect(loadConfig(base).jevTimeoutMs).toBe(1500);
+    expect(loadConfig({ ...base, JEV_TIMEOUT_MS: '2500' }).jevTimeoutMs).toBe(2500);
+    expect(() => loadConfig({ ...base, JEV_TIMEOUT_MS: '0' })).toThrow('JEV_TIMEOUT_MS must be a positive number');
+    expect(describeConfig(loadConfig({ ...base, JEV_TIMEOUT_MS: '2500' }))).toContain('jev timeout 2500 ms');
+  });
+
   it('describes the dashboard switch', () => {
     expect(describeConfig(loadConfig(base))).toContain('dashboard on');
     expect(describeConfig(loadConfig({ ...base, DASHBOARD: 'off' }))).toContain('dashboard OFF');

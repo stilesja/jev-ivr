@@ -260,6 +260,14 @@ clips; `TTS_PROVIDER` and `TTS_VOICE` choose that voice. On plays the
 recorded clips, with TTS only for the names and dates. The clip files are
 left in place either way and `pnpm prompts:check` still reports on them.
 
+`JEV_TIMEOUT_MS` is how long one request to Jev may take (default 1500) before
+the turn gives up on it, plays "Sorry for the delay. You can also use your
+keypad." and keeps the prompt open; a second failure in a row hands off. The SDK
+retries once inside that budget, so a turn the model never answers costs the
+caller up to twice it. A typical live ask takes about half a second; `.env.example`
+sets 2500 to ride out a slow minute at the API. The harness takes the same
+budget as `--threshold JEV_TIMEOUT_MS=...` (see "Regression").
+
 No input: if the caller says and presses nothing after a prompt finishes
 playing, the server treats the silence as an unanswered turn on whatever was
 just asked — the same ladder a garbled answer walks: "I didn't hear

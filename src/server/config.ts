@@ -3,6 +3,8 @@ import { defaultTimeZone, localDateIso } from '../run/clock';
 export type ClientKind = 'stub' | 'heuristic' | 'jev';
 
 /** ConversationRelay's documented TTS providers (Twilio docs, <ConversationRelay> ttsProvider). */
+import { DEFAULT_THRESHOLDS } from '../core/thresholds';
+
 const TTS_PROVIDERS = ['Google', 'Amazon', 'ElevenLabs'] as const;
 
 export interface ServerConfig {
@@ -24,6 +26,12 @@ export interface ServerConfig {
   ttsVoice: string | null;
   /** Silence after a prompt's estimated playback before the caller is asked again; 0 disables. */
   noInputMs: number;
+  /**
+   * How long one request to Jev may take before the turn gives up on it, plays the slow-turn
+   * hint and keeps the prompt open. The SDK retries once inside this budget, so a caller waits up
+   * to twice this on a turn the model never answers. A phone-turn budget, not a recording one.
+   */
+  jevTimeoutMs: number;
   /** Serve the live call dashboard and publish call moments to its bus. */
   dashboard: boolean;
   /**
@@ -110,9 +118,16 @@ export function loadConfig(env: Env): ServerConfig {
     ttsProvider,
     ttsVoice,
     noInputMs: integer(env, 'NO_INPUT_MS', 7_000),
+    jevTimeoutMs: jevTimeout(env),
     dashboard: dash === 'on',
     clips: clipsSwitch === 'on',
   };
+}
+
+function jevTimeout(env: Env): number {
+  const ms = integer(env, 'JEV_TIMEOUT_MS', DEFAULT_THRESHOLDS.JEV_TIMEOUT_MS);
+  if (ms <= 0) throw new Error(`JEV_TIMEOUT_MS must be a positive number of milliseconds, got "${env.JEV_TIMEOUT_MS}"`);
+  return ms;
 }
 
 export function describeConfig(c: ServerConfig): string {
@@ -133,6 +148,7 @@ export function describeConfig(c: ServerConfig): string {
     `reconnect limit ${c.reconnectLimit}`,
     `audio dir ${c.audioDir}`,
     c.noInputMs > 0 ? `no-input ${c.noInputMs} ms` : 'no-input off',
+    `jev timeout ${c.jevTimeoutMs} ms`,
     `dashboard ${c.dashboard ? 'on' : 'OFF'}`,
     `clips ${c.clips ? 'on' : 'OFF (all TTS)'}`,
     c.ttsProvider && c.ttsVoice ? `tts ${c.ttsProvider} ${c.ttsVoice}` : 'tts default',
