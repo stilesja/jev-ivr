@@ -4,6 +4,13 @@ import { addDays, parseIso } from '../core/extract/date';
 
 const TODAY = '2026-09-24';
 const dir = new DemoDirectory(TODAY);
+const PROVIDERS = ['chen', 'cheng', 'patel', 'okafor', 'nguyen', 'rossi', 'kim', 'alvarez'];
+
+/** True when a caller's booking lands on a weekday, after `today`, within the fortnight. */
+function isValidBooking(booking: { date: string }, today: string): boolean {
+  const day = new Date(parseIso(booking.date)).getUTCDay();
+  return day >= 1 && day <= 5 && booking.date > today && booking.date <= addDays(today, 14);
+}
 
 describe('dayparts', () => {
   it('splits the day at 11 and 2', () => {
@@ -47,6 +54,21 @@ describe('DemoDirectory', () => {
     expect(a).not.toEqual(b);
   });
 
+  it('stays inside the fortnight when today sits right at the weekday boundary', () => {
+    // A Friday and a Saturday `today` push the weekend-skipping walk against both edges of the
+    // fortnight from a different starting weekday than TODAY does.
+    for (const today of ['2026-09-25', '2026-09-26']) {
+      const d = new DemoDirectory(today);
+      for (const [name, dob] of [
+        ['jason stiles', '1980-03-05'],
+        ['andy middleton', '2000-01-01'],
+        ['priya patel', '1992-11-30'],
+      ] as const) {
+        expect(isValidBooking(d.find(name, dob, 'chen'), today)).toBe(true);
+      }
+    }
+  });
+
   it('offers three openings in clock order, the same on every call', () => {
     const times = dir.openings('chen', '2026-10-06');
     expect(times).toHaveLength(3);
@@ -57,13 +79,36 @@ describe('DemoDirectory', () => {
   });
 
   it('terminates and stays in the table for every provider and day in a month', () => {
-    for (const p of ['chen', 'cheng', 'patel', 'okafor', 'nguyen', 'rossi', 'kim', 'alvarez']) {
+    for (const p of PROVIDERS) {
       for (let d = 0; d < 31; d += 1) {
         const times = dir.openings(p, addDays(TODAY, d));
         expect(times).toHaveLength(3);
         for (const t of times) expect(DEMO_TIMES).toContain(t);
       }
     }
+  });
+
+  it('spreads openings across windows: some days cover all three, some miss one', () => {
+    let oneEachWindow = 0;
+    let missingAWindow = 0;
+    for (const p of PROVIDERS) {
+      for (let d = 0; d < 31; d += 1) {
+        const parts = new Set(dir.openings(p, addDays(TODAY, d)).map(daypartOf));
+        if (parts.size === 3) oneEachWindow += 1;
+        if (parts.size < 3) missingAWindow += 1;
+      }
+    }
+    // Both the ordinary case (a slot in every window) and the case the nearest-opening rule
+    // needs (a day that skips a window) have to actually turn up in the sweep.
+    expect(oneEachWindow).toBeGreaterThan(0);
+    expect(missingAWindow).toBeGreaterThan(0);
+  });
+
+  it('stays a three-item draw for the seed that used to spin forever under the shift loop', () => {
+    // provider "okafor" on 2026-10-19 never reached three distinct residues under the old
+    // `(h >>> (i * 4)) % 9` loop, because that shift repeats every eight steps; the draw-without-
+    // replacement rewrite is distinct by construction, so this can no longer hang.
+    expect(dir.openings('okafor', '2026-10-19')).toHaveLength(3);
   });
 
   it('hashes stably and case-insensitively', () => {

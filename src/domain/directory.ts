@@ -9,8 +9,10 @@ export interface Booking {
 /**
  * The seam a real deployment backs with its scheduling system (spec 2026-09-24 appointment-slots
  * §2). The core never asks the caller for a time: it reads the booking they have and offers the
- * openings it finds. Pure and synchronous here; a network-backed implementation belongs in the
- * server, resolved before the turn runs.
+ * openings it finds. Synchronous by design for the demo, since `resolve` calls `find`/`openings`
+ * inline on the turn that fills the slots. A network-backed directory would need `resolve` to hand
+ * a lookup step back to the async `runTurn` instead, which is a change to the framework's turn
+ * loop, not something a server-side implementation of this interface can do on its own.
  */
 export interface AppointmentDirectory {
   /** The caller's existing booking with this provider, or null when there is none. */
@@ -61,14 +63,19 @@ export const DEMO_TIMES: readonly string[] = [
   '4:15 PM',
 ];
 
-/** FNV-1a over the string, as a non-negative 32-bit integer. Stable across runs and platforms. */
+/**
+ * FNV-1a over the string, as a non-negative 32-bit integer. Stable across runs and platforms.
+ * Walks UTF-16 code units rather than code points, so a high and low surrogate of an astral
+ * character each contribute their own byte instead of the pair collapsing to one.
+ */
 export function hashOf(text: string): number {
+  const s = text.toLowerCase();
   let h = 0x811c9dc5;
-  for (const ch of text.toLowerCase()) {
-    h ^= ch.charCodeAt(0);
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
-  return h >>> 0;
+  return h;
 }
 
 function isWeekend(iso: string): boolean {
@@ -97,13 +104,18 @@ export class DemoDirectory implements AppointmentDirectory {
   }
 
   openings(provider: string, date: string): string[] {
-    // Three distinct indexes into the table, in clock order. A day can hold two of one window
-    // and none of another, which is what makes the nearest-opening rule reachable. Each candidate
-    // rehashes with i folded in, rather than shifting one hash, because the shift repeats every
-    // eight steps (i * 4 wraps mod 32) and some provider-date pairs never reach three distinct
-    // residues within that repeating set, spinning forever.
-    const picked = new Set<number>();
-    for (let i = 0; picked.size < 3; i += 1) picked.add(hashOf(`${provider}|${date}|${i}`) % DEMO_TIMES.length);
-    return [...picked].sort((a, b) => a - b).map((i) => DEMO_TIMES[i]!);
+    // Three of the nine table indexes, drawn without replacement from one hash: distinct by
+    // construction rather than by retrying until three distinct values turn up, so there is no
+    // loop that can stall, and each of the 9*8*7 orderings is close to equally likely. Base-(9,8,7)
+    // digits of the hash pick the draw order (9*8*7 = 504 fits well inside 32 bits), then the
+    // result is sorted back into clock order.
+    let h = hashOf(`${provider}|${date}`);
+    const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    const out: number[] = [];
+    for (let n = 9; n > 6; n -= 1) {
+      out.push(pool.splice(h % n, 1)[0]!);
+      h = Math.floor(h / n);
+    }
+    return out.sort((a, b) => a - b).map((i) => DEMO_TIMES[i]!);
   }
 }
