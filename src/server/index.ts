@@ -92,7 +92,10 @@ export async function startServer(config: ServerConfig, overrides: ServerOverrid
   log(noInputMs > 0 ? `no-input: ${noInputMs} ms after playback (${durations.size} clip durations)` : 'no-input: off');
   // The coverage/count logic above stays on the unversioned map; only what the caller actually
   // fetches carries the content hash, so a regenerated clip is never served from Twilio's cache.
-  const render = { clips: clipVersions(config.audioDir, clips), audioBase: `https://${config.publicHost}/audio/` };
+  // CLIPS=off leaves the render context unset, which is the harness's own mode: every prompt goes out as
+  // text and ConversationRelay's voice speaks the fixed words, the names and the dates alike.
+  const render = config.clips ? { clips: clipVersions(config.audioDir, clips), audioBase: `https://${config.publicHost}/audio/` } : null;
+  if (!config.clips) log('clips: off (every prompt spoken by the ConversationRelay TTS voice)');
 
   const bus = config.dashboard ? new DashboardBus() : undefined;
   log(bus ? 'dashboard: /dashboard' : 'dashboard: off');

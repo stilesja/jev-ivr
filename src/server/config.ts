@@ -26,6 +26,12 @@ export interface ServerConfig {
   noInputMs: number;
   /** Serve the live call dashboard and publish call moments to its bus. */
   dashboard: boolean;
+  /**
+   * Play the recorded clips under `audioDir`. Off (the default), every prompt is spoken by
+   * ConversationRelay's TTS voice: one voice for the fixed text and the names and dates alike, and
+   * no seams between clips. On brings back the recorded voice.
+   */
+  clips: boolean;
 }
 
 type Env = Record<string, string | undefined>;
@@ -75,6 +81,8 @@ export function loadConfig(env: Env): ServerConfig {
   if (sig !== 'on' && sig !== 'off') throw new Error(`SIGNATURE_CHECK must be on or off, got "${env.SIGNATURE_CHECK}"`);
   const dash = (env.DASHBOARD ?? 'on').toLowerCase();
   if (dash !== 'on' && dash !== 'off') throw new Error(`DASHBOARD must be on or off, got "${env.DASHBOARD}"`);
+  const clipsSwitch = (env.CLIPS ?? 'off').toLowerCase();
+  if (clipsSwitch !== 'on' && clipsSwitch !== 'off') throw new Error(`CLIPS must be on or off, got "${env.CLIPS}"`);
   const ttsProvider = env.TTS_PROVIDER?.trim() || null;
   const ttsVoice = env.TTS_VOICE?.trim() || null;
   if (ttsProvider && !(TTS_PROVIDERS as readonly string[]).includes(ttsProvider)) {
@@ -103,6 +111,7 @@ export function loadConfig(env: Env): ServerConfig {
     ttsVoice,
     noInputMs: integer(env, 'NO_INPUT_MS', 7_000),
     dashboard: dash === 'on',
+    clips: clipsSwitch === 'on',
   };
 }
 
@@ -125,6 +134,7 @@ export function describeConfig(c: ServerConfig): string {
     `audio dir ${c.audioDir}`,
     c.noInputMs > 0 ? `no-input ${c.noInputMs} ms` : 'no-input off',
     `dashboard ${c.dashboard ? 'on' : 'OFF'}`,
+    `clips ${c.clips ? 'on' : 'OFF (all TTS)'}`,
     c.ttsProvider && c.ttsVoice ? `tts ${c.ttsProvider} ${c.ttsVoice}` : 'tts default',
   ].join('  ');
 }
