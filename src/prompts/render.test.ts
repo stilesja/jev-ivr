@@ -88,6 +88,14 @@ describe('decisionToFrames', () => {
     expect(decisionToFrames({ kind: 'ignore' })).toEqual([]);
     expect(decisionToFrames({ kind: 'hold' })).toEqual([]);
   });
+
+  it('plays an ack with its own manifest flag, so the long capabilities line can be talked over', () => {
+    const frames = decisionToFrames({
+      kind: 'prompt', promptId: 'ask_intent', vars: {}, target: 'intent', options: [],
+      acks: [{ promptId: 'ack_frustration', vars: {} }, { promptId: 'capabilities', vars: {} }],
+    });
+    expect(frames.map((f) => (f.type === 'text' ? f.interruptible : f.type))).toEqual([false, true, true]);
+  });
 });
 
 describe('summary prompts', () => {

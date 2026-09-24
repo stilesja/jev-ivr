@@ -1,5 +1,5 @@
 import { isChoice, isScore, noulValue, rankProbabilities, type AnswerMap } from '../jev/types';
-import { INTENT_MENU, isFormIntent, type FormId, type Intent } from '../domain/intents';
+import { INTENT_MENU, INFORMATIONAL_INTENTS, isFormIntent, type FormId, type Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 import type { Session } from './session';
 import type { TurnState } from './state';
@@ -39,6 +39,7 @@ export type Verdict =
   | ({ kind: 'confirm_unanswered'; queue?: FormId } & Frustrated)
   | ({ kind: 'change_slot'; slot: SlotId; queue?: FormId } & Frustrated)
   | { kind: 'replay' }
+  | ({ kind: 'inform'; promptId: string } & Frustrated)
   | ({ kind: 'route'; intent: FormId; confirm: 'none' | 'implicit' | 'explicit'; queue?: FormId } & Frustrated)
   | ({ kind: 'queue'; intent: FormId } & Frustrated)
   | ({ kind: 'disambiguate_intent'; a: Intent; b: Intent } & Frustrated)
@@ -229,6 +230,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
   if (activeForm === null) {
     if (label === 'agent' && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'handoff', reason: 'live-agent' }; outcome = 'agent'; }
     else if (label === 'repeat_prompt' && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'replay' }; outcome = 'replay'; }
+    else if (INFORMATIONAL_INTENTS[label] !== undefined && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'inform', promptId: INFORMATIONAL_INTENTS[label]! }; outcome = 'inform'; }
     else if (isFormIntent(label) && top.p >= t.INTENT_ROUTE) { routeVerdict = { kind: 'route', intent: label, confirm: 'none' }; outcome = 'route'; }
     else if (isFormIntent(label) && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'implicit' }; outcome = 'route_implicit'; }
     else if (isFormIntent(label) && top.p >= t.INTENT_EXPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'explicit' }; outcome = 'route_explicit'; }
@@ -252,6 +254,7 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
 
     if (label === 'agent' && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'handoff', reason: 'live-agent' }; outcome = 'agent'; }
     else if (label === 'repeat_prompt' && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'replay' }; outcome = 'replay'; }
+    else if (INFORMATIONAL_INTENTS[label] !== undefined && top.p >= t.INTENT_SWITCH) { routeVerdict = { kind: 'inform', promptId: INFORMATIONAL_INTENTS[label]! }; outcome = 'inform'; }
     else if (mode === 'answering') { routeVerdict = { kind: 'proceed' }; outcome = 'answering'; }
     else if (mode === 'adding') {
       if (other && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'queue', intent: other }; outcome = 'queue'; }

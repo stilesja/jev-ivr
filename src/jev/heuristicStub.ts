@@ -15,6 +15,7 @@ const INTENT_KEYWORDS: Array<[string, RegExp]> = [
   ['billing', /\b(bill|billing|charge|charged|payment|invoice|insurance|copay|owe)\b/],
   ['agent', /\b(agent|representative|person|human|operator|someone|somebody)\b/],
   ['repeat_prompt', /\b(repeat|say that again|what were the options|didn't hear)\b/],
+  ['capabilities', /\b(what (can|do) you do|what are you|what (are|is) my options|what can i (do|say|ask)|what is this|what does this do|what else can you do)\b/],
 ];
 
 const NUMBER_WORD_DIGIT: Record<string, string> = { zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5' };

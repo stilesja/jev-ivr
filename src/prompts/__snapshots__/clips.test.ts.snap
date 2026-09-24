@@ -133,6 +133,11 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "text": "I understand, let's get this sorted.",
   },
   {
+    "id": "capabilities.0",
+    "note": "closed",
+    "text": "I can help you schedule, reschedule, cancel, or confirm an appointment, or connect you to billing. You can just tell me what you need in your own words, and if you'd rather talk to a person, say so anytime.",
+  },
+  {
     "id": "no_input.0",
     "note": "closed",
     "text": "I didn't hear anything.",

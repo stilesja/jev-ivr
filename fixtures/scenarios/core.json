@@ -1835,5 +1835,70 @@
         "memberId": "12345678"
       }
     }
+  },
+  {
+    "id": "capabilities-open",
+    "steps": [
+      {
+        "say": "what can you do"
+      },
+      {
+        "say": "I need to reschedule my appointment"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_name",
+      "form": "reschedule"
+    }
+  },
+  {
+    "id": "capabilities-midform",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "what else can you do"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_dob",
+      "form": "reschedule",
+      "slots": {
+        "name": "jason stiles"
+      },
+      "text": "I can help you schedule"
+    }
+  },
+  {
+    "id": "capabilities-at-summary",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "what can you do"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule",
+      "text": "Shall I make that change?"
+    }
   }
 ]

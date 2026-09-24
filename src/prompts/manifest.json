@@ -25,6 +25,7 @@
   "ack_date": { "text": "On {date}.", "interruptible": false },
   "ack_declined": { "text": "Sorry about that.", "interruptible": false },
   "ack_frustration": { "text": "I understand, let's get this sorted.", "interruptible": false },
+  "capabilities": { "text": "I can help you schedule, reschedule, cancel, or confirm an appointment, or connect you to billing. You can just tell me what you need in your own words, and if you'd rather talk to a person, say so anytime.", "interruptible": true },
   "no_input": { "text": "I didn't hear anything.", "interruptible": false },
   "confirm_intent_explicit": { "text": "Just to check, do you want to {intentLabel}? Yes or no.", "interruptible": false },
   "confirm_schedule": { "text": "You'd be booked with {provider} on {date}, for {name}, born {dob}. Shall I book that?", "interruptible": true },

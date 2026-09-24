@@ -88,20 +88,20 @@ export function decisionToFrames(decision: Decision, ctx?: RenderContext | null)
     case 'replay':
       return [textFrame(decision.text, true)];
     case 'prompt': {
-      const frames: OutboundFrame[] = decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx));
+      const frames: OutboundFrame[] = decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, promptEntry(a.promptId).interruptible, ctx));
       frames.push(...promptFrames(decision.promptId, decision.vars, promptEntry(decision.promptId).interruptible, ctx));
       return frames;
     }
     case 'complete':
       return [
-        ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
+        ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, promptEntry(a.promptId).interruptible, ctx)),
         ...promptFrames(decision.promptId, decision.vars, false, ctx),
         ...promptFrames('goodbye', {}, false, ctx),
         endFrame('completed', decision.completed),
       ];
     case 'handoff':
       return [
-        ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
+        ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, promptEntry(a.promptId).interruptible, ctx)),
         ...promptFrames(decision.promptId, {}, false, ctx),
         endFrame(decision.reason, decision.completed, decision.queued, decision.slots),
       ];

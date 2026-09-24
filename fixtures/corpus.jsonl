@@ -232,3 +232,8 @@
 {"id":"ft-04","text":"keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
 {"id":"ft-05","text":"no thanks, keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
 {"id":"ft-06","text":"make it Dr. Chen","intent":"none","context":"offer_transfer","prompted":"provider","slots":{"provider":"chen"},"tags":["offer_transfer"]}
+{"id":"cp-01","text":"what can you do","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-02","text":"what are my options","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-03","text":"what is this","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-04","text":"I'd like to learn more about what you are and what you do","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-05","text":"what else can you do","intent":"capabilities","context":"reschedule","prompted":"dob","tags":["capabilities"]}

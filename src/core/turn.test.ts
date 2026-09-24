@@ -1024,6 +1024,47 @@ describe('frustration escalation', () => {
   });
 });
 
+describe('capabilities', () => {
+  const CAPABILITIES: Ack = { promptId: 'capabilities', vars: {} };
+  // 0.9 clears INTENT_SWITCH (0.85) inside a form as well as INTENT_IMPLICIT outside one.
+  const ASKS = choice({ capabilities: 0.9, other: 0.06, none: 0.04 });
+
+  it('describes itself at the greeting and asks the open question again, without counting', () => {
+    const r = say(started(), 'what can you do', { intent: ASKS });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_intent', target: 'intent', acks: [CAPABILITIES] });
+    expect(r.session.intentAttempts).toBe(0);
+    expect(r.session.form).toBeNull();
+    expect(spokenText(r.decision)).toBe('I can help you schedule, reschedule, cancel, or confirm an appointment, or connect you to billing. You can just tell me what you need in your own words, and if you\'d rather talk to a person, say so anytime. How can I help you today?');
+  });
+
+  it('describes itself mid-form and lands back on the question it was on', () => {
+    let r = say(started(), 'reschedule', { intent: choice({ reschedule: 0.9, none: 0.1 }) });
+    r = say(r.session, 'jason stiles', { intentChange: ANSWERING, ...NAME_ANSWERS });
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob' });
+    r = say(r.session, 'what else can you do', { intent: ASKS, intentChange: ANSWERING });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_dob', target: 'dob', acks: [CAPABILITIES] });
+    expect(r.session.slots.dob.attempts).toBe(0);
+  });
+
+  it('fills what the same breath carried, then resumes', () => {
+    let r = say(started(), 'reschedule', { intent: choice({ reschedule: 0.9, none: 0.1 }) });
+    r = say(r.session, 'what can you do, this is jason stiles', { intent: ASKS, intentChange: ANSWERING, ...NAME_ANSWERS });
+    expect(r.session.slots.name.value).toBe('jason stiles');
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_dob', acks: [CAPABILITIES] });
+  });
+
+  it('describes itself at the summary and re-asks it without counting', () => {
+    const r = afterTurns([...HAPPY, { say: 'what can you do', over: { intent: ASKS } }]);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm', acks: [CAPABILITIES] });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', form: 'reschedule', attempts: 0 });
+  });
+
+  it('is acknowledged like any other prompt when the caller is also frustrated', () => {
+    const r = say(started(), 'what the hell can you even do', { intent: ASKS, frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }) });
+    expect(r.decision).toMatchObject({ promptId: 'ask_intent', acks: [{ promptId: 'ack_frustration', vars: {} }, CAPABILITIES] });
+  });
+});
+
 /**
  * Spec no-input §3: a silence event is an unanswered turn on whatever was prompted, resolved
  * without a model call, walking the same ladders as an unintelligible answer with the

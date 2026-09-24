@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { INTENTS, INTENT_MENU, isFormIntent } from './intents';
+import { INTENTS, INTENT_MENU, INFORMATIONAL_INTENTS, isFormIntent } from './intents';
 import { FORMS, ALL_SLOTS } from './forms';
 import providers from './providers.json';
 import baseline from './dtmf-baseline.json';
 
 describe('domain tables', () => {
-  it('has the nine intents from the spec', () => {
+  it('has the ten intents from the spec', () => {
     expect(INTENTS).toEqual([
       'schedule_new', 'reschedule', 'cancel', 'confirm_appointment', 'billing',
-      'agent', 'repeat_prompt', 'other', 'none',
+      'agent', 'repeat_prompt', 'capabilities', 'other', 'none',
     ]);
   });
 
@@ -31,5 +31,12 @@ describe('domain tables', () => {
 
   it('menu digits map to form intents or agent', () => {
     for (const { intent } of INTENT_MENU) expect(isFormIntent(intent) || intent === 'agent').toBe(true);
+  });
+
+  it('maps every informational intent to a prompt and none of them to a form', () => {
+    for (const [intent, promptId] of Object.entries(INFORMATIONAL_INTENTS)) {
+      expect(isFormIntent(intent)).toBe(false);
+      expect(typeof promptId).toBe('string');
+    }
   });
 });

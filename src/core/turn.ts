@@ -241,6 +241,20 @@ function offerTransfer(acks: Ack[] = []): PromptDecision {
 type TransferConfirmation = Extract<PendingConfirmation, { target: 'transfer' }>;
 
 /**
+ * Back to wherever the call was, without counting a turn against the caller: a pending
+ * confirmation asked again, an open form's next question, or the plain intent question. The
+ * declined transfer offer and an informational intent (spec 2026-09-24 §2.3) both come back
+ * through here, because in both the caller answered something, just not the question asked.
+ */
+function resume(s: Session, t: Thresholds, acks: Ack[], disambiguate: FillResult['disambiguate'] = null): Decision {
+  if (s.pendingConfirmation) return reaskConfirmation(s, t, acks, false);
+  if (s.form) return continueForm(s, acks, disambiguate);
+  // Before any task is started the form loop has nothing to ask: the plain intent question comes
+  // back, not the "Sorry, I didn't catch that" retry.
+  return prompt('ask_intent', 'intent', {}, acks);
+}
+
+/**
  * The offer turned down: by a no, by an answer that is neither a yes nor a no, or by a second
  * silence. It is not offered again on this call, and the caller goes back to the question they
  * were on -- declining costs them no attempt, since they did answer the question we asked.
@@ -248,17 +262,9 @@ type TransferConfirmation = Extract<PendingConfirmation, { target: 'transfer' }>
 function declineTransfer(s: Session, t: Thresholds, pc: TransferConfirmation, acks: Ack[]): Decision {
   s.transferDeclined = true;
   // A confirmation the offer displaced comes back rather than being dropped: an explicit intent
-  // confirm still holds the caller's request, and a summary still holds its attempt count. `count`
-  // is false -- declining answered the offer, so it is not a turn dodged on the question beneath.
-  if (pc.resume) {
-    s.pendingConfirmation = pc.resume;
-    return reaskConfirmation(s, t, acks, false);
-  }
-  s.pendingConfirmation = null;
-  if (s.form) return continueForm(s, acks, null);
-  // The offer can be made before any task is started, where the form loop has nothing to ask:
-  // the plain intent question comes back, not the "Sorry, I didn't catch that" retry.
-  return prompt('ask_intent', 'intent', {}, acks);
+  // confirm still holds the caller's request, and a summary still holds its attempt count.
+  s.pendingConfirmation = pc.resume ?? null;
+  return resume(s, t, acks);
 }
 
 /**
@@ -365,6 +371,12 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       return { decision: handoff(s, verdict.reason), events: [] };
     case 'replay':
       return { decision: { kind: 'replay', text: s.lastPromptText }, events: [] };
+    case 'inform': {
+      // The answer plays as an ack in front of the question the caller was on. What else the
+      // breath carried still fills, as on the queue verdict; no attempt counter moves.
+      const fill = fillSlots(s, answers, ctx, s.form ? slotsFor(s.form) : allSlots());
+      return { decision: resume(s, t, [{ promptId: verdict.promptId, vars: {} }, ...fill.acks], fill.disambiguate), events: fill.events };
+    }
     case 'confirmed': {
       const pc = s.pendingConfirmation!;
       s.pendingConfirmation = null;

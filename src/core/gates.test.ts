@@ -431,4 +431,28 @@ describe('evaluateGates', () => {
       expect(r.rows.find((x) => x.gate === 'secondIntent')).toMatchObject({ outcome: 'ignored:not_plain_route' });
     });
   });
+
+  it('answers an informational intent with its prompt, at the implicit band outside a form and the switch band inside', () => {
+    expect(run(newSession('s', 0), baseAnswers({ intent: choice({ capabilities: 0.65, none: 0.35 }) })).verdict).toEqual({ kind: 'inform', promptId: 'capabilities' });
+    expect(run(newSession('s', 0), baseAnswers({ intent: choice({ capabilities: 0.5, none: 0.5 }) })).verdict).toEqual({ kind: 'intent_failed' });
+    const s = setForm(newSession('s', 0), 'reschedule');
+    const answering = choice({ answering: 0.9, adding: 0.05, replacing: 0.05 });
+    expect(run(s, baseAnswers({ intent: choice({ capabilities: 0.9, none: 0.1 }), intentChange: answering })).verdict).toEqual({ kind: 'inform', promptId: 'capabilities' });
+    expect(run(s, baseAnswers({ intent: choice({ capabilities: 0.7, none: 0.3 }), intentChange: answering })).verdict).toEqual({ kind: 'proceed' });
+    expect(run(s, baseAnswers({ intent: choice({ capabilities: 0.9, none: 0.1 }), intentChange: answering })).rows.find((g) => g.gate === 'intent')).toMatchObject({ outcome: 'inform:capabilities', decided: true });
+  });
+
+  it('lets an informational intent win over a pending summary and an unanswered confirmation, and carries a rung', () => {
+    const summary = setForm(newSession('s', 0), 'reschedule');
+    summary.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
+    summary.promptedFor = 'confirm';
+    const answering = choice({ answering: 0.9, adding: 0.05, replacing: 0.05 });
+    expect(run(summary, baseAnswers({ intent: choice({ capabilities: 0.9, none: 0.1 }), intentChange: answering, confirmsYes: noul(0.1), confirmsNo: noul(0.1) })).verdict).toEqual({ kind: 'inform', promptId: 'capabilities' });
+    const explicit = newSession('s', 0);
+    explicit.pendingConfirmation = { target: 'intent', intent: 'cancel', answers: {}, text: 'maybe cancel' };
+    explicit.promptedFor = 'intent';
+    expect(run(explicit, baseAnswers({ intent: choice({ capabilities: 0.8, none: 0.2 }), confirmsYes: noul(0.1), confirmsNo: noul(0.1) })).verdict).toEqual({ kind: 'inform', promptId: 'capabilities' });
+    const angry = run(newSession('s', 0), baseAnswers({ intent: choice({ capabilities: 0.8, none: 0.2 }), frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }) }));
+    expect(angry.verdict).toEqual({ kind: 'inform', promptId: 'capabilities', frustration: 'ack' });
+  });
 });
