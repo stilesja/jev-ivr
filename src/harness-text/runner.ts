@@ -6,11 +6,11 @@ import { confirmForm, contextForm, offerTransfer, type CorpusEntry } from '../je
 import { JevClientError, type JevClient } from '../jev/types';
 import { promptText } from '../prompts/render';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
-import { DemoDirectory, type AppointmentDirectory } from '../domain/directory';
+import type { AppointmentDirectory } from '../domain/directory';
 import type { SlotCandidate } from '../domain/slots';
 import { promptFrame, setupFrame, dtmfFrames, silenceFrame } from '../channel/frames';
-export { runTurn, nowOf, type RunOptions, type TurnRun } from '../run/turn';
-import { runTurn, nowOf, type RunOptions, type TurnRun } from '../run/turn';
+export { runTurn, nowOf, directoryOf, type RunOptions, type TurnRun } from '../run/turn';
+import { runTurn, nowOf, directoryOf, type RunOptions, type TurnRun } from '../run/turn';
 
 export interface Outcome {
   id: string;
@@ -79,8 +79,9 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry, director
     session.promptedFor = 'confirm';
     session.lastPromptId = promptId;
     // The summary the caller is answering named the found booking and the offered opening, so they
-    // are looked up before its text is rendered. A decision that is not a prompt only fills the session.
-    settleBookings(session, { kind: 'ignore' }, directory);
+    // are looked up before its text is rendered. The offer is only built for a decision that reads
+    // the summary back, so the seed hands settleBookings the summary question itself.
+    settleBookings(session, { kind: 'prompt', promptId, vars: {}, acks: [], target: 'confirm', options: [] }, directory);
     session.lastPromptText = promptText(promptId, summaryVars(session));
     session.lastPromptOptions = ['yes', 'no'];
     return session;
@@ -106,7 +107,7 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry, director
 export async function runCorpusEntry(entry: CorpusEntry, opts: RunOptions): Promise<{ outcome: Outcome; run: TurnRun; setup: TurnRun }> {
   // Seed before the greeting so the setup trace record already reports the placeholder slots
   // as filled; otherwise summarize() credits the entry's one utterance with filling them.
-  const directory = opts.directory ?? new DemoDirectory(opts.todayIso);
+  const directory = directoryOf(opts);
   const start = seedCorpusSession(newSession(entry.id, nowOf(opts)()), entry, directory);
   const setup = await runTurn(start, setupFrame(entry.id), opts);
   // The greeting's own bookkeeping resets what the last prompt asked for, so re-apply it.

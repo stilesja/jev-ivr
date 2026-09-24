@@ -27,12 +27,20 @@ export interface RunOptions {
   render?: RenderContext | null;
   /** A live watcher of the dialogue (the dashboard). Unset in the harness and the CLI. */
   observe?: TurnObserver | null;
-  /** Bookings and openings. The harness, the CLI and the server all use the demo directory today. */
+  /**
+   * Bookings and openings. The harness, the CLI and the server all use the demo directory today;
+   * a deployment that leaves this unset gets invented bookings, not its scheduling system's.
+   */
   directory?: AppointmentDirectory;
 }
 
 export function nowOf(opts: RunOptions): () => number {
   return opts.now ?? (() => Date.now());
+}
+
+/** The directory a run reads bookings from: the one given, or the demo directory seeded from the run's date. */
+export function directoryOf(opts: RunOptions): AppointmentDirectory {
+  return opts.directory ?? new DemoDirectory(opts.todayIso);
 }
 
 export interface TurnRun {
@@ -50,7 +58,7 @@ export async function runTurn(session: Session, event: InboundFrame, opts: RunOp
     todayIso: opts.todayIso,
     thresholds: opts.thresholds,
     render: opts.render ?? null,
-    directory: opts.directory ?? new DemoDirectory(opts.todayIso),
+    directory: directoryOf(opts),
   };
   const t0 = performance.now();
   const p = plan(session, event, tc);

@@ -64,8 +64,13 @@ export type PendingConfirmation =
       resume?: PendingConfirmation;
     };
 
-/** The openings the caller is being offered on one day, and which one the summary names. */
+/**
+ * The openings the caller is being offered on one day with one provider, and which one the
+ * summary names. The provider and day it was built for are kept so a correction to either
+ * rebuilds it rather than reading another doctor's or another day's times back.
+ */
 export interface Offer {
+  provider: string;
   date: string;
   times: string[];
   index: number;

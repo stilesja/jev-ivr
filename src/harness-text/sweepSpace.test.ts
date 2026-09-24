@@ -3,7 +3,7 @@ import { CONSTRAINTS, EXCLUDED, gridFor, parseOnly, SWEEPABLE, violated } from '
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 
 describe('sweep space', () => {
-  it('lists the twenty-three sweepable thresholds and no fixed ones', () => {
+  it('lists the twenty-five sweepable thresholds and no fixed ones', () => {
     expect(SWEEPABLE).toHaveLength(25);
     expect(SWEEPABLE).not.toContain('MAX_ATTEMPTS');
     expect(SWEEPABLE).not.toContain('STUB_SHARPNESS');

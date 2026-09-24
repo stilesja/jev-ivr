@@ -1419,11 +1419,86 @@ describe('bookings', () => {
   });
 });
 
+describe('bookings follow corrections', () => {
+  const HIGH = score({ none: 0.1, mild: 0.2, high: 0.7 });
+
+  it('reads the corrected doctor back with that doctor\'s booking and openings on a reschedule summary', () => {
+    const r = afterTurns([...HAPPY, 'not that doctor, make it Dr. Alvarez']);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(r.session.existing).toEqual(tc.directory.find('jason stiles', '1980-03-05', 'alvarez'));
+    expect(r.session.offer).toMatchObject({ provider: 'alvarez', date: '2026-09-22', index: 0 });
+    expect(r.session.offer!.times).toEqual(tc.directory.openings('alvarez', '2026-09-22'));
+    expect(varsOf(r.decision).when).toBe(`Tuesday, September 22 at ${tc.directory.openings('alvarez', '2026-09-22')[0]}`);
+    // The same on the "no, ..." path, moving the doctor and the day in one breath.
+    const both = afterTurns([...HAPPY, 'no, Thursday with Dr. Alvarez']);
+    expect(both.session.existing).toEqual(tc.directory.find('jason stiles', '1980-03-05', 'alvarez'));
+    expect(both.session.offer).toMatchObject({ provider: 'alvarez', date: '2026-09-24', times: tc.directory.openings('alvarez', '2026-09-24') });
+  });
+
+  it('reads the corrected doctor\'s booking back on a confirm summary', () => {
+    let r = say(started(), 'confirm my appointment with dr chen', { intent: choice({ confirm_appointment: 0.95, none: 0.05 }), provider: choice({ chen: 0.92, none: 0.08 }) });
+    r = identify(r.session);
+    expect(r.session.existing).toEqual(tc.directory.find('jason stiles', '1980-03-05', 'chen'));
+    r = heuristicTurn(r.session, 'not that doctor, make it Dr. Alvarez');
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_appointment_details' });
+    const found = tc.directory.find('jason stiles', '1980-03-05', 'alvarez')!;
+    expect(r.session.existing).toEqual(found);
+    expect(varsOf(r.decision)).toMatchObject({ provider: 'Dr. Alvarez', existing: `${describeDay(found.date)} at ${found.time}` });
+  });
+
+  it('completes on the keypad 1 with the offered opening in the completion', () => {
+    const asked = afterTurns(HAPPY);
+    const r = resolve(asked.session, dtmfFrames('1')[0]!, null, tc);
+    expect(r.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
+    expect(spokenText(r.decision)).toContain(`Your appointment is moved to Tuesday, September 22 at ${asked.session.offer!.times[0]}.`);
+  });
+
+  it('offers no opening on a cancel summary', () => {
+    let r = say(started(), 'cancel with dr patel', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }) });
+    r = identify(r.session);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_cancel' });
+    expect(r.session.offer).toBeNull();
+    expect(varsOf(r.decision)).toMatchObject({ when: '', time: '' });
+    expect(varsOf(r.decision).existing).not.toBe('');
+  });
+
+  it('builds the offer for a summary a transfer offer displaced, once two silences decline it', () => {
+    // Frustrated once already, the caller answers the day question angrily: the form fills on that
+    // turn, but the transfer offer is spoken in place of the summary, so no offer is built yet.
+    const s = afterTurns(HAPPY.slice(0, 3)).session;
+    s.frustratedTurns = 1;
+    const offered = heuristicTurn(s, 'ugh, come on, Tuesday', { frustration: HIGH });
+    expect(offered.decision).toMatchObject({ kind: 'prompt', promptId: 'offer_transfer' });
+    expect(offered.session.slots.date.value).toBe('2026-09-22');
+    expect(offered.session.offer).toBeNull();
+    const one = resolve(offered.session, silenceFrame(), null, tc);
+    const two = resolve(one.session, silenceFrame(), null, tc);
+    expect(two.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(two.session.offer).toMatchObject({ provider: 'chen', date: '2026-09-22' });
+    expect(varsOf(two.decision).when).toBe(`Tuesday, September 22 at ${two.session.offer!.times[0]}`);
+  });
+
+  it('builds no offer before the summary, and keeps a built one across a keypad 2 then a spoken correction', () => {
+    const before = afterTurns(HAPPY.slice(0, 3));
+    expect(before.session.slots.provider.value).toBe('chen');
+    expect(before.session.offer).toBeNull();
+    const asked = afterTurns(HAPPY);
+    const change = resolve(asked.session, dtmfFrames('2')[0]!, null, tc);
+    expect(change.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_change' });
+    // The change question reads nothing back, so it neither carries the summary's variables nor drops the offer.
+    expect(varsOf(change.decision)).toEqual({});
+    expect(change.session.offer).toEqual(asked.session.offer);
+    const moved = heuristicTurn(change.session, 'Thursday');
+    expect(moved.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(moved.session.offer).toMatchObject({ provider: 'chen', date: '2026-09-24' });
+  });
+});
+
 describe('buildOffer', () => {
   it('picks the nearest opening to a window with none, by clock distance', () => {
-    expect(buildOffer('2026-10-06', ['9:15 AM', '11:15 AM', '1:00 PM'], 'afternoon')).toEqual({ offer: { date: '2026-10-06', times: ['9:15 AM', '11:15 AM', '1:00 PM'], index: 2 }, nearest: true });
-    expect(buildOffer('2026-10-06', ['11:15 AM', '2:45 PM', '4:15 PM'], 'morning')).toEqual({ offer: { date: '2026-10-06', times: ['11:15 AM', '2:45 PM', '4:15 PM'], index: 0 }, nearest: true });
-    expect(buildOffer('2026-10-06', ['9:15 AM', '2:45 PM', '4:15 PM'], 'afternoon')).toMatchObject({ offer: { index: 1 }, nearest: false });
-    expect(buildOffer('2026-10-06', ['9:15 AM', '2:45 PM'], null)).toMatchObject({ offer: { index: 0 }, nearest: false });
+    expect(buildOffer('chen', '2026-10-06', ['9:15 AM', '11:15 AM', '1:00 PM'], 'afternoon')).toEqual({ offer: { provider: 'chen', date: '2026-10-06', times: ['9:15 AM', '11:15 AM', '1:00 PM'], index: 2 }, nearest: true });
+    expect(buildOffer('chen', '2026-10-06', ['11:15 AM', '2:45 PM', '4:15 PM'], 'morning')).toEqual({ offer: { provider: 'chen', date: '2026-10-06', times: ['11:15 AM', '2:45 PM', '4:15 PM'], index: 0 }, nearest: true });
+    expect(buildOffer('chen', '2026-10-06', ['9:15 AM', '2:45 PM', '4:15 PM'], 'afternoon')).toMatchObject({ offer: { index: 1 }, nearest: false });
+    expect(buildOffer('chen', '2026-10-06', ['9:15 AM', '2:45 PM'], null)).toMatchObject({ offer: { index: 0 }, nearest: false });
   });
 });

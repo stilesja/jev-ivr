@@ -19,7 +19,7 @@ describe('session', () => {
 
   it('copies an offer and its times when cloning', () => {
     const s = newSession('s1', 0);
-    s.offer = { date: '2026-09-22', times: ['9:15 AM', '2:45 PM'], index: 1 };
+    s.offer = { provider: 'chen', date: '2026-09-22', times: ['9:15 AM', '2:45 PM'], index: 1 };
     s.existing = { date: '2026-09-25', time: '10:00 AM' };
     const c = cloneSession(s);
     expect(c.offer).not.toBe(s.offer);

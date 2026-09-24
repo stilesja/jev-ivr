@@ -118,8 +118,10 @@ function askSlot(slot: SlotId, window: SlotPartial | null, acks: Ack[]): PromptD
 export function summaryVars(s: Session): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const id of ALL_SLOTS) vars[id] = s.slots[id].display ?? '';
-  vars.when = s.offer ? describeWhen(s.offer.date, s.offer.times[s.offer.index]!) : '';
-  vars.time = s.offer ? s.offer.times[s.offer.index]! : '';
+  // A full day has no opening to name, so it renders nothing rather than "at undefined".
+  const at = s.offer?.times[s.offer.index];
+  vars.when = at ? describeWhen(s.offer!.date, at) : '';
+  vars.time = at ?? '';
   vars.existing = s.existing ? describeWhen(s.existing.date, s.existing.time) : '';
   return vars;
 }
@@ -134,10 +136,10 @@ export function describeWhen(date: string, time: string): string {
  * one and the day has one; otherwise the day's first opening. `nearest` is set when the caller
  * named a daypart the day cannot serve, so the caller is told which opening they got instead.
  */
-export function buildOffer(date: string, times: string[], daypart: Daypart | null): { offer: Offer; nearest: boolean } {
-  if (daypart === null || times.length === 0) return { offer: { date, times, index: 0 }, nearest: false };
+export function buildOffer(provider: string, date: string, times: string[], daypart: Daypart | null): { offer: Offer; nearest: boolean } {
+  if (daypart === null || times.length === 0) return { offer: { provider, date, times, index: 0 }, nearest: false };
   const inside = times.findIndex((t) => daypartOf(t) === daypart);
-  if (inside >= 0) return { offer: { date, times, index: inside }, nearest: false };
+  if (inside >= 0) return { offer: { provider, date, times, index: inside }, nearest: false };
   // Closest by clock distance to the window's edges. The window's end is its first minute
   // outside, so the last minute inside it is `end - 1` and a time at `end` is one minute away.
   const { start, end } = daypartBounds(daypart);
@@ -149,36 +151,54 @@ export function buildOffer(date: string, times: string[], daypart: Daypart | nul
   times.forEach((t, i) => {
     if (distance(t) < distance(times[best]!)) best = i;
   });
-  return { offer: { date, times, index: best }, nearest: true };
+  return { offer: { provider, date, times, index: best }, nearest: true };
+}
+
+/** The decision reads the form back: its summary question with that summary pending, or the completion. */
+function readsSummary(s: Session, decision: Decision): boolean {
+  if (decision.kind === 'complete') return true;
+  const pc = s.pendingConfirmation;
+  return decision.kind === 'prompt' && pc?.target === 'form' && decision.promptId === FORMS[pc.form].summaryPromptId;
 }
 
 /**
  * Look the bookings up that the summary or completion about to be spoken names, and render its
- * variables again with them. Runs once per turn, after the decision is made and before it is
- * spoken (resolve), so the form loop never needs the directory: a summary asked on the same turn
- * the date filled reads back the opening this step found. Rebuilds the offer when the day changed
- * (a correction moved it) and leaves it alone otherwise, so an index moved by earlier/later stands.
+ * variables again with them. Runs on every spoken turn, after the decision is made and before it
+ * is spoken (resolve), so the form loop never needs the directory: a summary asked on the same
+ * turn the date filled reads back the opening this step found.
+ *
+ * The found booking is looked up again every time from the current name, birthday and provider,
+ * so a correction to any of them is read back with the booking it now points at. The offer waits
+ * for the summary: built earlier, a daypart the caller names after the day would be ignored at the
+ * first offer, and "The closest I have to the afternoon" would ride on a slot question instead of
+ * sitting right before the summary that names it. It is rebuilt when the provider or the day moved
+ * and kept otherwise, so an index moved by earlier/later stands; a turn that does not read the
+ * summary back drops a stale offer so the next summary builds a fresh one.
  */
 export function settleBookings(s: Session, decision: Decision, directory: AppointmentDirectory): Decision {
   if (!s.form) return decision;
-  const acks: Ack[] = [];
   const { name, dob, provider, date } = s.slots;
-  if (EXISTING_FORMS.includes(s.form) && s.existing === null && name.value && dob.value && provider.value) {
-    s.existing = directory.find(name.value, dob.value, provider.value);
+  s.existing = EXISTING_FORMS.includes(s.form) && name.value && dob.value && provider.value
+    ? directory.find(name.value, dob.value, provider.value)
+    : null;
+  const reads = readsSummary(s, decision);
+  const acks: Ack[] = [];
+  if (!SCHEDULING_FORMS.includes(s.form) || !provider.value || !date.value) {
+    s.offer = null;
+  } else if (s.offer === null || s.offer.provider !== provider.value || s.offer.date !== date.value) {
+    s.offer = null;
+    if (reads) {
+      const built = buildOffer(provider.value, date.value, directory.openings(provider.value, date.value), s.daypart);
+      s.offer = built.offer;
+      const at = built.offer.times[built.offer.index];
+      if (built.nearest && s.daypart && at) acks.push({ promptId: 'slot_nearest', vars: { daypart: s.daypart, time: at } });
+    }
   }
-  if (SCHEDULING_FORMS.includes(s.form) && provider.value && date.value && (s.offer === null || s.offer.date !== date.value)) {
-    const built = buildOffer(date.value, directory.openings(provider.value, date.value), s.daypart);
-    s.offer = built.offer;
-    if (built.nearest && s.daypart) acks.push({ promptId: 'slot_nearest', vars: { daypart: s.daypart, time: built.offer.times[built.offer.index]! } });
-  }
-  // Only a decision that reads the booking back needs its variables refreshed; everything else
-  // keeps what it rendered. Acks are prepended so "The closest I have to the afternoon is 1:00 PM."
-  // is heard before the summary that names it.
-  if (decision.kind === 'prompt' && decision.target === 'confirm' && s.pendingConfirmation?.target === 'form') {
-    return { ...decision, vars: summaryVars(s), acks: [...acks, ...decision.acks] };
-  }
-  if (decision.kind === 'complete') return { ...decision, vars: summaryVars(s), acks: [...acks, ...decision.acks] };
-  if (acks.length && decision.kind === 'prompt') return { ...decision, acks: [...acks, ...decision.acks] };
+  if (!reads) return decision;
+  // The ack goes last, so "The closest I have to the afternoon is 1:00 PM." is the sentence right
+  // before the summary that names it. A plain completion is rendered again too; its variables
+  // were built from this same offer and booking, so that is harmless.
+  if (decision.kind === 'prompt' || decision.kind === 'complete') return { ...decision, vars: summaryVars(s), acks: [...decision.acks, ...acks] };
   return decision;
 }
 
@@ -720,7 +740,9 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
     case 'error':
       return { ...base, decision: { kind: 'ignore' }, frames: [] };
     case 'silence': {
-      const decision = handleSilence(s, tc.thresholds);
+      // Silence can bring the summary back: two silences decline a transfer offer that displaced
+      // it on the turn the form filled, before any offer was built for it.
+      const decision = settleBookings(s, handleSilence(s, tc.thresholds), tc.directory);
       bookkeep(s, decision, 'silence');
       // Silence resolves whatever was prompted; a stale barge-in marker does not carry into
       // the next turn, same as a real one.
