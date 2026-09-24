@@ -20,7 +20,7 @@
 
 **Files:** create `src/domain/directory.ts`, `src/domain/directory.test.ts`.
 
-- [ ] **Step 1: Write the module.**
+- [x] **Step 1: Write the module.**
 
 ```ts
 import { addDays, parseIso } from '../core/extract/date';
@@ -120,7 +120,7 @@ export class DemoDirectory implements AppointmentDirectory {
 
 Note: `hashOf` shifts by `i * 4`; for `i >= 8` the shift wraps, and three distinct values are found within a few iterations for every seed because the modulus is 9. The test below checks the loop terminates for every provider-date in a sweep.
 
-- [ ] **Step 2: Tests** in `src/domain/directory.test.ts`:
+- [x] **Step 2: Tests** in `src/domain/directory.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -206,7 +206,7 @@ Run `pnpm vitest run src/domain/directory.test.ts`; `pnpm typecheck`. Commit `fe
 
 **Files:** `src/core/session.ts`, `src/core/session.test.ts`, `src/core/thresholds.ts`, `src/harness-text/sweepSpace.ts`, `src/harness-text/sweepSpace.test.ts`, `src/core/turn.ts`, `src/core/turn.test.ts`, `src/run/turn.ts`, `src/harness-text/runner.ts`, `src/prompts/segments.ts`, `src/prompts/segments.test.ts`, `src/prompts/clips.ts`, `src/prompts/clips.test.ts`, `src/prompts/manifest.json`, `src/prompts/tags.json`, `src/prompts/render.test.ts`, snapshots, `fixtures/expected/*`.
 
-- [ ] **Step 1: Session fields.** In `src/core/session.ts`, import `type Booking, type Daypart` from `../domain/directory`, and add:
+- [x] **Step 1: Session fields.** In `src/core/session.ts`, import `type Booking, type Daypart` from `../domain/directory`, and add:
 
 ```ts
 /** The openings the caller is being offered on one day, and which one the summary names. */
@@ -230,7 +230,7 @@ export interface Offer {
 
 `newSession` sets all three to null. `cloneSession` copies `existing` and `offer` by value (`offer ? { ...offer, times: [...offer.times] } : null`). Tests in `session.test.ts`: a new session has all three null; `cloneSession` copies an offer's `times` array (`not.toBe`, `toEqual`).
 
-- [ ] **Step 2: Thresholds and sweep.** `src/core/thresholds.ts`, a new group after `// slots`:
+- [x] **Step 2: Thresholds and sweep.** `src/core/thresholds.ts`, a new group after `// slots`:
 
 ```ts
   // appointment slots (spec 2026-09-24 appointment-slots §7)
@@ -240,11 +240,11 @@ export interface Offer {
 
 `src/harness-text/sweepSpace.ts` `SWEEPABLE` gains `'TIME_OF_DAY', 'TIME_PREFERENCE'` after `'SLOT_HELP'`; `sweepSpace.test.ts` counts move 23→25 and, if a second count exists (`parseOnly` default length), 22→24.
 
-- [ ] **Step 3: Context plumbing.** `src/core/turn.ts` `TurnContext` gains `directory: AppointmentDirectory;` (required). `src/run/turn.ts` `RunOptions` gains `/** Bookings and openings. The harness, the CLI and the server all use the demo directory today. */ directory?: AppointmentDirectory;` and `runTurn` builds `tc` with `directory: opts.directory ?? new DemoDirectory(opts.todayIso)`. Every test file that builds a `TurnContext` literal (`turn.test.ts` has `const tc`, and grep for `thresholds: { ...DEFAULT_THRESHOLDS }` across `src/`) adds `directory: new DemoDirectory('2026-09-18')` (the date that file already uses as `todayIso`).
+- [x] **Step 3: Context plumbing.** `src/core/turn.ts` `TurnContext` gains `directory: AppointmentDirectory;` (required). `src/run/turn.ts` `RunOptions` gains `/** Bookings and openings. The harness, the CLI and the server all use the demo directory today. */ directory?: AppointmentDirectory;` and `runTurn` builds `tc` with `directory: opts.directory ?? new DemoDirectory(opts.todayIso)`. Every test file that builds a `TurnContext` literal (`turn.test.ts` has `const tc`, and grep for `thresholds: { ...DEFAULT_THRESHOLDS }` across `src/`) adds `directory: new DemoDirectory('2026-09-18')` (the date that file already uses as `todayIso`).
 
-- [ ] **Step 4: Spoken variables and vocabulary.** `src/prompts/segments.ts`: `SPOKEN_VARS` gains `'when', 'existing', 'time'`; `VOCAB_VARS` gains `'daypart'`. `src/prompts/clips.ts` `vocabularyClipId`: after the intent branch, `if (name === 'daypart' && (DAYPART_ORDER as readonly string[]).includes(display)) return \`daypart.${display}\`;` and `recordableClips` adds `for (const d of DAYPART_ORDER) rows.push({ id: \`daypart.${d}\`, text: d, note: 'closed' });` (import `DAYPART_ORDER` from `../domain/directory`). `clips.test.ts`: `vocabularyClipId('daypart', 'afternoon')` is `'daypart.afternoon'`; refresh the snapshot in Step 6.
+- [x] **Step 4: Spoken variables and vocabulary.** `src/prompts/segments.ts`: `SPOKEN_VARS` gains `'when', 'existing', 'time'`; `VOCAB_VARS` gains `'daypart'`. `src/prompts/clips.ts` `vocabularyClipId`: after the intent branch, `if (name === 'daypart' && (DAYPART_ORDER as readonly string[]).includes(display)) return \`daypart.${display}\`;` and `recordableClips` adds `for (const d of DAYPART_ORDER) rows.push({ id: \`daypart.${d}\`, text: d, note: 'closed' });` (import `DAYPART_ORDER` from `../domain/directory`). `clips.test.ts`: `vocabularyClipId('daypart', 'afternoon')` is `'daypart.afternoon'`; refresh the snapshot in Step 6.
 
-- [ ] **Step 5: Bookings settle before a summary or completion is spoken.** First, in `src/domain/forms.ts`, after `FORMS`:
+- [x] **Step 5: Bookings settle before a summary or completion is spoken.** First, in `src/domain/forms.ts`, after `FORMS`:
 
 ```ts
 /** Forms that book an opening the system offers (spec 2026-09-24 appointment-slots §3). */
@@ -324,7 +324,7 @@ In `completeForm`, where `s.slots.provider` and `s.slots.date` are reset for a c
 
 Manifest, in `src/prompts/manifest.json`: the six changed texts and three new acks exactly as spec §4 (`slot_nearest` text: "The closest I have to the {daypart} is {time}."; the three acks `interruptible: false`). `tags.json`: `slot_edge_earlier.0`, `slot_edge_later.0`, `slot_nearest.0`, `slot_nearest.1`: `"[calm]"`. Note the completion `cancel_confirmed` and `appointment_details` are unchanged.
 
-- [ ] **Step 6: Tests.** `pnpm vitest run src/prompts -u` refreshes the clips snapshot (segments of the four summaries and two completions change; new acks and daypart rows appear) and the seam test must still pass (every spoken var ends a clause). In `src/core/turn.test.ts` add `describe('bookings')`:
+- [x] **Step 6: Tests.** `pnpm vitest run src/prompts -u` refreshes the clips snapshot (segments of the four summaries and two completions change; new acks and daypart rows appear) and the seam test must still pass (every spoken var ends a clause). In `src/core/turn.test.ts` add `describe('bookings')`:
 
 ```ts
 describe('bookings', () => {
@@ -407,7 +407,7 @@ describe('buildOffer', () => {
 
 **Files:** `src/core/questions.ts`, `src/core/questions.test.ts` (+ snapshot), `src/core/turn.ts`, `src/core/turn.test.ts`, `src/jev/corpus.ts`, `src/jev/corpus.test.ts`, `src/jev/fixtureStub.ts`, `src/jev/heuristicStub.ts`, `fixtures/expected/*`.
 
-- [ ] **Step 1: Questions.** In `src/core/questions.ts` (import `SCHEDULING_FORMS` from `../domain/forms`):
+- [x] **Step 1: Questions.** In `src/core/questions.ts` (import `SCHEDULING_FORMS` from `../domain/forms`):
 
 ```ts
 /** Spec 2026-09-24 appointment-slots §5: a part of the day the caller volunteers. Read, never asked. */
@@ -445,7 +445,7 @@ function timePreference(): QuestionMap {
 
 In `buildQuestions`: after `inForm()`, `if (session.form && SCHEDULING_FORMS.includes(session.form)) Object.assign(q, timeOfDay());`, and after `formConfirmation(...)`: `if (session.pendingConfirmation?.target === 'form' && SCHEDULING_FORMS.includes(session.pendingConfirmation.form)) Object.assign(q, timePreference());`. Tests in `questions.test.ts`: `timeOfDay` present on a reschedule form and absent outside a form and on a cancel form; `timePreference` present only at a reschedule or schedule summary, absent at a cancel summary and mid-form. Refresh the snapshots (`-u`); the reschedule form and summary snapshots gain the questions.
 
-- [ ] **Step 2: Corpus labels and stubs.** `src/jev/corpus.ts`: `CorpusEntry` gains `/** a part of the day the caller volunteers (appointment-slots §5) */ timeOfDay?: Daypart;` and `/** at a scheduling summary: a move along the day's openings */ timePreference?: 'earlier' | 'later' | 'different';`; `ENTRY_KEYS` gains both; validation: `timeOfDay` must be one of the three dayparts and needs a `schedule_new`/`reschedule` form context or `confirm_schedule_new`/`confirm_reschedule` (use `contextForm`); `timePreference` must be one of the three and needs `confirm_schedule_new` or `confirm_reschedule`. Tests in `corpus.test.ts`: accepted where allowed, rejected on `cancel` and on `no_form`, rejected for a bad value. `src/jev/fixtureStub.ts` choice branch: `if (id === 'timeOfDay') return pick(entry.timeOfDay);` and `if (id === 'timePreference') return pick(entry.timePreference);` (`pick` maps undefined to `none`). `src/jev/heuristicStub.ts` choice switch:
+- [x] **Step 2: Corpus labels and stubs.** `src/jev/corpus.ts`: `CorpusEntry` gains `/** a part of the day the caller volunteers (appointment-slots §5) */ timeOfDay?: Daypart;` and `/** at a scheduling summary: a move along the day's openings */ timePreference?: 'earlier' | 'later' | 'different';`; `ENTRY_KEYS` gains both; validation: `timeOfDay` must be one of the three dayparts and needs a `schedule_new`/`reschedule` form context or `confirm_schedule_new`/`confirm_reschedule` (use `contextForm`); `timePreference` must be one of the three and needs `confirm_schedule_new` or `confirm_reschedule`. Tests in `corpus.test.ts`: accepted where allowed, rejected on `cancel` and on `no_form`, rejected for a bad value. `src/jev/fixtureStub.ts` choice branch: `if (id === 'timeOfDay') return pick(entry.timeOfDay);` and `if (id === 'timePreference') return pick(entry.timePreference);` (`pick` maps undefined to `none`). `src/jev/heuristicStub.ts` choice switch:
 
 ```ts
       case 'timeOfDay': {
@@ -464,7 +464,7 @@ In `buildQuestions`: after `inForm()`, `if (session.form && SCHEDULING_FORMS.inc
 
 (`early afternoon` must be tested before `afternoon`, which the order above does, and `morning` before `late morning`: put the midday test first or exclude `late morning` from the morning pattern with a negative lookbehind `(?<!late )morning`. Use the lookbehind.)
 
-- [ ] **Step 3: Reading the daypart and moving the offer.** In `src/core/turn.ts`:
+- [x] **Step 3: Reading the daypart and moving the offer.** In `src/core/turn.ts`:
 
 ```ts
 /** Spec §5: a part of the day the caller volunteers anywhere on a scheduling form is remembered. */
@@ -529,7 +529,7 @@ Wire it into the two summary branches. In `case 'rejected'` (form target), after
 
 In `case 'confirm_unanswered'` (form target), the same block after its `correctingFill` (using `pc.form`; the confirmation is still pending there, so drop the `s.pendingConfirmation = pc` line). Also, outside the summary, a volunteered daypart is remembered on every scheduling-form turn: at the top of `handleVerdict` add `if (s.form && SCHEDULING_FORMS.includes(s.form)) { const part = readDaypart(s, answers, t); if (part !== null) s.daypart = part; }`; for the opener, `enterForm` does the same after `setForm` (it has `answers`). `moveOffer` re-reads it at the summary because the index must move too. Note `moveOffer` and `settleBookings` agree: after a move on the summary turn, `settleBookings` sees `offer.date === date.value` and leaves the index alone.
 
-- [ ] **Step 4: Tests** in `src/core/turn.test.ts`, `describe('moving the offer')`:
+- [x] **Step 4: Tests** in `src/core/turn.test.ts`, `describe('moving the offer')`:
 
 ```ts
 describe('moving the offer', () => {
@@ -619,7 +619,7 @@ Trace the `rejected` path before asserting: `confirmsNo: noul(0.6)` is below `CO
 
 **Files:** `fixtures/corpus.jsonl`, `fixtures/scenarios/core.json`, `fixtures/expected/*`.
 
-- [ ] **Step 1: Corpus.** Append (ids `ts-` for time slots; every text must be unique after normalization, check with `pnpm regress` which rejects duplicates):
+- [x] **Step 1: Corpus.** Append (ids `ts-` for time slots; every text must be unique after normalization, check with `pnpm regress` which rejects duplicates):
 
 ```jsonl
 {"id":"ts-01","text":"Book me with Dr. Chen next Thursday afternoon","intent":"schedule_new","context":"no_form","slots":{"provider":"chen","date":{"mode":"weekday","weekday":"thursday","weekdayQualifier":"next"}},"timeOfDay":"afternoon","tags":["time_of_day"]}
@@ -638,7 +638,7 @@ Trace the `rejected` path before asserting: `confirmsNo: noul(0.6)` is below `CO
 
 Check the date label shapes against existing entries (`dt-*`, `fc-06`) before committing; `ts-04` has no date on purpose (it answers the day question with a window only, so it is a miss on the date and a remembered daypart). If a `weekdayQualifier` label is not how the corpus writes "next Thursday", copy the form an existing `next` entry uses.
 
-- [ ] **Step 2: Scenarios.** Append, in the file's one-field-per-line style:
+- [x] **Step 2: Scenarios.** Append, in the file's one-field-per-line style:
 
 ```json
   { "id": "slot-daypart-opener", "steps": [ { "say": "Book me with Dr. Chen next Thursday afternoon" }, { "say": "Jason Stiles" }, { "say": "March fifth nineteen eighty" } ],
@@ -661,13 +661,58 @@ Every step text must exist in the corpus (the ones above do: `sn-*`, `rs-02`, `c
 
 **Files:** `README.md`, this plan, the spec.
 
-- [ ] **README.** The call walkthrough: the summary line becomes "Your appointment with Dr. Chen is on <found day and time>. It would move to Tuesday, September 22 at <offered time>, for Jason Stiles, born March 5th, 1980. Shall I make that change?" (write the real demo values by running `pnpm cli` with the walkthrough's lines and copying what it says) and the completion "Your appointment is moved to Tuesday, September 22 at <time>." Text harness counts: corpus and scenarios (verify). Regression labels paragraph: `timeOfDay` and `timePreference`. Confirmation section: a paragraph on the directory seam, the found booking on confirm/cancel/reschedule, the offered opening and that a time is never asked for, a volunteered part of the day (never asked; three-hour windows 8 to 11, 11 to 2, 2 to 5; nearest opening with its ack), and earlier/later/different with the edge acks and their ladder cost. Recorded prompts: the clip list (three new acks, three daypart vocabulary clips, the four summaries' and two completions' re-recorded segments; run `pnpm prompts:check` for the exact missing and stale ids and counts). Live-call checklist: a call that says "Book me with Dr. Chen next Thursday afternoon" and hears the afternoon opening; "earlier" at the offer; "later" then yes and the completion with the time; a confirm call hearing the found booking.
-- [ ] **Spec and plan.** Spec status "implemented on branch appointment-slots; see the plan's deviation record"; fix any sentence the code contradicts. Append `## Deviations recorded during execution` here from the implementers' reports and the reviews; tick the boxes of Tasks 1 to 5. Commit `docs: appointment slots (found booking, offered opening, time-of-day preference)`.
+- [x] **README.** The call walkthrough: the summary line becomes "Your appointment with Dr. Chen is on <found day and time>. It would move to Tuesday, September 22 at <offered time>, for Jason Stiles, born March 5th, 1980. Shall I make that change?" (write the real demo values by running `pnpm cli` with the walkthrough's lines and copying what it says) and the completion "Your appointment is moved to Tuesday, September 22 at <time>." Text harness counts: corpus and scenarios (verify). Regression labels paragraph: `timeOfDay` and `timePreference`. Confirmation section: a paragraph on the directory seam, the found booking on confirm/cancel/reschedule, the offered opening and that a time is never asked for, a volunteered part of the day (never asked; three-hour windows 8 to 11, 11 to 2, 2 to 5; nearest opening with its ack), and earlier/later/different with the edge acks and their ladder cost. Recorded prompts: the clip list (three new acks, three daypart vocabulary clips, the four summaries' and two completions' re-recorded segments; run `pnpm prompts:check` for the exact missing and stale ids and counts). Live-call checklist: a call that says "Book me with Dr. Chen next Thursday afternoon" and hears the afternoon opening; "earlier" at the offer; "later" then yes and the completion with the time; a confirm call hearing the found booking.
+- [x] **Spec and plan.** Spec status "implemented on branch appointment-slots; see the plan's deviation record"; fix any sentence the code contradicts. Append `## Deviations recorded during execution` here from the implementers' reports and the reviews; tick the boxes of Tasks 1 to 5. Commit `docs: appointment slots (found booking, offered opening, time-of-day preference)`.
 
 ---
 
 ### Task 6 (Jason)
 
-- [ ] `pnpm prompts:check`; `pnpm prompts:generate` for the missing clips; `--only <id> --force` for each stale one it names. Listen to a summary end to end for the two TTS seams (the found booking, the offered opening).
+- [ ] `pnpm prompts:check`; `pnpm prompts:generate` for the missing clips; `--only <id> --force` for each stale one it names. As of this commit, that is 10 missing (`confirm_reschedule.5`, `confirm_cancel.4`, `confirm_appointment_details.4`, `slot_edge_earlier.0`, `slot_edge_later.0`, `slot_nearest.0`, `slot_nearest.1`, `daypart.morning`, `daypart.midday`, `daypart.afternoon`) and 17 stale (`confirm_schedule.0`-`.3`, `confirm_reschedule.1`-`.4`, `confirm_cancel.1`-`.3`, `confirm_appointment_details.0`-`.3`, `schedule_confirmed.0`, `reschedule_confirmed.0`), plus `confirm_schedule.4` reported unused (its slot moved when the summary's tail changed; check the sheet before deleting it). Listen to a summary end to end for the two TTS seams (the found booking, the offered opening).
 - [ ] `pnpm regress --client record` (every scheduling-form turn and every summary turn re-keys), then `pnpm regress --client recorded` and read the `ts-*` rows first: `timeOfDay` and `timePreference` are new to the model. Watch `ts-04` (a window with no day) and `ts-11` (a day and a window in one breath).
 - [ ] Restart `pnpm serve`; walk the new checklist calls.
+
+---
+
+## Deviations recorded during execution
+
+### Task 1: the directory (commits cc0d3bd, fcd2b43)
+
+- The plan's `openings` loop (`(h >>> (i * 4)) % 9`) never terminates for the seed okafor/2026-10-19: JavaScript shift counts wrap modulo 32, so the candidates repeat with period 8 and that seed only ever reaches two residues. The first fix hashed the iteration index in, which clustered the three openings (54 of 84 possible sets; a one-per-window day only 0.2% of the time); it was replaced with a draw of three from nine without replacement off one hash (base 9, then 8, then 7), which terminates by construction and lands close to uniform (one-per-window 32%, a given window empty 24%, all three in one window 4%, against a random draw's 32/24/4).
+- `hashOf` loops over UTF-16 code units. The plan's code-point loop read only the high surrogate of anything outside the basic multilingual plane.
+- The seam's doc comment now states that the interface is synchronous by design: `settleBookings` calls it inside `resolve`, on the same turn that fills the keys it needs, so a network-backed directory would need `resolve` to hand a lookup step back to the async `runTurn`, which is a framework change this seam does not cover.
+- Spec §2 said the server passes `new DemoDirectory()`; the constructor takes `todayIso`. Fixed in the spec.
+- Spec §2 named `DAYPARTS`; the code has `DAYPART_ORDER`, `daypartOf`, `daypartBounds`. Fixed in the spec.
+
+### Task 2: the found booking and the first offer (commit 0eac4b6, fix commit 62aec3a)
+
+- `offer` and `existing` are cleared only on the chained-form path of `completeForm`. A plain completion keeps them, because the call ends right after and `settleBookings` re-renders the completion's variables from the same offer the summary already read.
+- `tags.json` needed an entry for every recordable clip: the four summaries' segment counts changed (`confirm_schedule` lost one, the other three gained one) and the three `daypart.*` vocabulary clips were added.
+- Two `render.test.ts` rule tests needed rewriting: a summary now names `{when}` instead of `{date}`, plus `{existing}` on the three forms that find a booking; a completion may name only `{when}`, and only on the two booking forms.
+- The chained-form turn test needed an explicit `intentChange` override, because the heuristic stub does not label "yes, and can I also ask about my bill" as adding a request on its own.
+- `ask_change` and `confirm_dtmf` are prompts with target `confirm` while a form summary is pending, so `settleBookings` replaces their (empty) vars with the summary's; nothing spoken actually changes.
+- `slot_nearest` is prepended to whatever prompt the turn produces. If a frustration offer displaces the summary, the ack rides on the offer and is not replayed when the summary comes back. Rare, and left as is.
+- Found in review, fixed in the follow-up commit: `existing` was looked up only while it was still null, and the offer was rebuilt only when the date changed, so a provider or identity correction at the summary kept reading back the old doctor's booking and openings.
+- Fix commit 62aec3a: `existing` is now recomputed from the current identity and provider on every settle. `Offer` records `provider` and is rebuilt when the provider or the day changed (the index stands only when neither did) and cleared when the form or its keys no longer apply. The offer is built, with `slot_nearest` attached last, only on the decision that actually reads the summary back or a completion, since spec §3's "when the form becomes full" put the nearest ack on a slot question and ignored a daypart said after the date. `settleBookings` also runs on the silence branch, because a transfer offer declined by two silences re-asks a summary that needs its offer. `seedCorpusSession` settles with the summary prompt as the decision. `summaryVars` renders an empty day as `''` rather than "at undefined". `buildOffer` takes `(provider, date, times, daypart)`. `directoryOf(opts)` sits beside `nowOf`, and `RunOptions`'s doc now warns that an omitted directory means invented bookings.
+- Spec §3 said the found booking is looked up "when the form becomes full" and the offer "rebuilt whenever a correction changes the date"; the code recomputes both from the current slots on every summary read, which also covers a corrected doctor or identity. Fixed in the spec.
+- Spec §4's examples said "October 6th"; `describeDay` gives "October 6" with no ordinal, matching every other spoken date. Fixed in the spec.
+
+### Task 3: the two questions and moving the offer (commit 6c2491e, fix commit 1abeba2)
+
+- `timeOfDay` was asked only while a scheduling form was active, so an opener such as "book me with Dr. Chen next Thursday afternoon" never carried its window, even though spec §5 says it is read on the opener. Decision: ask it on every out-of-form turn as well, the way `secondIntent` already is; keep the `enterForm` read; and allow the corpus label on `no_form` entries whose intent is a scheduling form. This re-keys every opener turn, but the cassette is fully re-recorded in Task 6 regardless.
+- `src/server/dashboard/view.js` and its test changed, outside the plan's file list: the two new question ids need their thresholds (`TIME_OF_DAY`, `TIME_PREFERENCE`) and groups (`timePreference` in the confirmation group, `timeOfDay` under the date slot); without that they fell into `other` with no tick.
+- At a `confirm_unanswered` edge (earlier at the earliest opening), the existing rule that a turn which queued a request does not count is kept; a `rejected` edge always counts.
+- `enterForm` reads the daypart only for scheduling forms, matching the check at the top of `handleVerdict`.
+- On the `rejected` path, a daypart that leaves the index where it was and needs no nearest ack falls through to `ask_change`, the existing plain-no behavior.
+- A repeated missing daypart from the nearest opening leaves the index put, plays `slot_nearest` once, and still counts the turn.
+- Fix round, commit 1abeba2: `different` at the last opening no longer wraps to the first, though spec §6 originally said it should; instead it plays "That's the latest opening that day." and counts on the ladder, so a caller who turns down every opening reaches the keypad prompt instead of cycling 1, 2, 0, 1 with a fresh attempt count each time. A daypart is not recorded from an `ignore`, `hold`, or `nomatch` turn. A daypart that does not move the index no longer swallows a preference said in the same breath ("later, in the morning" at a morning offer still moves later). The yes to an explicit intent check also reads its own turn's daypart ("yes, in the afternoon"). `timeOfDay`'s instructions now say a greeting like "good morning" is not a part of the day, and that "earlier" or "later" on their own are not either; `changeSlot`'s date criterion excludes "a different time on the same day". Fixed in the spec (§5, §6).
+- Known and left: a daypart said on an out-of-form turn that does not enter a form (a disambiguation answer, a nomatch retry) is dropped; a mid-form switch from cancel or confirm into a scheduling form loses a daypart said in the switching breath, because `timeOfDay` is not asked under those forms.
+
+### Task 4: corpus, scenarios, baseline (commits e68242f, 5ba15e9)
+
+- A sixth scenario, `slot-different-to-edge`, pins the no-wrap rule: three "that time doesn't work" answers walk 8:30, 10:00, 12:30, and a fourth, added in the second commit, plays "That's the latest opening that day." and reaches the keypad prompt.
+- `ts-09` ("no, the morning" at an offer already in the morning) lands on "What should I change?": on the rejected path, a daypart that leaves the index where it was is a plain no. A short "That one is already in the morning" acknowledgment would be kinder; not built. Noted in the README as a known rough edge.
+- `ts-04` ("sometime around lunchtime works" at the day question) is a miss on the date and remembers midday; the retry line follows.
+- The `confirm_` contexts seed Dr. Patel on 2026-09-22, whose demo openings are 10:00 AM, 11:15 AM, and 1:00 PM with no afternoon, so `ts-10` "afternoon please" exercises the nearest rule in the baseline.
+- Second commit 5ba15e9: `slot-daypart-opener` pins the 4:15 PM afternoon opening; `slot-nearest-opening` pins "The closest I have to the afternoon is 12:30 PM."; `slot-daypart-remembered` pins that a daypart said on a missed day answer opens the offer at 12:30 PM; `slot-different-to-edge` now walks to the keypad prompt on the fourth refusal, pinning the ladder cost of an edge.
+- Corpus and scenario counts: 241 entries, 89 scenarios.

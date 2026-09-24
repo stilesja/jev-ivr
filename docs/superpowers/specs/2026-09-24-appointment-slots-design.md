@@ -1,7 +1,7 @@
 # Design: Appointment slots (a found booking, an offered time, a time-of-day preference)
 
 **Date:** 2026-09-24
-**Status:** approved, awaiting plan
+**Status:** implemented on branch appointment-slots; see the plan's deviation record
 **Depends on:** demo polish (PR #15)
 
 ## 1. Purpose
@@ -31,11 +31,11 @@ export interface AppointmentDirectory {
 `DemoDirectory` (same file) implements both deterministically from a stable hash of name, birthday and provider, seeded with the call's `todayIso`:
 
 - `find`: the booking is on a weekday one to fourteen days after `todayIso` (weekends skipped), at one of the table times. The demo never returns null; the null path (no booking found) belongs to the framework.
-- `openings`: three times per provider-day from a fixed table of nine (three in each window), chosen by the hash of provider and date, in clock order. Never empty for the demo, and not always one per window: a day can have two mornings and an afternoon, which is what makes the nearest rule reachable.
+- `openings`: three times per provider-day, drawn without replacement from a fixed table of nine (three in each window) off one hash of provider and date, in clock order. Never empty for the demo, and not always one per window: a day can have two mornings and an afternoon, which is what makes the nearest rule reachable.
 
-`DAYPARTS` (same file): three-hour windows over the clinic's day. `morning` is 8:00 to 10:59 AM, `midday` 11:00 AM to 1:59 PM, `afternoon` 2:00 to 4:59 PM. `daypartOf(time)` maps a time to one. The demo table of nine times has three in each window.
+`DAYPART_ORDER`, `daypartOf`, `daypartBounds` (same file): three-hour windows over the clinic's day. `morning` is 8:00 to 10:59 AM, `midday` 11:00 AM to 1:59 PM, `afternoon` 2:00 to 4:59 PM. `daypartOf(time)` maps a time to one; `daypartBounds(part)` gives its edges, for the nearest-opening rule. The demo table of nine times has three in each window.
 
-The directory reaches the core through `TurnContext.directory` (beside `render`); `RunOptions` carries it the same way, the harness and the server both pass `new DemoDirectory()`. Pure core, no I/O.
+The directory reaches the core through `TurnContext.directory` (beside `render`); `RunOptions` carries it the same way. `DemoDirectory`'s constructor takes the call's `todayIso`; the harness and the server both build `new DemoDirectory(todayIso)`. Pure core, no I/O.
 
 ## 3. What the session holds
 
@@ -47,9 +47,9 @@ offer: { date: string; times: string[]; index: number } | null; // schedule, res
 daypart: 'morning' | 'midday' | 'afternoon' | null;           // the caller's stated preference
 ```
 
-`existing` is looked up when a confirm, cancel or reschedule form becomes full (in `askSummary`), from the name, birthday and provider slots. `offer` is built at the same moment for schedule and reschedule from the date slot, and rebuilt whenever a correction changes the date (`continueForm` after `correctingFill`, and `change_slot` with a new date); its index starts at the first opening inside `daypart` when one is set and there is such an opening, otherwise at the first opening. `completeForm`'s reset for a chained form clears `offer` and `existing` with the provider and date; `daypart` carries over with the identity slots.
+`existing` and `offer` are computed from the current slots every time a summary or completion is about to be spoken (`settleBookings`, run inside `resolve`), not just once when the form first becomes full: a confirm, cancel or reschedule form's `existing` is recomputed from the current name, birthday and provider, and a schedule or reschedule form's `offer` is rebuilt from the current provider and date, so a corrected doctor or identity is honoured and not just a corrected date. `offer`'s index starts at the first opening inside `daypart` when one is set and there is such an opening, otherwise at the first opening, and stands as long as neither the provider nor the day changed. `completeForm`'s reset for a chained form clears `offer` and `existing` with the provider and date; `daypart` carries over with the identity slots.
 
-`summaryVars` gains `when` (the offered date and time as one spoken span, "Tuesday, October 6th at 2:45 PM"), `existing` (the found booking the same way) and `time` (the offered time alone). All three are spoken by TTS and end their clause.
+`summaryVars` gains `when` (the offered date and time as one spoken span, "Tuesday, October 6 at 2:45 PM"), `existing` (the found booking the same way) and `time` (the offered time alone). All three are spoken by TTS and end their clause.
 
 ## 4. Prompts
 
@@ -71,7 +71,7 @@ daypart: 'morning' | 'midday' | 'afternoon' | null;           // the caller's st
 
 Two Choices, both read only.
 
-`timeOfDay`, asked on every turn while a schedule or reschedule form is active (with the slot questions), labels `morning`, `midday`, `afternoon`, `none`: "Read asr.text. Does the caller say what part of the day they want the appointment in?" A window in the answer sets `daypart` at or above `TIME_OF_DAY` (0.6); `none` leaves it alone. It is read on the opener ("with Dr. Chen next Thursday afternoon"), on the day answer, and at the summary ("no, the morning").
+`timeOfDay`, asked on every out-of-form turn as well as on every turn while a schedule or reschedule form is active (with the slot questions), labels `morning`, `midday`, `afternoon`, `none`: "Read asr.text. Does the caller say what part of the day they want the appointment in?" The instructions exclude a greeting ("good morning") and a bare "earlier" or "later" on their own, neither of which names a part of the day. A window in the answer sets `daypart` at or above `TIME_OF_DAY` (0.6); `none` leaves it alone. It is read on the opener ("with Dr. Chen next Thursday afternoon"), on the day answer, and at the summary ("no, the morning").
 
 `timePreference`, asked only while a schedule or reschedule summary is pending, labels `earlier` (asks for an earlier time, or before the offered one), `later` (a later time, or after it), `different` (says the offered time does not work without a direction), `none` (accepts, declines for another reason, names a day or a part of the day, or says nothing about the time). Threshold `TIME_PREFERENCE` (0.6).
 
@@ -80,10 +80,10 @@ Two Choices, both read only.
 At a schedule or reschedule summary, in this order after the yes/no and `changeSlot` reads:
 
 1. A changed date (a correction such as "no, Thursday") rebuilds the offer for the new day, honouring `daypart`, and re-reads the summary. This is the existing correction path with the offer rebuilt in it.
-2. Otherwise a `timeOfDay` in the answer sets `daypart` and moves the index to the first opening in that part of the day. If none exists that day, the index moves to the opening closest by clock distance to that window's edge (a caller asking for the afternoon on a day with openings at 9:15, 11:45 and 1:00 gets 1:00 PM) and `slot_nearest` plays before the summary: "The closest I have to the afternoon is 1:00 PM." The same rule applies at the first offer when the caller volunteered a window earlier on the form.
-3. Otherwise a `timePreference` moves the index: `earlier` one step back, `later` one step forward, `different` one step forward wrapping to the first. At the end of the list in the asked direction the index does not move and `slot_edge_earlier` or `slot_edge_later` plays.
+2. Otherwise a `timeOfDay` in the answer sets `daypart` and moves the index to the first opening in that part of the day. If none exists that day, the index moves to the opening closest by clock distance to that window's edge (a caller asking for the afternoon on a day with openings at 9:15, 11:45 and 1:00 gets 1:00 PM) and `slot_nearest` plays before the summary: "The closest I have to the afternoon is 1:00 PM." The same rule applies at the first offer when the caller volunteered a window earlier on the form. A `timeOfDay` that leaves the index where it was does not swallow a `timePreference` said in the same breath ("later, in the morning" at a morning offer still moves later); the daypart is applied first and case 3 still runs when it did not move the index.
+3. Otherwise a `timePreference` moves the index: `earlier` one step back, `later` one step forward, `different` one step forward. None of the three wraps: at the last opening, `different` behaves like `later` and stops there rather than circling back to the first, so a caller who turns down every opening reaches the keypad prompt instead of cycling through them forever. At the end of the list in the asked direction the index does not move and `slot_edge_earlier` or `slot_edge_later` plays.
 
-Cases 1 and 2, and a case-3 move that changes the time, are corrections: the summary is re-read with a fresh attempt count, as any correction is today. A case-3 edge, or a `timeOfDay` that leaves the index where it was, is an unchanged summary and counts a turn on the summary's ladder, so two "earlier" at the earliest slot reach the keypad prompt and the caller can still name another day. A preference on a confirm or cancel summary is ignored and the turn is read as today.
+Cases 1 and 2, and a case-3 move that changes the time, are corrections: the summary is re-read with a fresh attempt count, as any correction is today. A case-3 edge, or a `timeOfDay` that leaves the index where it was, is an unchanged summary and counts a turn on the summary's ladder, so two "earlier" at the earliest slot reach the keypad prompt and the caller can still name another day. A preference on a confirm or cancel summary is ignored and the turn is read as today. A daypart is read only from a turn the gates actually score as an answer; it is not taken from a turn that is ignored, held, or unintelligible (a `nomatch`).
 
 Corpus-level truth for the stub: `timeOfDay` and `timePreference` are answered from new labels `timeOfDay` and `timePreference` on the entry.
 
