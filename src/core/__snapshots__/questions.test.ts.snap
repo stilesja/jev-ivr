@@ -344,6 +344,26 @@ exports[`question redesign > pins every question the model sees at the summary (
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
     "type": "noul",
   },
+  "timeOfDay": {
+    "criteria": {
+      "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
+      "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
+      "morning": "Asks for the morning, first thing, early, or a time before eleven",
+      "none": "Says nothing about the part of the day",
+    },
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it.",
+    "type": "choice",
+  },
+  "timePreference": {
+    "criteria": {
+      "different": "Says the offered time does not work without saying which way, as in not that time, a different time, or that time is no good",
+      "earlier": "Asks for an earlier time, or anything before the offered time, as in earlier, sooner in the day, or before that",
+      "later": "Asks for a later time, or anything after the offered time, as in later, after that, or later in the day",
+      "none": "Accepts, declines for another reason, names a day or a part of the day such as the morning or the afternoon, or says nothing about the time",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. The caller was offered an appointment at a specific time. Do they ask for a different time on the same day, and in which direction?",
+    "type": "choice",
+  },
   "triedSelfService": {
     "instructions": "Read asr.text. Does the caller say they already tried the website, the app, or an earlier call?",
     "type": "noul",
@@ -697,6 +717,16 @@ exports[`question redesign > pins every question the model sees inside a form (a
   "spokeAMenuNumber": {
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
     "type": "noul",
+  },
+  "timeOfDay": {
+    "criteria": {
+      "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
+      "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
+      "morning": "Asks for the morning, first thing, early, or a time before eleven",
+      "none": "Says nothing about the part of the day",
+    },
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it.",
+    "type": "choice",
   },
   "triedSelfService": {
     "instructions": "Read asr.text. Does the caller say they already tried the website, the app, or an earlier call?",

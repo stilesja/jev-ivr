@@ -1381,8 +1381,7 @@ describe('bookings', () => {
     expect(spokenText(done.decision)).toContain(`Your appointment is moved to Tuesday, September 22 at ${offer.times[0]}.`);
   });
 
-  it.skip('opens the offer inside a daypart the caller volunteered on the opener', () => {
-    // Task 3 adds the timeOfDay question; unskip there.
+  it('opens the offer inside a daypart the caller volunteered on the opener', () => {
     const day = '2026-09-22';
     const times = tc.directory.openings('chen', day);
     const afternoon = times.findIndex((t) => daypartOf(t) === 'afternoon');
@@ -1392,8 +1391,7 @@ describe('bookings', () => {
     expect(daypartOf(r.session.offer!.times[r.session.offer!.index]!)).toBe(part);
   });
 
-  it.skip('offers the nearest opening, and says so, when the day has none in the daypart', () => {
-    // Task 3 adds the timeOfDay question; unskip there.
+  it('offers the nearest opening, and says so, when the day has none in the daypart', () => {
     const day = '2026-09-22';
     const times = tc.directory.openings('chen', day);
     const missing = DAYPART_ORDER.find((p) => !times.some((t) => daypartOf(t) === p));
@@ -1491,6 +1489,118 @@ describe('bookings follow corrections', () => {
     const moved = heuristicTurn(change.session, 'Thursday');
     expect(moved.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
     expect(moved.session.offer).toMatchObject({ provider: 'chen', date: '2026-09-24' });
+  });
+});
+
+describe('moving the offer', () => {
+  const LATER = choice({ later: 0.9, none: 0.1 });
+  const EARLIER = choice({ earlier: 0.9, none: 0.1 });
+  const DIFFERENT = choice({ different: 0.9, none: 0.1 });
+  const atOffer = () => afterTurns(HAPPY);
+  const timesAt = (r: TurnResult) => r.session.offer!.times;
+  const indexAt = (r: TurnResult) => r.session.offer!.index;
+  /** A spoken answer at the summary that is neither a yes nor a clear no: the confirm_unanswered path. */
+  const pref = (r: TurnResult, say: string, timePreference: ReturnType<typeof choice>) =>
+    heuristicTurn(r.session, say, { timePreference, confirmsYes: noul(0.05), confirmsNo: noul(0.3), changeSlot: choice({ none: 0.95 }) });
+  /** The same with a clear no: the rejected path. */
+  const noPref = (r: TurnResult, say: string, timePreference: ReturnType<typeof choice>) =>
+    heuristicTurn(r.session, say, { timePreference, confirmsYes: noul(0.05), confirmsNo: noul(0.9), changeSlot: choice({ none: 0.95 }) });
+
+  it('moves later and earlier one opening at a time and re-reads the summary as a correction (unanswered path)', () => {
+    let r = pref(atOffer(), 'later', LATER);
+    expect(r.verdict?.kind).toBe('confirm_unanswered');
+    expect(indexAt(r)).toBe(1);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [] });
+    expect(varsOf(r.decision).when).toContain(timesAt(r)[1]!);
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 0 });
+    r = pref(r, 'earlier please', EARLIER);
+    expect(indexAt(r)).toBe(0);
+  });
+
+  it('moves on a clear no as well (rejected path)', () => {
+    const r = noPref(atOffer(), 'no, later', LATER);
+    expect(r.verdict?.kind).toBe('rejected');
+    expect(indexAt(r)).toBe(1);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 0 });
+  });
+
+  it('says so at an edge and counts the turn on the summary ladder', () => {
+    let r = pref(atOffer(), 'earlier', EARLIER);
+    expect(indexAt(r)).toBe(0);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'slot_edge_earlier', vars: {} }] });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
+    r = pref(r, 'earlier', EARLIER);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_dtmf' });
+  });
+
+  it('takes the next opening on "that time does not work", wrapping to the first', () => {
+    let r = pref(atOffer(), 'that time does not work', DIFFERENT);
+    expect(indexAt(r)).toBe(1);
+    r = pref(r, 'no good', DIFFERENT);
+    expect(indexAt(r)).toBe(2);
+    r = pref(r, 'not that one', DIFFERENT);
+    expect(indexAt(r)).toBe(0);
+  });
+
+  it('moves to a daypart named at the summary, or the nearest with one ack', () => {
+    const r0 = atOffer();
+    const times = timesAt(r0);
+    const target = DAYPART_ORDER.find((p) => times.some((t) => daypartOf(t) === p) && times.findIndex((t) => daypartOf(t) === p) !== 0);
+    if (target) {
+      const r = heuristicTurn(r0.session, `no, the ${target}`, { timeOfDay: choice({ [target]: 0.9, none: 0.1 }), confirmsNo: noul(0.8) });
+      expect(r.session.daypart).toBe(target);
+      expect(daypartOf(times[indexAt(r)]!)).toBe(target);
+      expect(r.session.pendingConfirmation).toMatchObject({ attempts: 0 });
+      expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [] });
+    }
+    const missing = DAYPART_ORDER.find((p) => !times.some((t) => daypartOf(t) === p));
+    if (missing) {
+      const r = heuristicTurn(r0.session, `no, the ${missing}`, { timeOfDay: choice({ [missing]: 0.9, none: 0.1 }), confirmsNo: noul(0.8) });
+      const nearest = r.decision.kind === 'prompt' ? r.decision.acks.filter((a) => a.promptId === 'slot_nearest') : [];
+      expect(nearest).toEqual([{ promptId: 'slot_nearest', vars: { daypart: missing, time: times[indexAt(r)] } }]);
+      // Asked again from the nearest opening, the index stays put: still said once, and a turn on the ladder.
+      const again = heuristicTurn(r.session, `no, the ${missing}`, { timeOfDay: choice({ [missing]: 0.9, none: 0.1 }), confirmsNo: noul(0.8) });
+      expect(indexAt(again)).toBe(indexAt(r));
+      expect(again.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'slot_nearest', vars: { daypart: missing, time: times[indexAt(r)] } }] });
+      expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 0 });
+      expect(again.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
+    }
+  });
+
+  it('restarts the offer on a new day, honouring a remembered daypart', () => {
+    const r0 = atOffer();
+    let r = heuristicTurn(r0.session, 'no, the afternoon', { timeOfDay: choice({ afternoon: 0.9, none: 0.1 }), confirmsNo: noul(0.8) });
+    expect(r.session.daypart).toBe('afternoon');
+    r = heuristicTurn(r.session, 'no, Thursday', { confirmsNo: noul(0.8) });
+    expect(r.session.offer!.date).toBe('2026-09-24');
+    const times = timesAt(r);
+    const inside = times.findIndex((t) => daypartOf(t) === 'afternoon');
+    if (inside >= 0) expect(indexAt(r)).toBe(inside);
+    else expect(r.decision).toMatchObject({ acks: [{ promptId: 'slot_nearest', vars: { daypart: 'afternoon', time: times[indexAt(r)] } }] });
+  });
+
+  it('remembers a daypart said mid-form and opens the first offer inside it', () => {
+    let r = say(started(), 'reschedule with dr chen', { intent: choice({ reschedule: 0.9, none: 0.1 }), provider: choice({ chen: 0.92, none: 0.08 }) });
+    r = say(r.session, 'jason stiles, mornings are best', { intentChange: ANSWERING, ...NAME_ANSWERS, timeOfDay: choice({ morning: 0.9, none: 0.1 }) });
+    expect(r.session.daypart).toBe('morning');
+    r = say(r.session, 'march fifth nineteen eighty', { intentChange: ANSWERING, ...DOB_ANSWERS });
+    r = say(r.session, 'tuesday', { intentChange: ANSWERING, dateMode: choice({ weekday: 0.9, none: 0.1 }), dateWeekday: choice({ tuesday: 0.9, none: 0.1 }) });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    const times = timesAt(r);
+    const inside = times.findIndex((t) => daypartOf(t) === 'morning');
+    if (inside >= 0) expect(indexAt(r)).toBe(inside);
+    else expect(r.decision).toMatchObject({ acks: [{ promptId: 'slot_nearest', vars: { daypart: 'morning', time: times[indexAt(r)] } }] });
+  });
+
+  it('ignores a preference on a cancel summary', () => {
+    let r = say(started(), 'cancel with dr patel', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }) });
+    r = identify(r.session);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_cancel' });
+    r = say(r.session, 'later', { timePreference: LATER, confirmsNo: noul(0.3), changeSlot: choice({ none: 0.95 }) });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_cancel' });
+    expect(r.session.pendingConfirmation).toMatchObject({ attempts: 1 });
+    expect(r.session.offer).toBeNull();
   });
 });
 

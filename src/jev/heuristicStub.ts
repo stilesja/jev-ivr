@@ -286,6 +286,20 @@ export function answerHeuristically(id: string, q: Question, text: string, today
           : has(text, /^(yes|yeah|yep|i do)\b/) ? 'has_name' : 'neither';
         return choiceAnswer(sharp(labels, winner, 0.9));
       }
+      case 'timeOfDay': {
+        // Midday is tested first so "late morning" and "early afternoon" land there rather than on
+        // the morning or the afternoon their second word names.
+        const winner = has(text, /\b(midday|mid-day|noon|lunch|lunchtime|late morning|early afternoon)\b/) ? 'midday'
+          : has(text, /\b(morning|first thing|early|before (eleven|11))\b/) ? 'morning'
+          : has(text, /\b(afternoon|late in the day|after work|end of (the )?day|evening)\b/) ? 'afternoon' : 'none';
+        return choiceAnswer(sharp(labels, winner, 0.9));
+      }
+      case 'timePreference': {
+        const winner = has(text, /\b(earlier|sooner|before that)\b/) ? 'earlier'
+          : has(text, /\b(later|after that)\b/) ? 'later'
+          : has(text, /\b(different time|not that time|another time|time (doesn'?t|does not|won'?t) work|no good|not that one)\b/) ? 'different' : 'none';
+        return choiceAnswer(sharp(labels, winner, 0.9));
+      }
       case 'menuNumberSaid': {
         const tok = text.trim().split(/\s+/)[0] ?? '';
         const digit = /^\d$/.test(tok) ? tok : NUMBER_WORD_DIGIT[tok];

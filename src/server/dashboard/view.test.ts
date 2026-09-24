@@ -135,7 +135,7 @@ describe('reduce', () => {
 
     const answering = reduce(events);
     const group = answering.jev.groups.find((g) => g.name === 'confirmation')!;
-    expect(group.rows.map((r) => r.id).sort()).toEqual(['changeSlot', 'confirmsNo', 'confirmsYes']);
+    expect(group.rows.map((r) => r.id).sort()).toEqual(['changeSlot', 'confirmsNo', 'confirmsYes', 'timePreference']);
     expect(answering.jev.groups.map((g) => g.name).slice(0, 3)).toEqual(['gates', 'intent', 'confirmation']);
 
     // The turn that speaks the summary asked nothing about it yet: no confirmation group at all.

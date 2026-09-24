@@ -1,4 +1,4 @@
-import type { AnswerMap, QuestionMap } from '../jev/types';
+import { isChoice, rankProbabilities, type AnswerMap, type QuestionMap } from '../jev/types';
 import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
 import { ALL_SLOTS, EXISTING_FORMS, FORMS, SCHEDULING_FORMS } from '../domain/forms';
@@ -220,6 +220,56 @@ function correctingFill(s: Session, answers: AnswerMap, ctx: SlotContext, form: 
   // A disambiguation changes no slot yet and still has to be asked, so it is progress either way.
   if (!fill.progress || fill.disambiguate || summaryState(s) !== before) return fill;
   return { ...fill, progress: false };
+}
+
+/** Spec §5: a part of the day the caller volunteers anywhere on a scheduling form is remembered. */
+function readDaypart(answers: AnswerMap, t: Thresholds): Daypart | null {
+  const a = answers.timeOfDay;
+  const [top] = isChoice(a) ? rankProbabilities(a.probabilities) : [];
+  if (!top || top.label === 'none' || top.p < t.TIME_OF_DAY) return null;
+  return top.label as Daypart;
+}
+
+/**
+ * At a scheduling summary, move along the day's openings (spec §6 cases 2 and 3): a daypart to
+ * the first opening inside it (or the nearest, said out loud), else earlier/later/different by
+ * one step. `moved` is false at an edge or when nothing in the answer asked for a move; an edge
+ * says so with an ack. The caller answered the summary, so the caller of this helper decides what
+ * an unmoved offer costs on the ladder. Only reached when the provider and the day are unchanged:
+ * a correction that changes either is progress on the fill and never gets here.
+ */
+function moveOffer(s: Session, answers: AnswerMap, t: Thresholds): { moved: boolean; acks: Ack[] } {
+  const offer = s.offer;
+  if (!offer || offer.times.length === 0) return { moved: false, acks: [] };
+  const part = readDaypart(answers, t);
+  if (part !== null) {
+    s.daypart = part;
+    const built = buildOffer(offer.provider, offer.date, offer.times, part);
+    const moved = built.offer.index !== offer.index;
+    s.offer = built.offer;
+    // settleBookings keeps an offer whose provider and day are unchanged, so it adds no second
+    // "closest I have" of its own: this is the one the re-read summary carries.
+    const acks: Ack[] = built.nearest ? [{ promptId: 'slot_nearest', vars: { daypart: part, time: built.offer.times[built.offer.index]! } }] : [];
+    return { moved, acks };
+  }
+  const a = answers.timePreference;
+  const [top] = isChoice(a) ? rankProbabilities(a.probabilities) : [];
+  if (!top || top.label === 'none' || top.p < t.TIME_PREFERENCE) return { moved: false, acks: [] };
+  const last = offer.times.length - 1;
+  if (top.label === 'earlier') {
+    if (offer.index === 0) return { moved: false, acks: [{ promptId: 'slot_edge_earlier', vars: {} }] };
+    offer.index -= 1;
+    return { moved: true, acks: [] };
+  }
+  if (top.label === 'later') {
+    if (offer.index === last) return { moved: false, acks: [{ promptId: 'slot_edge_later', vars: {} }] };
+    offer.index += 1;
+    return { moved: true, acks: [] };
+  }
+  // different: the next opening, wrapping to the first; a day with one opening cannot move.
+  if (last === 0) return { moved: false, acks: [{ promptId: 'slot_edge_later', vars: {} }] };
+  offer.index = offer.index === last ? 0 : offer.index + 1;
+  return { moved: true, acks: [] };
 }
 
 /** The summary question. Only a form that has one ever sets a form confirmation (askSummary). */
@@ -457,6 +507,11 @@ function enterForm(s: Session, form: FormId, answers: AnswerMap, ctx: SlotContex
   // the caller which task started, whether the route was confident, mid-confidence, or a
   // switch away from another form.
   setForm(s, form);
+  // A part of the day said on the same breath that opened a scheduling form is kept for its offer.
+  if (SCHEDULING_FORMS.includes(form)) {
+    const part = readDaypart(answers, ctx.thresholds);
+    if (part !== null) s.daypart = part;
+  }
   // Queued after setForm, so the queue is read against the form actually being entered.
   // A task added on this same utterance is promised before the one being started is named.
   const acks: Ack[] = [...enqueue(s, queue), ackIntent(form)];
@@ -466,6 +521,12 @@ function enterForm(s: Session, form: FormId, answers: AnswerMap, ctx: SlotContex
 
 function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: SlotContext, tc: TurnContext): { decision: Decision; events: FillEvent[] } {
   const t = tc.thresholds;
+  // A part of the day is remembered whatever else the turn does, so the offer the summary builds
+  // later opens inside it (spec §5); at the summary itself, moveOffer reads it again to move the index.
+  if (s.form && SCHEDULING_FORMS.includes(s.form)) {
+    const part = readDaypart(answers, t);
+    if (part !== null) s.daypart = part;
+  }
   switch (verdict.kind) {
     case 'ignore':
       return { decision: { kind: 'ignore' }, events: [] };
@@ -515,6 +576,13 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // fresh attempt count once the corrected slot -- or the narrowing it needs -- is settled.
         const fill = correctingFill(s, answers, ctx, pc.form);
         if (fill.progress) return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+        if (SCHEDULING_FORMS.includes(pc.form)) {
+          // "No, later" moves the offer: a moved offer is a correction and re-arms the summary; an
+          // edge is an unchanged summary and counts a turn on its ladder (spec §6).
+          const move = moveOffer(s, answers, t);
+          if (move.moved) return { decision: continueForm(s, [...acks, ...fill.acks, ...move.acks], null), events: fill.events };
+          if (move.acks.length) { s.pendingConfirmation = pc; return { decision: reaskConfirmation(s, t, [...acks, ...move.acks]), events: fill.events }; }
+        }
         // Nothing usable came with the no: ask what to change and keep the summary pending. That
         // question is asked once per summary; a caller who answers it with another bare no has
         // spent a turn on the confirmation, so the ladder counts it (keypad, then an agent).
@@ -556,6 +624,16 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         if (fill.progress) {
           s.pendingConfirmation = null;
           return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+        }
+        if (SCHEDULING_FORMS.includes(pc.form)) {
+          // "Later", with no yes or no, is the same move as "no, later"; an edge re-asks the summary
+          // still pending, which is where an unanswered turn already counts.
+          const move = moveOffer(s, answers, t);
+          if (move.moved) {
+            s.pendingConfirmation = null;
+            return { decision: continueForm(s, [...acks, ...fill.acks, ...move.acks], null), events: fill.events };
+          }
+          if (move.acks.length) return { decision: reaskConfirmation(s, t, [...acks, ...move.acks], acks.length === 0), events: fill.events };
         }
         return { decision: reaskConfirmation(s, t, acks, acks.length === 0), events: fill.events };
       }

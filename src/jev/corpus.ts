@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { FORM_INTENTS, INTENTS, isFormIntent, type FormId, type Intent } from '../domain/intents';
-import { FORMS, type SlotId } from '../domain/forms';
+import { FORMS, SCHEDULING_FORMS, type SlotId } from '../domain/forms';
+import { DAYPART_ORDER, type Daypart } from '../domain/directory';
 import { candidateSpans, candidateWordSpans } from '../core/spans';
 import { MONTHS } from '../core/extract/date';
 import { DOB_DAYS } from '../domain/slots/dob';
@@ -72,6 +73,10 @@ export interface CorpusEntry {
   changeSlot?: SlotId;
   /** no_form only: a second task named alongside the main one (final-confirm §4) */
   secondIntent?: FormId;
+  /** a part of the day the caller volunteers (appointment-slots §5) */
+  timeOfDay?: Daypart;
+  /** at a scheduling summary: a move along the day's openings */
+  timePreference?: 'earlier' | 'later' | 'different';
   /** explicit distributions that replace the generated ones */
   answers?: Record<string, AnswerOverride>;
   tags?: string[];
@@ -113,7 +118,7 @@ export function normalizeText(text: string): string {
 
 const ENTRY_KEYS = new Set([
   'id', 'text', 'intent', 'context', 'prompted', 'slots', 'tentative', 'change', 'providerUnsure', 'providerNameStatus',
-  'confirm', 'changeSlot', 'secondIntent', 'answers', 'tags',
+  'confirm', 'changeSlot', 'secondIntent', 'timeOfDay', 'timePreference', 'answers', 'tags',
 ]);
 
 export function parseCorpus(jsonl: string): CorpusEntry[] {
@@ -174,6 +179,17 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
       if (entry.context !== 'no_form') throw new Error(`corpus ${entry.id}: secondIntent needs no_form`);
       if (!(FORM_INTENTS as readonly string[]).includes(entry.secondIntent)) throw new Error(`corpus ${entry.id}: unknown secondIntent ${entry.secondIntent}`);
       if (entry.secondIntent === entry.intent) throw new Error(`corpus ${entry.id}: secondIntent must differ from intent`);
+    }
+    // Both questions are asked only on a schedule or reschedule form, and timePreference only at
+    // its summary, so a label anywhere else is one no answer could ever carry.
+    if (entry.timeOfDay !== undefined) {
+      if (!(DAYPART_ORDER as readonly string[]).includes(entry.timeOfDay)) throw new Error(`corpus ${entry.id}: timeOfDay must be morning, midday, or afternoon`);
+      const form = contextForm(entry.context);
+      if (form === null || !SCHEDULING_FORMS.includes(form)) throw new Error(`corpus ${entry.id}: timeOfDay needs a schedule_new or reschedule context`);
+    }
+    if (entry.timePreference !== undefined) {
+      if (!['earlier', 'later', 'different'].includes(entry.timePreference)) throw new Error(`corpus ${entry.id}: timePreference must be earlier, later, or different`);
+      if (cf === null || !SCHEDULING_FORMS.includes(cf)) throw new Error(`corpus ${entry.id}: timePreference needs confirm_schedule_new or confirm_reschedule`);
     }
     if (entry.context !== 'no_form') {
       const form = contextForm(entry.context)!;

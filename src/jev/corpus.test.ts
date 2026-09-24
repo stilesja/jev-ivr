@@ -167,6 +167,30 @@ describe('parseCorpus', () => {
     expect(() => parseCorpus('{"id":"x","text":"reschedule and reschedule","intent":"reschedule","context":"no_form","secondIntent":"reschedule"}')).toThrow(/secondIntent must differ from intent/);
   });
 
+  it('accepts timeOfDay on a scheduling form or its summary, and timePreference only at that summary', () => {
+    const [a, b, c, d] = parseCorpus([
+      '{"id":"t1","text":"thursday afternoon","intent":"none","context":"reschedule","timeOfDay":"afternoon"}',
+      '{"id":"t2","text":"no the morning","intent":"none","context":"confirm_schedule_new","confirm":"no","timeOfDay":"morning"}',
+      '{"id":"t3","text":"later","intent":"none","context":"confirm_reschedule","confirm":"unanswered","timePreference":"later"}',
+      '{"id":"t4","text":"that time does not work","intent":"none","context":"confirm_schedule_new","timePreference":"different"}',
+    ].join('\n'));
+    expect(a?.timeOfDay).toBe('afternoon');
+    expect(b?.timeOfDay).toBe('morning');
+    expect(c?.timePreference).toBe('later');
+    expect(d?.timePreference).toBe('different');
+  });
+
+  it('rejects timeOfDay and timePreference off a scheduling context, and a value outside their labels', () => {
+    expect(() => parseCorpus('{"id":"x","text":"the afternoon","intent":"none","context":"cancel","timeOfDay":"afternoon"}')).toThrow(/timeOfDay needs a schedule_new or reschedule context/);
+    expect(() => parseCorpus('{"id":"x","text":"the afternoon","intent":"none","context":"confirm_cancel","timeOfDay":"afternoon"}')).toThrow(/timeOfDay needs a schedule_new or reschedule context/);
+    expect(() => parseCorpus('{"id":"x","text":"reschedule in the afternoon","intent":"reschedule","context":"no_form","timeOfDay":"afternoon"}')).toThrow(/timeOfDay needs a schedule_new or reschedule context/);
+    expect(() => parseCorpus('{"id":"x","text":"the evening","intent":"none","context":"reschedule","timeOfDay":"evening"}')).toThrow(/timeOfDay must be morning, midday, or afternoon/);
+    expect(() => parseCorpus('{"id":"x","text":"later","intent":"none","context":"confirm_cancel","timePreference":"later"}')).toThrow(/timePreference needs confirm_schedule_new or confirm_reschedule/);
+    expect(() => parseCorpus('{"id":"x","text":"later","intent":"none","context":"no_form","timePreference":"later"}')).toThrow(/timePreference needs confirm_schedule_new or confirm_reschedule/);
+    expect(() => parseCorpus('{"id":"x","text":"later","intent":"none","context":"reschedule","timePreference":"later"}')).toThrow(/timePreference needs confirm_schedule_new or confirm_reschedule/);
+    expect(() => parseCorpus('{"id":"x","text":"sooner","intent":"none","context":"confirm_reschedule","timePreference":"sooner"}')).toThrow(/timePreference must be earlier, later, or different/);
+  });
+
   it('rejects a name span and a birth year span that the text does not offer as candidates', () => {
     const named = (slots: string) => `{"id":"x","text":"my name is Jason Stiles","intent":"none","context":"no_form","slots":${slots}}`;
     expect(parseCorpus(named('{"name":"Jason Stiles"}'))[0]?.slots?.name).toBe('Jason Stiles');

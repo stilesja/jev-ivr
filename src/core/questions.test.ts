@@ -130,4 +130,31 @@ describe('question redesign', () => {
     setForm(s, 'reschedule');
     expect(buildQuestions(s, ctx).secondIntent).toBeUndefined();
   });
+
+  it('asks timeOfDay only on a scheduling form', () => {
+    const s = newSession('s', 0);
+    expect(buildQuestions(s, ctx).timeOfDay).toBeUndefined();
+    setForm(s, 'cancel');
+    expect(buildQuestions(s, ctx).timeOfDay).toBeUndefined();
+    setForm(s, 'reschedule');
+    const q = buildQuestions(s, ctx).timeOfDay;
+    expect(q?.type).toBe('choice');
+    expect(Object.keys((q as { criteria: Record<string, unknown> }).criteria)).toEqual(['morning', 'midday', 'afternoon', 'none']);
+    setForm(s, 'schedule_new');
+    expect(buildQuestions(s, ctx).timeOfDay?.type).toBe('choice');
+  });
+
+  it('asks timePreference only at a schedule or reschedule summary', () => {
+    const s = newSession('s', 0);
+    setForm(s, 'reschedule');
+    expect(buildQuestions(s, ctx).timePreference).toBeUndefined();
+    s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
+    expect(Object.keys((buildQuestions(s, ctx).timePreference as { criteria: Record<string, unknown> }).criteria)).toEqual(['earlier', 'later', 'different', 'none']);
+    setForm(s, 'schedule_new');
+    s.pendingConfirmation = { target: 'form', form: 'schedule_new', attempts: 0 };
+    expect(buildQuestions(s, ctx).timePreference?.type).toBe('choice');
+    setForm(s, 'cancel');
+    s.pendingConfirmation = { target: 'form', form: 'cancel', attempts: 0 };
+    expect(buildQuestions(s, ctx).timePreference).toBeUndefined();
+  });
 });

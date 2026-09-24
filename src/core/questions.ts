@@ -1,6 +1,6 @@
 import type { QuestionMap } from '../jev/types';
 import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU, type FormId } from '../domain/intents';
-import { FORMS, type SlotId } from '../domain/forms';
+import { FORMS, SCHEDULING_FORMS, type SlotId } from '../domain/forms';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import { slotCtx } from './fia';
 import type { Session } from './session';
@@ -183,6 +183,38 @@ function formConfirmation(form: FormId): QuestionMap {
   };
 }
 
+/** Spec 2026-09-24 appointment-slots §5: a part of the day the caller volunteers. Read, never asked. */
+function timeOfDay(): QuestionMap {
+  return {
+    timeOfDay: {
+      type: 'choice',
+      instructions: 'Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it.',
+      criteria: {
+        morning: 'Asks for the morning, first thing, early, or a time before eleven',
+        midday: 'Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two',
+        afternoon: 'Asks for the afternoon, late in the day, after work, end of day, or a time from two onward',
+        none: 'Says nothing about the part of the day',
+      },
+    },
+  };
+}
+
+/** Spec §5: at a scheduling summary, a move along the day's openings. */
+function timePreference(): QuestionMap {
+  return {
+    timePreference: {
+      type: 'choice',
+      instructions: 'Read asr.text and node.promptJustPlayed. The caller was offered an appointment at a specific time. Do they ask for a different time on the same day, and in which direction?',
+      criteria: {
+        earlier: 'Asks for an earlier time, or anything before the offered time, as in earlier, sooner in the day, or before that',
+        later: 'Asks for a later time, or anything after the offered time, as in later, after that, or later in the day',
+        different: 'Says the offered time does not work without saying which way, as in not that time, a different time, or that time is no good',
+        none: 'Accepts, declines for another reason, names a day or a part of the day such as the morning or the afternoon, or says nothing about the time',
+      },
+    },
+  };
+}
+
 function menu(): QuestionMap {
   const criteria: Record<string, string | null> = {};
   for (const { digit } of INTENT_MENU) criteria[digit] = null;
@@ -201,9 +233,11 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   const specs = session.form ? slotsFor(session.form) : allSlots();
   for (const spec of specs) Object.assign(q, spec.questions(slotCtx(session, ctx, spec.id)));
   if (session.form) Object.assign(q, inForm());
+  if (session.form && SCHEDULING_FORMS.includes(session.form)) Object.assign(q, timeOfDay());
   if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
   if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation(session.pendingConfirmation.form));
+  if (session.pendingConfirmation?.target === 'form' && SCHEDULING_FORMS.includes(session.pendingConfirmation.form)) Object.assign(q, timePreference());
   if (session.menuActive) Object.assign(q, menu());
   return q;
 }
