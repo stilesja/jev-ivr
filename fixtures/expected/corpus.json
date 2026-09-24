@@ -3,7 +3,9 @@
     "id": "sn-01",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -21,7 +23,9 @@
     "id": "sn-02",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -39,7 +43,9 @@
     "id": "sn-03",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -57,7 +63,9 @@
     "id": "sn-04",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -75,7 +83,9 @@
     "id": "sn-05",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -93,7 +103,9 @@
     "id": "sn-06",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -111,7 +123,9 @@
     "id": "sn-07",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -129,7 +143,9 @@
     "id": "sn-08",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -147,7 +163,9 @@
     "id": "sn-09",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -165,7 +183,9 @@
     "id": "sn-10",
     "decision": "prompt",
     "promptId": "confirm_schedule",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -183,7 +203,9 @@
     "id": "rs-01",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -201,7 +223,9 @@
     "id": "rs-02",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -219,7 +243,9 @@
     "id": "rs-03",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -237,7 +263,9 @@
     "id": "rs-04",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -255,7 +283,9 @@
     "id": "rs-05",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -273,7 +303,9 @@
     "id": "rs-06",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -291,7 +323,9 @@
     "id": "rs-07",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -309,7 +343,9 @@
     "id": "rs-08",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -327,7 +363,9 @@
     "id": "rs-09",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -345,7 +383,9 @@
     "id": "rs-10",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -363,7 +403,9 @@
     "id": "rs-11",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -381,7 +423,9 @@
     "id": "rs-12",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -399,7 +443,9 @@
     "id": "cn-01",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -417,7 +463,9 @@
     "id": "cn-02",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -435,7 +483,9 @@
     "id": "cn-03",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -453,7 +503,9 @@
     "id": "cn-04",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -471,7 +523,9 @@
     "id": "cn-05",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -489,7 +543,9 @@
     "id": "cn-06",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -507,7 +563,9 @@
     "id": "cn-07",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -525,7 +583,9 @@
     "id": "cn-08",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -543,7 +603,9 @@
     "id": "cn-09",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -561,7 +623,9 @@
     "id": "cn-10",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -579,7 +643,9 @@
     "id": "cf-01",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -597,7 +663,9 @@
     "id": "cf-02",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -615,7 +683,9 @@
     "id": "cf-03",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -633,7 +703,9 @@
     "id": "cf-04",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -651,7 +723,9 @@
     "id": "cf-05",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -669,7 +743,9 @@
     "id": "cf-06",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -687,7 +763,9 @@
     "id": "cf-07",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -705,7 +783,9 @@
     "id": "cf-08",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -723,7 +803,9 @@
     "id": "bl-01",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -741,7 +823,9 @@
     "id": "bl-02",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -759,7 +843,9 @@
     "id": "bl-03",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -777,7 +863,9 @@
     "id": "bl-04",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -795,7 +883,9 @@
     "id": "bl-05",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -813,7 +903,9 @@
     "id": "bl-06",
     "decision": "handoff",
     "promptId": "handoff_billing",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": "billing",
     "decidedGate": "intent",
     "verdict": "route",
@@ -831,7 +923,9 @@
     "id": "bl-07",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -849,7 +943,9 @@
     "id": "bl-08",
     "decision": "prompt",
     "promptId": "ask_memberId",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -1353,7 +1449,9 @@
     "id": "lc-02",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -1443,7 +1541,9 @@
     "id": "lc-07",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -1461,7 +1561,9 @@
     "id": "lc-08",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -1479,7 +1581,9 @@
     "id": "lc-09",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -1556,7 +1660,8 @@
     "decision": "prompt",
     "promptId": "ask_name",
     "acks": [
-      "ack_frustration"
+      "ack_frustration",
+      "ack_intent"
     ],
     "reason": null,
     "decidedGate": "intent",
@@ -1576,7 +1681,8 @@
     "decision": "prompt",
     "promptId": "ask_name",
     "acks": [
-      "ack_frustration"
+      "ack_frustration",
+      "ack_intent"
     ],
     "reason": null,
     "decidedGate": "intent",
@@ -1595,7 +1701,9 @@
     "id": "fr-03",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -1653,7 +1761,9 @@
     "id": "fr-06",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -2759,7 +2869,9 @@
     "id": "rs-13",
     "decision": "prompt",
     "promptId": "confirm_reschedule",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -3301,7 +3413,8 @@
     "decision": "prompt",
     "promptId": "ask_name",
     "acks": [
-      "ack_queued"
+      "ack_queued",
+      "ack_intent"
     ],
     "reason": null,
     "decidedGate": "intent",
@@ -3323,7 +3436,8 @@
     "decision": "prompt",
     "promptId": "ask_name",
     "acks": [
-      "ack_queued"
+      "ack_queued",
+      "ack_intent"
     ],
     "reason": null,
     "decidedGate": "intent",
@@ -3344,7 +3458,9 @@
     "id": "si-03",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -3506,7 +3622,9 @@
     "id": "nm-06",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -3524,7 +3642,9 @@
     "id": "nm-07",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -3542,7 +3662,9 @@
     "id": "nm-08",
     "decision": "prompt",
     "promptId": "ask_dob",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",

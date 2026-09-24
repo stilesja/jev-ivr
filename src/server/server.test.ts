@@ -189,7 +189,8 @@ describe('server end to end', () => {
     await relay.waitForTexts(1);
     await new Promise((r) => setTimeout(r, 1000));
     relay.prompt('I need to reschedule my appointment');
-    expect((await relay.waitForTexts(2)).length).toBe(2);
+    // The greeting, then the reschedule form's entry ack and ask_name.
+    expect((await relay.waitForTexts(3)).length).toBe(3);
     const stillOpen = Symbol('open');
     const settled = await Promise.race([relay.closed, new Promise((r) => setTimeout(() => r(stillOpen), 100))]);
     expect(settled).toBe(stillOpen);
@@ -229,13 +230,14 @@ describe('server end to end', () => {
   it('runs the worked example over the socket and ends the call', async () => {
     const { relay, traceDir, callSid } = await connected();
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+    // The greeting, then the reschedule form's entry ack, then ask_name.
+    expect((await relay.waitForTexts(3)).at(-1)).toBe("What's your first and last name?");
     relay.prompt('Jason Stiles');
-    expect((await relay.waitForTexts(3)).at(-1)).toBe('And your date of birth?');
+    expect((await relay.waitForTexts(4)).at(-1)).toBe('And your date of birth?');
     relay.prompt('March fifth nineteen eighty');
-    expect((await relay.waitForTexts(4)).at(-1)).toBe('next week. Which day works for you?');
+    expect((await relay.waitForTexts(5)).at(-1)).toBe('next week. Which day works for you?');
     relay.prompt('Tuesday');
-    expect((await relay.waitForTexts(5)).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980. Shall I make that change?');
+    expect((await relay.waitForTexts(6)).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980. Shall I make that change?');
     relay.prompt('yes');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
@@ -271,7 +273,8 @@ describe('server end to end', () => {
     // server open, or `afterEach`'s `running.close()` waits on it instead of reporting the failure.
     try {
       relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-      expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+      // The greeting, then the reschedule form's entry ack, then ask_name.
+      expect((await relay.waitForTexts(3)).at(-1)).toBe("What's your first and last name?");
       // The setup turn is turn 1, so the model's first turn — the one the `asked` event pairs with —
       // is turn 2: read the stream until that turn's `turn` event has arrived.
       const arrived = () => events().some((e) => e.type === 'turn' && e.record.turnIndex === 2);
@@ -280,7 +283,7 @@ describe('server end to end', () => {
       // precedes its `turn`), then the live turn.
       expect(events().map((e) => e.type)).toEqual(['call_started', 'turn', 'asked', 'turn']);
       expect(events().find((e) => e.type === 'asked')).toMatchObject({ turnIndex: 2, callSid: 'CA1' });
-      expect(buf).toContain('"spoken":"What\'s your first and last name?"');
+      expect(buf).toContain('"spoken":"I\'d be happy to help you reschedule your appointment. What\'s your first and last name?"');
       expect(buf).toMatch(/^id: 1\n/m);
     } finally {
       await reader.cancel();
@@ -319,7 +322,8 @@ describe('server end to end', () => {
     const events: DashboardEvent[] = [];
     running!.bus!.subscribe((e) => events.push(e));
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-    expect((await relay.waitForTexts(2)).at(-1)).toBe("What's your first and last name?");
+    // The greeting, then the reschedule form's entry ack, then ask_name.
+    expect((await relay.waitForTexts(3)).at(-1)).toBe("What's your first and last name?");
     const pick = <T extends DashboardEvent['type']>(t: T) => events.filter((e): e is Extract<DashboardEvent, { type: T }> => e.type === t);
     const asked = pick('asked');
     const turns = pick('turn');
@@ -330,7 +334,7 @@ describe('server end to end', () => {
     // that resolves to ignore or hold leaves `asked` one ahead (see events.ts), which is why the
     // page pairs the two events by arrival order rather than by this number.
     expect(turns.at(-1)!.record.turnIndex).toBe(asked[0]!.turnIndex);
-    expect(turns.at(-1)!.spoken).toBe("What's your first and last name?");
+    expect(turns.at(-1)!.spoken).toBe("I'd be happy to help you reschedule your appointment. What's your first and last name?");
     expect(asked[0]!.questions).toHaveProperty('intent');
     // The dashboard route is unauthenticated, so the raw record is never enough: the setup turn's
     // event must already carry a masked caller number, not the whole one FakeRelay.setup sent.
@@ -520,7 +524,8 @@ describe('server end to end', () => {
   it('reconnects a dropped call through the action callback and resumes the form', async () => {
     const { relay, base, ws, callSid } = await connected();
     relay.prompt("I need to reschedule my appointment, it's with Dr. Chen sometime next week");
-    await relay.waitForTexts(2);
+    // The greeting, then the reschedule form's entry ack, then ask_name.
+    await relay.waitForTexts(3);
     relay.close();
     await relay.closed;
     const body = new URLSearchParams({ CallSid: callSid, CallStatus: 'in-progress', SessionStatus: 'failed' }).toString();
@@ -530,7 +535,7 @@ describe('server end to end', () => {
     const token = /token=([0-9a-f]{32})/.exec(twiml)![1]!;
     const again = await FakeRelay.connect(`${ws}?token=${token}`);
     again.setup(callSid, 'VX-second');
-    expect(await again.waitForTexts(1)).toEqual(["What's your first and last name?"]);
+    expect(await again.waitForTexts(1)).toEqual(["I'd be happy to help you reschedule your appointment. What's your first and last name?"]);
     again.prompt('Jason Stiles');
     expect((await again.waitForTexts(2)).at(-1)).toBe('And your date of birth?');
     again.prompt('March fifth nineteen eighty');

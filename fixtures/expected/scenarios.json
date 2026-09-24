@@ -227,7 +227,9 @@
     "id": "dtmf-menu",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": null,
     "verdict": null,
@@ -247,7 +249,9 @@
     "id": "spoken-menu-number",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "menuNumber",
     "verdict": "route",
@@ -267,7 +271,9 @@
     "id": "explicit-confirm-yes",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
@@ -469,7 +475,9 @@
     "id": "client-failure-once",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -958,7 +966,9 @@
     "id": "tentative-carries-slots",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
@@ -1531,7 +1541,9 @@
     "id": "capabilities-open",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",

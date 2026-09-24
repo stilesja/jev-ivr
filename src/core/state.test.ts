@@ -27,7 +27,7 @@ describe('buildTurnState', () => {
 
   it('exposes the spoken label of the active form', () => {
     const s = setForm(newSession('s', 0), 'cancel');
-    expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBe('cancel an appointment');
+    expect(buildTurnState(s, { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBe('cancel your appointment');
     expect(buildTurnState(newSession('s', 0), { text: 'x', isFinal: true, dtmf: null }, 0).activeFormLabel).toBeNull();
   });
 
@@ -48,6 +48,6 @@ describe('buildTurnState', () => {
     const s = newSession('s', 0);
     s.form = 'reschedule';
     s.pendingConfirmation = { target: 'form', form: 'reschedule', attempts: 0 };
-    expect(buildTurnState(s, { text: 'yes', isFinal: true, dtmf: null }, 0).pendingConfirmation).toEqual({ target: 'form', value: 'reschedule an appointment' });
+    expect(buildTurnState(s, { text: 'yes', isFinal: true, dtmf: null }, 0).pendingConfirmation).toEqual({ target: 'form', value: 'reschedule your appointment' });
   });
 });

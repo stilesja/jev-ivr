@@ -235,10 +235,11 @@ describe('runScenario', () => {
 
   it('records the ack prompt ids of the final decision', async () => {
     const steps = [{ say: 'cancel my appointment with dr patel' }];
-    const silent = await runScenario({ id: 'acks-none', steps, expect: { decision: 'prompt' } }, opts);
-    expect(silent.outcome.acks).toEqual([]);
+    // Every form entry is acknowledged, a confident route included (spec 2026-09-24 §4).
+    const confident = await runScenario({ id: 'acks-confident', steps, expect: { decision: 'prompt' } }, opts);
+    expect(confident.outcome.acks).toEqual(['ack_intent']);
 
-    // an intent in the implicit band is acknowledged before the next prompt
+    // an intent in the implicit band is acknowledged before the next prompt too
     const implicitClient = new FixtureStubClient(
       [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.65, reschedule: 0.2 } } } }],
       { sharpness: 0.9, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) },

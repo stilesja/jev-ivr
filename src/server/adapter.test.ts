@@ -307,11 +307,14 @@ describe('adapter', () => {
     const sock2 = fakeSocket();
     const ctx2 = newConnectionContext(d.tokens.mint('CA1'), sock2);
     await handleSocketMessage(d, sock2, ctx2, setupMsg('CA1', 'VX2'));
-    expect(texts(sock2)).toEqual(["What's your first and last name?"]);
+    expect(texts(sock2)).toEqual(["I'd be happy to help you reschedule your appointment. What's your first and last name?"]);
     await handleSocketMessage(d, sock2, ctx2, prompt('Dr. Chen'));
     // The form asks for the name before the provider, so the re-ask repeats; the provider fill
     // below is what proves the turn ran on the session the first connection left behind.
-    expect(texts(sock2)).toEqual(["What's your first and last name?", "What's your first and last name?"]);
+    expect(texts(sock2)).toEqual([
+      "I'd be happy to help you reschedule your appointment. What's your first and last name?",
+      "What's your first and last name?",
+    ]);
     expect(d.store.get('CA1')?.session.slots.provider.value).toBe('chen');
   });
 
@@ -520,7 +523,8 @@ describe('no-input timer', () => {
     for (const n of ['0', '3']) await handleSocketMessage(d, sock, ctx, digit(n));
     expect(d.store.get('CA1')?.session.dtmfBuffer).toBe('03');
     await vi.advanceTimersByTimeAsync(textEstimateMs(promptText('ask_dob', {})) + WAIT - 1);
-    expect(texts(sock)).toHaveLength(3);
+    // greeting, then the reschedule form's entry ack plus ask_name, then ask_dob.
+    expect(texts(sock)).toHaveLength(4);
     await vi.advanceTimersByTimeAsync(1);
     expect(texts(sock).slice(-2)).toEqual([NO_INPUT, promptText('ask_dob', {})]);
     // Silence abandons the half-typed date rather than carrying it into the plain re-ask.
@@ -674,7 +678,7 @@ describe('no-input timer', () => {
     expect(vi.getTimerCount()).toBe(0);
     await vi.advanceTimersByTimeAsync(500);
     await running;
-    expect(texts(sock)).toEqual([GREETING, "What's your first and last name?"]);
+    expect(texts(sock)).toEqual([GREETING, "I'd be happy to help you reschedule your appointment.", "What's your first and last name?"]);
     expect(silenceLines(d.dir)).toHaveLength(0);
   });
 
@@ -687,7 +691,7 @@ describe('no-input timer', () => {
     // handleSocketMessage clears the timer before its first await, so the queued closure finds
     // the generation already moved on and does nothing.
     await handleSocketMessage(d, sock, ctx, prompt('I need to reschedule my appointment'));
-    expect(texts(sock)).toEqual([GREETING, "What's your first and last name?"]);
+    expect(texts(sock)).toEqual([GREETING, "I'd be happy to help you reschedule your appointment.", "What's your first and last name?"]);
     expect(silenceLines(d.dir)).toHaveLength(0);
     expect(d.store.get('CA1')?.session.intentAttempts).toBe(0);
   });

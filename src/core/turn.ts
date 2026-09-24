@@ -355,14 +355,19 @@ function continueForm(s: Session, acks: Ack[], disambiguate: FillResult['disambi
   return askSlot(next.slot, next.window, acks);
 }
 
-function enterForm(s: Session, form: FormId, confirm: 'none' | 'implicit', answers: AnswerMap, ctx: SlotContext, queue?: FormId): { decision: Decision; events: FillEvent[] } {
-  // Leaving a form the caller was already in is always said out loud, however sure the
-  // intent was: silently swapping the task underneath them is the confusing case.
-  const switching = s.form !== null && s.form !== form;
+/** "I'd be happy to help you ...": every form entry is said out loud (spec 2026-09-24 §4). */
+function ackIntent(form: FormId): Ack {
+  return { promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } };
+}
+
+function enterForm(s: Session, form: FormId, answers: AnswerMap, ctx: SlotContext, queue?: FormId): { decision: Decision; events: FillEvent[] } {
+  // Entering a form is always said out loud, however sure the intent was: it is what tells
+  // the caller which task started, whether the route was confident, mid-confidence, or a
+  // switch away from another form.
   setForm(s, form);
   // Queued after setForm, so the queue is read against the form actually being entered.
   // A task added on this same utterance is promised before the one being started is named.
-  const acks: Ack[] = [...enqueue(s, queue), ...(confirm === 'implicit' || switching ? [{ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } }] : [])];
+  const acks: Ack[] = [...enqueue(s, queue), ackIntent(form)];
   const fill = fillSlots(s, answers, ctx, slotsFor(form));
   return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate, fill.help), events: fill.events };
 }
@@ -407,7 +412,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       if (pc.intent === 'agent') return { decision: handoff(s, 'live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
       // Fill from what the caller originally said, not from the "yes".
-      return enterForm(s, pc.intent, 'none', pc.answers, slotContext(s, pc.text, tc));
+      return enterForm(s, pc.intent, pc.answers, slotContext(s, pc.text, tc));
     }
     case 'rejected': {
       const pc = s.pendingConfirmation!;
@@ -495,7 +500,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       }
       // A second task named on the same breath as the first is queued as the form opens;
       // on an explicit-confirm route it is dropped (spec final-confirm §4) and the caller can re-add it.
-      return enterForm(s, verdict.intent, verdict.confirm, answers, ctx, verdict.queue);
+      return enterForm(s, verdict.intent, answers, ctx, verdict.queue);
     case 'disambiguate_intent':
       return { decision: prompt('disambiguate_intent', 'intent', { a: INTENT_LABELS[verdict.a], b: INTENT_LABELS[verdict.b] }, [], [INTENT_LABELS[verdict.a], INTENT_LABELS[verdict.b]]), events: [] };
     case 'intent_failed':
@@ -533,7 +538,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
     if (option.intent === 'agent') return { decision: handoff(s, 'live-agent'), rows: [] };
     if (!isFormIntent(option.intent)) return { decision: { kind: 'ignore' }, rows: [] };
     setForm(s, option.intent);
-    return { decision: continueForm(s, [], null), rows: [] };
+    return { decision: continueForm(s, [ackIntent(option.intent)], null), rows: [] };
   }
   // The summary's keypad fallback: 1 confirms, 2 opens the change question, anything else is a miss.
   if (s.promptedFor === 'confirm' && s.pendingConfirmation?.target === 'form') {

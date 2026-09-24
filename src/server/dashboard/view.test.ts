@@ -423,6 +423,6 @@ describe('replayRecords', () => {
     const { records } = await scripted([OPENER]);
     const spoken = replayRecords(records).map((r) => r.spokenText);
     expect(spoken[0]).toMatch(/^Thanks for calling/);
-    expect(spoken.at(-1)).toBe("What's your first and last name?");
+    expect(spoken.at(-1)).toBe("I'd be happy to help you reschedule your appointment. What's your first and last name?");
   });
 });

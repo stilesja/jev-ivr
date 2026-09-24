@@ -164,8 +164,8 @@ describe('completion and chaining', () => {
   });
 
   it('speaks acks before a handoff and reports completed forms', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [], slots: { memberId: '4471 8293' } });
-    expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's ask about billing.", 'Connecting you to billing now.', 'end']);
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'talk to billing' } }], completed: ['reschedule'], queued: [], slots: { memberId: '4471 8293' } });
+    expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's talk to billing.", 'Connecting you to billing now.', 'end']);
     expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"],"slots":{"memberId":"4471 8293"}}' });
   });
 

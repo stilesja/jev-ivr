@@ -36,10 +36,10 @@ export const INTENT_CRITERIA: Record<Intent, string> = {
 /** Spoken labels for confirmation prompts. */
 export const INTENT_LABELS: Record<Intent, string> = {
   schedule_new: 'schedule a new appointment',
-  reschedule: 'reschedule an appointment',
-  cancel: 'cancel an appointment',
-  confirm_appointment: 'confirm an appointment',
-  billing: 'ask about billing',
+  reschedule: 'reschedule your appointment',
+  cancel: 'cancel your appointment',
+  confirm_appointment: 'confirm your appointment',
+  billing: 'talk to billing',
   agent: 'speak with someone',
   repeat_prompt: 'hear that again',
   capabilities: 'hear what I can do',
