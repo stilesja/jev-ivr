@@ -716,3 +716,12 @@ Every step text must exist in the corpus (the ones above do: `sn-*`, `rs-02`, `c
 - The `confirm_` contexts seed Dr. Patel on 2026-09-22, whose demo openings are 10:00 AM, 11:15 AM, and 1:00 PM with no afternoon, so `ts-10` "afternoon please" exercises the nearest rule in the baseline.
 - Second commit 5ba15e9: `slot-daypart-opener` pins the 4:15 PM afternoon opening; `slot-nearest-opening` pins "The closest I have to the afternoon is 12:30 PM."; `slot-daypart-remembered` pins that a daypart said on a missed day answer opens the offer at 12:30 PM; `slot-different-to-edge` now walks to the keypad prompt on the fourth refusal, pinning the ladder cost of an edge.
 - Corpus and scenario counts: 241 entries, 89 scenarios.
+
+### Found on the real-model record (commits 7faf13a, ca3b691, and the cassette commit)
+
+- At "What should I change?" a bare "no" scored 0.62 as `timePreference: different`, which moved the offer, re-armed the summary and kept the repeated-no ladder from ever handing off. The question now says a bare no answers the yes/no, not the time; the summary turns re-keyed and were re-recorded.
+- "Monday, September 28" split the model's mode 0.50 weekday to 0.48 absolute and landed on the next Monday. The date slot now lets a confident month and day take the mode. The entry fills the 28th with an implicit readback, since the split leaves it under the silent-fill band; recorded as a known diff on `dt-09`.
+- "Agent" alone scored 0.67 on `addressedToSystem` against the 0.70 gate once `timeOfDay` joined the opener's questions, and was ignored. `GATE_ADDRESSED` stepped 0.70 → 0.65 by judgment (the sweep's grid gains that outcome from 0.55 to 0.65 and loses none, and declined to move on its own). The trade: "um" scores 0.66, so the `ns-03` noise entry now gets the open re-ask instead of being ignored.
+- `fc-09` ("no, next week") and `fc-13` ("no, it's Jason Miles") now decide on the `changeSlot` gate rather than the confirmation gate with the same outcome; informational, like `fc-23`.
+- Real model after the second record: 229/241 corpus, 88/89 scenarios; every `ts-*` row and every `slot-*` scenario matches.
+
