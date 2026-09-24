@@ -48,6 +48,8 @@ function makeConfig(extra: Record<string, string> = {}) {
     TODAY_OVERRIDE: '2026-09-18',
     TRACE_DIR: traceDir,
     AUDIO_DIR: audioDir,
+    // These tests were written for the recorded-clip path; the server's own default is all-TTS.
+    CLIPS: 'on',
     ...extra,
   });
   return { traceDir, config };
@@ -411,6 +413,22 @@ describe('server end to end', () => {
     const closed = settled as { code: number; reason: string };
     expect(closed.code).toBe(1000);
     expect(closed.reason).toBe('end grace elapsed');
+  });
+
+  it('speaks the greeting as text when CLIPS is off, even with a recorded clip present', async () => {
+    const audioDir = mkdtempSync(join(tmpdir(), 'audio-'));
+    writeFileSync(join(audioDir, 'greeting.0.wav'), Buffer.from('RIFFdata'));
+    const { config } = makeConfig({ AUDIO_DIR: audioDir, CLIPS: 'off' });
+    const logs: string[] = [];
+    running = await startServer(config, { log: (line) => logs.push(line) });
+    const token = running.tokens.mint('CA1');
+    const relay = await FakeRelay.connect(`ws://127.0.0.1:${running.port}/conversation?token=${token}`);
+    relay.setup('CA1');
+    await relay.waitForTexts(1);
+    // The clip on disk is ignored: the whole greeting is one text frame for the TTS voice.
+    expect(relay.received.map((f) => f.type)).toEqual(['text']);
+    relay.assertKnownTypes();
+    expect(logs.some((l) => l.startsWith('clips: off'))).toBe(true);
   });
 
   it('re-asks on its own when the caller says nothing after the greeting', async () => {
