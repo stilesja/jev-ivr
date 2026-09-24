@@ -288,10 +288,11 @@ export function answerHeuristically(id: string, q: Question, text: string, today
       }
       case 'timeOfDay': {
         // Midday is tested first so "late morning" and "early afternoon" land there rather than on
-        // the morning or the afternoon their second word names.
+        // the morning or the afternoon their second word names. A greeting ("good morning") names
+        // no part of the day, and "early evening" is the afternoon, not the morning.
         const winner = has(text, /\b(midday|mid-day|noon|lunch|lunchtime|late morning|early afternoon)\b/) ? 'midday'
-          : has(text, /\b(morning|first thing|early|before (eleven|11))\b/) ? 'morning'
-          : has(text, /\b(afternoon|late in the day|after work|end of (the )?day|evening)\b/) ? 'afternoon' : 'none';
+          : has(text, /\b((?<!good )morning|first thing|early(?! (afternoon|evening))|before (eleven|11))\b/) ? 'morning'
+          : has(text, /\b((?<!good )afternoon|late in the day|after work|end of (the )?day|evening)\b/) ? 'afternoon' : 'none';
         return choiceAnswer(sharp(labels, winner, 0.9));
       }
       case 'timePreference': {

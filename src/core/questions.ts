@@ -161,7 +161,7 @@ const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
   name: 'They name their own name as the thing to change, without saying a new name, as in the name, or you got my name wrong',
   dob: 'They name their date of birth or birthday as the thing to change, without saying the new date, as in the birthday, or my date of birth is wrong',
   provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',
-  date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong',
+  date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong (not a different time on the same day)',
   memberId: 'They name the member ID or member number as the thing to change, without saying the digits',
 };
 
@@ -183,12 +183,12 @@ function formConfirmation(form: FormId): QuestionMap {
   };
 }
 
-/** Spec 2026-09-24 appointment-slots §5: a part of the day the caller volunteers. Read, never asked. */
+/** Spec 2026-09-24 appointment-slots §5: a part of the day the caller volunteers, on the opener or a scheduling form. Read, never asked. */
 function timeOfDay(): QuestionMap {
   return {
     timeOfDay: {
       type: 'choice',
-      instructions: 'Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it.',
+      instructions: 'Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day.',
       criteria: {
         morning: 'Asks for the morning, first thing, early, or a time before eleven',
         midday: 'Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two',
@@ -233,7 +233,8 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   const specs = session.form ? slotsFor(session.form) : allSlots();
   for (const spec of specs) Object.assign(q, spec.questions(slotCtx(session, ctx, spec.id)));
   if (session.form) Object.assign(q, inForm());
-  if (session.form && SCHEDULING_FORMS.includes(session.form)) Object.assign(q, timeOfDay());
+  // Outside a form too, so a part of the day said on the opener is read with the rest of it.
+  if (!session.form || SCHEDULING_FORMS.includes(session.form)) Object.assign(q, timeOfDay());
   if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
   if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation(session.pendingConfirmation.form));

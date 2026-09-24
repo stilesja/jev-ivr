@@ -383,6 +383,8 @@ describe('row helpers', () => {
     expect(thresholdFor('nameGiven', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.SLOT_DETECT);
     expect(thresholdFor('dobMonth', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.SLOT_CHOICE_CONFIRM);
     expect(thresholdFor('providerUnsure', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.PROVIDER_UNSURE);
+    expect(thresholdFor('timeOfDay', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.TIME_OF_DAY);
+    expect(thresholdFor('timePreference', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.TIME_PREFERENCE);
   });
 
   /** INTENT_ROUTE is never applied at runtime: gates.ts routes at EXPLICIT, or SWITCH in a form. */

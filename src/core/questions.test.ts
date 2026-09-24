@@ -131,9 +131,9 @@ describe('question redesign', () => {
     expect(buildQuestions(s, ctx).secondIntent).toBeUndefined();
   });
 
-  it('asks timeOfDay only on a scheduling form', () => {
+  it('asks timeOfDay outside a form and on a scheduling form, never on another form', () => {
     const s = newSession('s', 0);
-    expect(buildQuestions(s, ctx).timeOfDay).toBeUndefined();
+    expect(buildQuestions(s, ctx).timeOfDay?.type).toBe('choice');
     setForm(s, 'cancel');
     expect(buildQuestions(s, ctx).timeOfDay).toBeUndefined();
     setForm(s, 'reschedule');

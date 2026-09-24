@@ -232,43 +232,49 @@ function readDaypart(answers: AnswerMap, t: Thresholds): Daypart | null {
 
 /**
  * At a scheduling summary, move along the day's openings (spec §6 cases 2 and 3): a daypart to
- * the first opening inside it (or the nearest, said out loud), else earlier/later/different by
- * one step. `moved` is false at an edge or when nothing in the answer asked for a move; an edge
- * says so with an ack. The caller answered the summary, so the caller of this helper decides what
- * an unmoved offer costs on the ladder. Only reached when the provider and the day are unchanged:
- * a correction that changes either is progress on the fill and never gets here.
+ * the first opening inside it (or the nearest, said out loud); when that leaves the index where it
+ * was, an earlier/later/different in the same breath still steps from there. `moved` is false at
+ * an edge or when nothing in the answer asked for a move; an edge says so with an ack. The caller
+ * answered the summary, so the caller of this helper decides what an unmoved offer costs on the
+ * ladder. Only reached when the provider and the day are unchanged: a correction that changes
+ * either is progress on the fill and never gets here.
+ *
+ * `different` steps forward like `later` and stops at the last opening rather than wrapping (a
+ * deliberate departure from spec §6): every move re-arms the summary with a fresh count, so a
+ * wrap would let a caller who turns every opening down circle the day forever instead of
+ * reaching the keypad, and the edge ack tells them to ask for earlier or another day.
  */
 function moveOffer(s: Session, answers: AnswerMap, t: Thresholds): { moved: boolean; acks: Ack[] } {
   const offer = s.offer;
   if (!offer || offer.times.length === 0) return { moved: false, acks: [] };
+  const acks: Ack[] = [];
   const part = readDaypart(answers, t);
   if (part !== null) {
     s.daypart = part;
     const built = buildOffer(offer.provider, offer.date, offer.times, part);
-    const moved = built.offer.index !== offer.index;
-    s.offer = built.offer;
     // settleBookings keeps an offer whose provider and day are unchanged, so it adds no second
     // "closest I have" of its own: this is the one the re-read summary carries.
-    const acks: Ack[] = built.nearest ? [{ promptId: 'slot_nearest', vars: { daypart: part, time: built.offer.times[built.offer.index]! } }] : [];
-    return { moved, acks };
+    const nearest: Ack[] = built.nearest ? [{ promptId: 'slot_nearest', vars: { daypart: part, time: built.offer.times[built.offer.index]! } }] : [];
+    if (built.offer.index !== offer.index) {
+      s.offer = built.offer;
+      return { moved: true, acks: nearest };
+    }
+    acks.push(...nearest);
   }
   const a = answers.timePreference;
   const [top] = isChoice(a) ? rankProbabilities(a.probabilities) : [];
-  if (!top || top.label === 'none' || top.p < t.TIME_PREFERENCE) return { moved: false, acks: [] };
+  if (!top || top.label === 'none' || top.p < t.TIME_PREFERENCE) return { moved: false, acks };
   const last = offer.times.length - 1;
   if (top.label === 'earlier') {
-    if (offer.index === 0) return { moved: false, acks: [{ promptId: 'slot_edge_earlier', vars: {} }] };
+    if (offer.index === 0) return { moved: false, acks: [...acks, { promptId: 'slot_edge_earlier', vars: {} }] };
     offer.index -= 1;
-    return { moved: true, acks: [] };
-  }
-  if (top.label === 'later') {
-    if (offer.index === last) return { moved: false, acks: [{ promptId: 'slot_edge_later', vars: {} }] };
+  } else {
+    // later and different alike; a day with one opening is its own last.
+    if (offer.index === last) return { moved: false, acks: [...acks, { promptId: 'slot_edge_later', vars: {} }] };
     offer.index += 1;
-    return { moved: true, acks: [] };
   }
-  // different: the next opening, wrapping to the first; a day with one opening cannot move.
-  if (last === 0) return { moved: false, acks: [{ promptId: 'slot_edge_later', vars: {} }] };
-  offer.index = offer.index === last ? 0 : offer.index + 1;
+  // The step leaves the opening a "closest I have" would name, so that ack would read back a
+  // time the summary no longer offers; the summary names the new one on its own.
   return { moved: true, acks: [] };
 }
 
@@ -522,8 +528,11 @@ function enterForm(s: Session, form: FormId, answers: AnswerMap, ctx: SlotContex
 function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: SlotContext, tc: TurnContext): { decision: Decision; events: FillEvent[] } {
   const t = tc.thresholds;
   // A part of the day is remembered whatever else the turn does, so the offer the summary builds
-  // later opens inside it (spec §5); at the summary itself, moveOffer reads it again to move the index.
-  if (s.form && SCHEDULING_FORMS.includes(s.form)) {
+  // later opens inside it (spec §5); at the summary itself, moveOffer reads it again to move the
+  // index. Not from a turn the gates set aside: side speech, a held partial, or an unintelligible
+  // turn says nothing the caller meant for the call.
+  const setAside = verdict.kind === 'ignore' || verdict.kind === 'hold' || verdict.kind === 'nomatch';
+  if (!setAside && s.form && SCHEDULING_FORMS.includes(s.form)) {
     const part = readDaypart(answers, t);
     if (part !== null) s.daypart = part;
   }
@@ -565,7 +574,14 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       if (pc.intent === 'agent') return { decision: handoff(s, 'live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
       // Fill from what the caller originally said, not from the "yes".
-      return enterForm(s, pc.intent, pc.answers, slotContext(s, pc.text, tc));
+      const entered = enterForm(s, pc.intent, pc.answers, slotContext(s, pc.text, tc));
+      // "Yes, in the afternoon" is the one thing the yes can add: newer than the opener's part of
+      // the day, so it wins over it.
+      if (SCHEDULING_FORMS.includes(pc.intent)) {
+        const part = readDaypart(answers, t);
+        if (part !== null) s.daypart = part;
+      }
+      return entered;
     }
     case 'rejected': {
       const pc = s.pendingConfirmation!;

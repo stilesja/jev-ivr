@@ -180,12 +180,15 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
       if (!(FORM_INTENTS as readonly string[]).includes(entry.secondIntent)) throw new Error(`corpus ${entry.id}: unknown secondIntent ${entry.secondIntent}`);
       if (entry.secondIntent === entry.intent) throw new Error(`corpus ${entry.id}: secondIntent must differ from intent`);
     }
-    // Both questions are asked only on a schedule or reschedule form, and timePreference only at
-    // its summary, so a label anywhere else is one no answer could ever carry.
+    // timeOfDay is asked outside a form and on a schedule or reschedule form, but only kept when
+    // the form it lands on books an opening; timePreference is asked only at such a summary. A
+    // label anywhere else is one no answer could ever act on.
     if (entry.timeOfDay !== undefined) {
       if (!(DAYPART_ORDER as readonly string[]).includes(entry.timeOfDay)) throw new Error(`corpus ${entry.id}: timeOfDay must be morning, midday, or afternoon`);
-      const form = contextForm(entry.context);
-      if (form === null || !SCHEDULING_FORMS.includes(form)) throw new Error(`corpus ${entry.id}: timeOfDay needs a schedule_new or reschedule context`);
+      const form = entry.context === 'no_form' ? (isFormIntent(entry.intent) ? entry.intent : null) : contextForm(entry.context);
+      if (form === null || !SCHEDULING_FORMS.includes(form)) {
+        throw new Error(`corpus ${entry.id}: timeOfDay needs a schedule_new or reschedule context, or a no_form opener with that intent`);
+      }
     }
     if (entry.timePreference !== undefined) {
       if (!['earlier', 'later', 'different'].includes(entry.timePreference)) throw new Error(`corpus ${entry.id}: timePreference must be earlier, later, or different`);
