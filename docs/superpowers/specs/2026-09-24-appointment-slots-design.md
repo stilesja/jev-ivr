@@ -31,9 +31,9 @@ export interface AppointmentDirectory {
 `DemoDirectory` (same file) implements both deterministically from a stable hash of name, birthday and provider, seeded with the call's `todayIso`:
 
 - `find`: the booking is on a weekday one to fourteen days after `todayIso` (weekends skipped), at one of the table times. The demo never returns null; the null path (no booking found) belongs to the framework.
-- `openings`: three times per provider-day from a fixed table of nine (three mornings, three middays, three afternoons), chosen by the hash of provider and date, in clock order. Never empty for the demo.
+- `openings`: three times per provider-day from a fixed table of nine (three in each window), chosen by the hash of provider and date, in clock order. Never empty for the demo, and not always one per window: a day can have two mornings and an afternoon, which is what makes the nearest rule reachable.
 
-`DAYPARTS` (same file): `morning` covers times before 12:00, `midday` 12:00 to 1:59 PM, `afternoon` 2:00 PM on. `daypartOf(time)` maps a time to one.
+`DAYPARTS` (same file): three-hour windows over the clinic's day. `morning` is 8:00 to 10:59 AM, `midday` 11:00 AM to 1:59 PM, `afternoon` 2:00 to 4:59 PM. `daypartOf(time)` maps a time to one. The demo table of nine times has three in each window.
 
 The directory reaches the core through `TurnContext.directory` (beside `render`); `RunOptions` carries it the same way, the harness and the server both pass `new DemoDirectory()`. Pure core, no I/O.
 
@@ -63,7 +63,7 @@ daypart: 'morning' | 'midday' | 'afternoon' | null;           // the caller's st
 | `reschedule_confirmed` | Your appointment is moved to {when}. | changed |
 | `slot_edge_earlier` | That's the earliest opening that day. | new ack |
 | `slot_edge_later` | That's the latest opening that day. | new ack |
-| `slot_nearest` | The closest I have that {daypart} is {time}. | new ack |
+| `slot_nearest` | The closest I have to the {daypart} is {time}. | new ack |
 
 `cancel_confirmed` and `appointment_details` are unchanged. Every spoken variable ends a sentence or is followed by punctuation, which the seam test already enforces; `{daypart}` is a vocabulary variable with three clips (`daypart.morning`, `daypart.midday`, `daypart.afternoon`). `SPOKEN_VARS` gains `when`, `existing`, `time`; `VOCAB_VARS` gains `daypart`.
 
@@ -80,7 +80,7 @@ Two Choices, both read only.
 At a schedule or reschedule summary, in this order after the yes/no and `changeSlot` reads:
 
 1. A changed date (a correction such as "no, Thursday") rebuilds the offer for the new day, honouring `daypart`, and re-reads the summary. This is the existing correction path with the offer rebuilt in it.
-2. Otherwise a `timeOfDay` in the answer sets `daypart` and moves the index to the first opening in that part of the day. If none exists that day, the index moves to the nearest opening to that part (the closest time by clock distance to the part's boundary) and `slot_nearest` plays before the summary. The same rule applies at the first offer when the caller volunteered a window earlier on the form.
+2. Otherwise a `timeOfDay` in the answer sets `daypart` and moves the index to the first opening in that part of the day. If none exists that day, the index moves to the opening closest by clock distance to that window's edge (a caller asking for the afternoon on a day with openings at 9:15, 11:45 and 1:00 gets 1:00 PM) and `slot_nearest` plays before the summary: "The closest I have to the afternoon is 1:00 PM." The same rule applies at the first offer when the caller volunteered a window earlier on the form.
 3. Otherwise a `timePreference` moves the index: `earlier` one step back, `later` one step forward, `different` one step forward wrapping to the first. At the end of the list in the asked direction the index does not move and `slot_edge_earlier` or `slot_edge_later` plays.
 
 Cases 1 and 2, and a case-3 move that changes the time, are corrections: the summary is re-read with a fresh attempt count, as any correction is today. A case-3 edge, or a `timeOfDay` that leaves the index where it was, is an unchanged summary and counts a turn on the summary's ladder, so two "earlier" at the earliest slot reach the keypad prompt and the caller can still name another day. A preference on a confirm or cancel summary is ignored and the turn is read as today.
