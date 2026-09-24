@@ -584,7 +584,7 @@ and on every record the trace route returns — before it leaves the server.
     chained billing task collects its own ID before the handoff, because the
     scheduling form never asked for one.
 18. Call again and say "I have a question about my bill" on its own. Expect
-    "What's your member ID?", the eight digits spoken or keyed, then the
+    "I'd be happy to help you talk to billing. What's your member ID?", the eight digits spoken or keyed, then the
     billing handoff: billing is the one form that still identifies the caller
     by member ID.
 19. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.

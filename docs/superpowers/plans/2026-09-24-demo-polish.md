@@ -721,7 +721,7 @@ Update the comment above `switching` (the variable goes away with it): entering 
     > The provider question asks "Do you have the name of the provider?" A name in the answer fills as before ("yes, Dr. Chen"). A bare "yes" is answered with "Which doctor is it with?"; a "no", an "I don't know", or "who are the doctors" is answered with the list: "Our providers are Dr. Chen, Dr. Cheng, Dr. Patel, or Dr. Okafor; Dr. Nguyen, Dr. Rossi, Dr. Kim, or Dr. Alvarez. Which one is your appointment with?" Neither counts as an attempt, and each plays at most once per call; a second "I don't know" after the list is an ordinary miss, so the retry line, the keypad list, and the transfer follow as they always did. The slot decides this through a `help` outcome the form loop plays in place of its question; any slot can return one.
   - **Recorded prompts**, after the frustration paragraph:
 
-    > The demo polish adds three clips — `capabilities.0`, `provider_list.0`, `ask_provider_name.0` — and re-records `ask_provider.0` ("Do you have the name of the provider?"), `ack_intent.0` ("I'd be happy to help you"), and the vocabulary clips `intent.schedule_new`, `intent.reschedule`, `intent.cancel`, `intent.confirm_appointment` and `intent.billing` for their new labels. `pnpm prompts:check` reports 3 missing and 7 stale until those are recorded (Task 5 of `docs/superpowers/plans/2026-09-24-demo-polish.md`).
+    > The demo polish adds three clips — `capabilities.0`, `provider_list.0`, `ask_provider_name.0` — and re-records `ask_provider.0` ("Do you have the name of the provider?"), `ack_intent.0` ("I'd be happy to help you"), and the vocabulary clips `intent.reschedule`, `intent.cancel`, `intent.confirm_appointment` and `intent.billing` for their new labels. `pnpm prompts:check` reports 3 missing and 6 stale until those are recorded (Task 5 of `docs/superpowers/plans/2026-09-24-demo-polish.md`).
   - **Live-call checklist**: step 7's expectation becomes `"I'd be happy to help you reschedule your appointment. What's your first and last name?"`; step 17's two quoted lines take the new billing label; add a step 24:
 
     > 24. The demo caller's path: at the greeting say "I'd like to learn more about what you are and what you do". Expect the capabilities line and then "How can I help you today?" with no attempt spent. Say "I'd like to reschedule": expect "I'd be happy to help you reschedule your appointment. What's your first and last name?" Give the name and birthday; at "Do you have the name of the provider?" say "no": expect the list, split in two runs of four. Say "Dr. Kim" and expect the day question. On another call say "yes" at the provider question and expect "Which doctor is it with?"
@@ -732,7 +732,7 @@ Update the comment above `switching` (the variable goes away with it): entering 
 
 ### Task 5 (Jason)
 
-- [ ] `pnpm prompts:check` reports 3 missing, 7 stale. `pnpm prompts:generate` for the missing; `pnpm prompts:generate --only ask_provider.0 --force`, and the same for `ack_intent.0`, `intent.schedule_new`, `intent.reschedule`, `intent.cancel`, `intent.confirm_appointment`, `intent.billing`. Listen to `provider_list.0` for the pause at the semicolon; if the voice runs through it, regenerate with a period in place of the semicolon (edit the manifest, and the roster test still passes).
+- [ ] `pnpm prompts:check` reports 3 missing, 6 stale. `pnpm prompts:generate` for the missing; `pnpm prompts:generate --only ask_provider.0 --force`, and the same for `ack_intent.0`, `intent.reschedule`, `intent.cancel`, `intent.confirm_appointment`, `intent.billing`. Listen to `provider_list.0` for the pause at the semicolon; if the voice runs through it, regenerate with a period in place of the semicolon (edit the manifest, and the roster test still passes).
 - [ ] `pnpm regress --client record` for the full re-record (every key changed), then `pnpm regress --client recorded` and read the diff against the labels. Expect the usual handful of known disagreements plus anything the new questions surface; the `ph-*` entries are the ones to read first, since `providerNameStatus` is new to the model.
 - [ ] Restart `pnpm serve` and walk checklist step 24 on the phone.
 
@@ -769,3 +769,13 @@ Update the comment above `switching` (the variable goes away with it): entering 
 - "Say that again" and a reconnect replay the ack with the question, and the model reads that text as the prompt just played; this already happened for mid-confidence routes.
 - The model now reads `activeFormLabel: 'talk to billing'` and `pendingConfirmation.value: 'reschedule your appointment'`; the billing wording is the one to watch in the Task 5 re-record, since it sounds closer to wanting a person.
 - `verdict.confirm` on a route verdict is no longer read by `enterForm` (only `'explicit'` is acted on, in `handleVerdict`); left as is.
+
+### Found in the final review (no code change)
+
+- Spec §7 listed corpus texts that were not added as written: bare "no", "yes" and "Dr. Chen" already exist at other contexts and texts must be unique, so the `ph-*` entries use the longer forms ("no I don't", "yes I do", "yes, it's Dr. Chen"), and "tell me what you are" became cp-04's longer phrase.
+- Capabilities asked at `provider_list` or `ask_provider_name` resumes with the plain `ask_provider`, and the help prompt is already marked played, so an honest "no" after that is a miss. Same shape as silence after the list. The fix for both is one rule: when the slot asked is the one whose `helped` holds `lastPromptId`, re-ask that help prompt. Left for after the demo.
+- A mid-form switch at the provider question ("actually cancel it, I don't know the doctor") plays `ack_intent` and then `provider_list` on one turn, since name and birthday carry over and `promptedFor` stays `provider`. Sensible, untested.
+- Help on the same turn as the capabilities question plays the capabilities line and then the help prompt, and records it; checked by hand, no unit test.
+- A decline of the transfer offer that also says "I don't know the name" does not trigger help, because the prompt answered was the offer; the caller says "no" once more at the re-asked question.
+- The keyword stub (`pnpm cli --client heuristic`) does not match checklist step 24's opening line "what you are and what you do"; the fixture stub and the live model are unaffected.
+

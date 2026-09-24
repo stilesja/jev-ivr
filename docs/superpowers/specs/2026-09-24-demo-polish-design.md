@@ -29,13 +29,13 @@ Each is small. They ship together as one branch because they share a cassette re
 
 Gate 8 treats an informational intent exactly as it treats `repeat_prompt`: outside a form it fires at `INTENT_IMPLICIT`, inside a form at `INTENT_SWITCH`, and it is checked in the same position (after `agent` and `repeat_prompt`, before the form intents). The verdict is `{ kind: 'inform', promptId }`, row outcome `inform:capabilities`.
 
-An `inform` verdict is not consumed by the summary resolution and not rescued into `confirm_unanswered`, so it wins over a pending confirmation of any target: the caller who asks what the system can do while a yes/no is pending hears the answer and is asked the yes/no again without it counting. Frustration rungs stamp onto it like any other prompt-producing verdict (`withFrustration` leaves it alone only for `ignore`, `hold`, `handoff`, `replay`).
+An `inform` verdict is not consumed by the summary resolution and not rescued into `confirm_unanswered`, so it wins over a pending confirmation of any target but the transfer offer, where gate 6 settles every answer that is not a yes as a decline before the intent is read: the caller who asks what the system can do while a yes/no is pending hears the answer and is asked the yes/no again without it counting. Frustration rungs stamp onto it like any other prompt-producing verdict (`withFrustration` leaves it alone only for `ignore`, `hold`, `handoff`, `replay`).
 
 ### 2.3 Turn
 
 The turn plays the mapped prompt as an acknowledgment and resumes where the call was. The resume rule is the one `declineTransfer` already implements, extracted into `resume(s, t, acks)` so both use it:
 
-- a pending confirmation is re-asked without counting (`reaskConfirmation(s, t, acks, false)`), which restores the summary, an intent check, a slot readback, or the transfer offer as appropriate;
+- a pending confirmation is re-asked without counting (`reaskConfirmation(s, t, acks, false)`), which restores the summary, an intent check, or a slot readback as appropriate (the transfer offer never reaches here; see §2.2);
 - an open form asks its next question through `continueForm`, so a pending partial (`ask_dob_year`, `date_narrow_window`) is re-asked as it was;
 - otherwise `ask_intent`.
 
@@ -122,7 +122,7 @@ For Jason to record with `pnpm prompts:generate`; `prompts:check` reports them.
 
 - Gates: `inform` fires at the two thresholds, wins over a pending confirmation, is not rescued, carries frustration.
 - Turn: capabilities resumes each of the three places without counting; slots fill on the same breath; the ack chain order on a confident route with slots; the ack on menu, explicit-yes, and switch entries.
-- Provider slot: `help` for each status, a named provider wins, below threshold is `absent`; `fillSlots` carries help without progress; `continueForm` plays it once and the second time is a miss; help on a slot not being asked is ignored.
+- Provider slot: `help` for each status, a named provider wins, below threshold is `absent`; `fillSlots` carries honoured help as progress and ignored help as nothing; `continueForm` plays it once and the second time is a miss; help on a slot not being asked is ignored.
 - Prompts: manifest snapshot, tags, sheet; `provider_list` matches the roster; acks honour their manifest flag.
 - Harness: labels, scenarios, baseline; `pnpm regress` clean.
 
