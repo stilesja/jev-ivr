@@ -105,13 +105,13 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, DASHBOARD: 'yes' })).toThrow('DASHBOARD must be on or off, got "yes"');
   });
 
-  it('takes the clips switch, defaults it on, and rejects anything else', () => {
-    expect(loadConfig(base).clips).toBe(true);
-    expect(loadConfig({ ...base, CLIPS: 'off' }).clips).toBe(false);
-    expect(loadConfig({ ...base, CLIPS: 'OFF' }).clips).toBe(false);
+  it('takes the clips switch, defaults it off, and rejects anything else', () => {
+    expect(loadConfig(base).clips).toBe(false);
+    expect(loadConfig({ ...base, CLIPS: 'on' }).clips).toBe(true);
+    expect(loadConfig({ ...base, CLIPS: 'ON' }).clips).toBe(true);
     expect(() => loadConfig({ ...base, CLIPS: 'no' })).toThrow('CLIPS must be on or off, got "no"');
-    expect(describeConfig(loadConfig(base))).toContain('clips on');
-    expect(describeConfig(loadConfig({ ...base, CLIPS: 'off' }))).toContain('clips OFF (all TTS)');
+    expect(describeConfig(loadConfig(base))).toContain('clips OFF (all TTS)');
+    expect(describeConfig(loadConfig({ ...base, CLIPS: 'on' }))).toContain('clips on');
   });
 
   it('describes the dashboard switch', () => {

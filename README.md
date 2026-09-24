@@ -253,12 +253,12 @@ not where UTC has already got to. `SESSION_TTL_MS` is how long an idle call
 session is kept, `SESSION_MAX_AGE_MS` the hard cap on any one session.
 `TODAY_OVERRIDE` pins the date for a demo. `DASHBOARD` is `on` (the default) or
 `off`, and anything else fails startup; `off` serves no dashboard (see
-"Dashboard" below). `CLIPS` is `on` (the default) or `off`; `off` plays no
-recorded clip and lets ConversationRelay's TTS voice speak every prompt, so the
-fixed text, the names and the dates all come from one voice with no seams
-between clips, at the cost of the recorded voice. Set `TTS_PROVIDER` and
-`TTS_VOICE` to choose that voice; the clip files are left in place and
-`pnpm prompts:check` still reports on them.
+"Dashboard" below). `CLIPS` is `off` (the default) or `on`. Off, no recorded clip
+plays and ConversationRelay's TTS voice speaks every prompt, so the fixed
+text, the names and the dates all come from one voice with no seams between
+clips; `TTS_PROVIDER` and `TTS_VOICE` choose that voice. On plays the
+recorded clips, with TTS only for the names and dates. The clip files are
+left in place either way and `pnpm prompts:check` still reports on them.
 
 No input: if the caller says and presses nothing after a prompt finishes
 playing, the server treats the silence as an unanswered turn on whatever was
