@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { FORMS } from '../domain/forms';
+import { EXISTING_FORMS, FORMS, SCHEDULING_FORMS } from '../domain/forms';
 import { renderTemplate, promptText, promptEntry, decisionToFrames, promptFrames, handoffPromptId, spokenText } from './render';
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
 import { allSlots } from '../domain/slots';
-import { INTENT_MENU, INTENT_LABELS, INFORMATIONAL_INTENTS } from '../domain/intents';
+import { INTENT_MENU, INTENT_LABELS, INFORMATIONAL_INTENTS, type FormId } from '../domain/intents';
 import { textFrame } from '../channel/frames';
 import { recordableClips } from './clips';
 import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR, VOCAB_VARS, type Segment } from './segments';
@@ -126,11 +126,13 @@ describe('decisionToFrames', () => {
 });
 
 describe('summary prompts', () => {
-  it('read back every slot of the form they confirm', () => {
+  it('read back every slot of the form they confirm, the day as the opening offered on it', () => {
     for (const [form, spec] of Object.entries(FORMS)) {
       if (spec.summaryPromptId === null) continue;
       const text = promptEntry(spec.summaryPromptId).text;
-      for (const slot of spec.slots) expect(text, `${form}: ${spec.summaryPromptId}`).toContain(`{${slot}}`);
+      // The day is never read alone: "{when}" says it together with the time the directory offered.
+      for (const slot of spec.slots) expect(text, `${form}: ${spec.summaryPromptId}`).toContain(slot === 'date' ? '{when}' : `{${slot}}`);
+      if (EXISTING_FORMS.includes(form as FormId)) expect(text, `${form}: ${spec.summaryPromptId}`).toContain('{existing}');
     }
   });
 
@@ -142,10 +144,12 @@ describe('summary prompts', () => {
     }
   });
 
-  it('leaves the completion line to say only that it is done', () => {
+  it('leaves the completion line to say it is done, naming only the opening a booking form booked', () => {
     for (const [form, spec] of Object.entries(FORMS)) {
       if (spec.completion.kind !== 'prompt' || spec.summaryPromptId === null) continue;
-      expect(promptEntry(spec.completion.promptId).text, form).not.toMatch(new RegExp(VAR.source));
+      const text = promptEntry(spec.completion.promptId).text;
+      const names = [...text.matchAll(VAR)].map((m) => m[1]);
+      expect(names, form).toEqual(SCHEDULING_FORMS.includes(form as FormId) ? ['when'] : []);
     }
   });
 });
@@ -182,6 +186,7 @@ describe('decisionToFrames with clips', () => {
     ['ack_provider.0', 'ack_provider.0.wav'], ['provider.chen', 'provider.chen.wav'],
     ['confirm_cancel.0', 'confirm_cancel.0.wav'], ['confirm_cancel.1', 'confirm_cancel.1.mp3'],
     ['confirm_cancel.2', 'confirm_cancel.2.wav'], ['confirm_cancel.3', 'confirm_cancel.3.wav'],
+    ['confirm_cancel.4', 'confirm_cancel.4.wav'],
     ['window.next_week', 'window.next_week.wav'],
     ['goodbye.0', 'goodbye.0.wav'],
   ]);
@@ -196,14 +201,16 @@ describe('decisionToFrames with clips', () => {
 
   it('plays vocabulary clips, speaks composed values, and drops bare punctuation after a clip', () => {
     const frames = decisionToFrames({
-      kind: 'prompt', promptId: 'confirm_cancel', vars: { name: 'Jason Stiles', dob: 'March 5th, 1980', provider: 'Dr. Chen' }, target: 'confirm', options: ['yes', 'no'],
+      kind: 'prompt', promptId: 'confirm_cancel', target: 'confirm', options: ['yes', 'no'],
+      vars: { name: 'Jason Stiles', dob: 'March 5th, 1980', provider: 'Dr. Chen', existing: 'Wednesday, September 23 at 9:15 AM' },
       acks: [{ promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }],
     }, ctx);
     expect(frames).toEqual([
       p(`${base}ack_provider.0.wav`, false), p(`${base}provider.chen.wav`, false),
       p(`${base}confirm_cancel.0.wav`, true), p(`${base}provider.chen.wav`, true),
-      p(`${base}confirm_cancel.1.mp3`, true), t('Jason Stiles', true), p(`${base}confirm_cancel.2.wav`, true),
-      t('March 5th, 1980', true), p(`${base}confirm_cancel.3.wav`, true),
+      p(`${base}confirm_cancel.1.mp3`, true), t('Wednesday, September 23 at 9:15 AM', true), p(`${base}confirm_cancel.2.wav`, true),
+      t('Jason Stiles', true), p(`${base}confirm_cancel.3.wav`, true),
+      t('March 5th, 1980', true), p(`${base}confirm_cancel.4.wav`, true),
     ]);
   });
 
@@ -251,6 +258,10 @@ describe('decisionToFrames with clips', () => {
       date: 'Tuesday, September 22',
       a: 'Dr. Chen',
       b: 'Dr. Cheng',
+      when: 'Tuesday, September 22 at 2:45 PM',
+      existing: 'Wednesday, September 23 at 9:15 AM',
+      time: '1:00 PM',
+      daypart: 'afternoon',
     };
     const empty = { clips: new Map<string, string>(), audioBase: base };
     for (const id of Object.keys(manifest)) {
@@ -271,6 +282,10 @@ describe('decisionToFrames with clips', () => {
       date: 'Tuesday, September 22',
       a: 'Dr. Chen',
       b: 'Dr. Cheng',
+      when: 'Tuesday, September 22 at 2:45 PM',
+      existing: 'Wednesday, September 23 at 9:15 AM',
+      time: '1:00 PM',
+      daypart: 'afternoon',
     };
     const full = new Map(recordableClips().map((r) => [r.id, `${r.id}.wav`]));
     const byId = new Map(recordableClips().map((r) => [r.id, r.text]));
@@ -321,7 +336,7 @@ describe('decisionToFrames with clips', () => {
           // punctuation-only fixed segment glued on (it has nowhere else to attach when
           // nothing plays after it — see the reference model above).
           const bare = token.replace(/[,.?!;:]+$/, '');
-          const isSpokenVarValue = [vars.memberId, vars.name, vars.dob, vars.date].includes(bare);
+          const isSpokenVarValue = [vars.memberId, vars.name, vars.dob, vars.date, vars.when, vars.existing, vars.time].includes(bare);
           expect(isSpokenVarValue, `${id}: unexpected text frame ${JSON.stringify(token)}`).toBe(true);
         }
 

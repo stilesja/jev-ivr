@@ -1,12 +1,13 @@
 import type { AnswerMap, QuestionMap } from '../jev/types';
 import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
-import { ALL_SLOTS, FORMS } from '../domain/forms';
+import { ALL_SLOTS, EXISTING_FORMS, FORMS, SCHEDULING_FORMS } from '../domain/forms';
+import { daypartBounds, daypartOf, minutesOf, type AppointmentDirectory, type Daypart } from '../domain/directory';
 import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain/intents';
 import { allSlots, slotsFor, EXCLUDED_NAME_TOKENS, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
-import { describeWindow } from './extract/date';
+import { describeDay, describeWindow } from './extract/date';
 import { candidateSpans, candidateWordSpans } from './spans';
-import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
+import { cloneSession, emptySlot, missingSlots, setForm, type Offer, type PendingConfirmation, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
 import { evaluateGates, frustrationOf, type FrustrationRung, type GateRow, type Verdict } from './gates';
@@ -20,6 +21,7 @@ export interface TurnContext {
   todayIso: string;
   thresholds: Thresholds;
   render?: RenderContext | null;
+  directory: AppointmentDirectory;
 }
 
 export interface Plan {
@@ -116,7 +118,68 @@ function askSlot(slot: SlotId, window: SlotPartial | null, acks: Ack[]): PromptD
 export function summaryVars(s: Session): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const id of ALL_SLOTS) vars[id] = s.slots[id].display ?? '';
+  vars.when = s.offer ? describeWhen(s.offer.date, s.offer.times[s.offer.index]!) : '';
+  vars.time = s.offer ? s.offer.times[s.offer.index]! : '';
+  vars.existing = s.existing ? describeWhen(s.existing.date, s.existing.time) : '';
   return vars;
+}
+
+/** "Tuesday, October 6 at 2:45 PM": the one spoken span a summary or completion reads a booking as. */
+export function describeWhen(date: string, time: string): string {
+  return `${describeDay(date)} at ${time}`;
+}
+
+/**
+ * The index the offer opens at: the first opening inside the caller's daypart when they named
+ * one and the day has one; otherwise the day's first opening. `nearest` is set when the caller
+ * named a daypart the day cannot serve, so the caller is told which opening they got instead.
+ */
+export function buildOffer(date: string, times: string[], daypart: Daypart | null): { offer: Offer; nearest: boolean } {
+  if (daypart === null || times.length === 0) return { offer: { date, times, index: 0 }, nearest: false };
+  const inside = times.findIndex((t) => daypartOf(t) === daypart);
+  if (inside >= 0) return { offer: { date, times, index: inside }, nearest: false };
+  // Closest by clock distance to the window's edges. The window's end is its first minute
+  // outside, so the last minute inside it is `end - 1` and a time at `end` is one minute away.
+  const { start, end } = daypartBounds(daypart);
+  const distance = (t: string): number => {
+    const m = minutesOf(t);
+    return m < start ? start - m : m >= end ? m - end + 1 : 0;
+  };
+  let best = 0;
+  times.forEach((t, i) => {
+    if (distance(t) < distance(times[best]!)) best = i;
+  });
+  return { offer: { date, times, index: best }, nearest: true };
+}
+
+/**
+ * Look the bookings up that the summary or completion about to be spoken names, and render its
+ * variables again with them. Runs once per turn, after the decision is made and before it is
+ * spoken (resolve), so the form loop never needs the directory: a summary asked on the same turn
+ * the date filled reads back the opening this step found. Rebuilds the offer when the day changed
+ * (a correction moved it) and leaves it alone otherwise, so an index moved by earlier/later stands.
+ */
+export function settleBookings(s: Session, decision: Decision, directory: AppointmentDirectory): Decision {
+  if (!s.form) return decision;
+  const acks: Ack[] = [];
+  const { name, dob, provider, date } = s.slots;
+  if (EXISTING_FORMS.includes(s.form) && s.existing === null && name.value && dob.value && provider.value) {
+    s.existing = directory.find(name.value, dob.value, provider.value);
+  }
+  if (SCHEDULING_FORMS.includes(s.form) && provider.value && date.value && (s.offer === null || s.offer.date !== date.value)) {
+    const built = buildOffer(date.value, directory.openings(provider.value, date.value), s.daypart);
+    s.offer = built.offer;
+    if (built.nearest && s.daypart) acks.push({ promptId: 'slot_nearest', vars: { daypart: s.daypart, time: built.offer.times[built.offer.index]! } });
+  }
+  // Only a decision that reads the booking back needs its variables refreshed; everything else
+  // keeps what it rendered. Acks are prepended so "The closest I have to the afternoon is 1:00 PM."
+  // is heard before the summary that names it.
+  if (decision.kind === 'prompt' && decision.target === 'confirm' && s.pendingConfirmation?.target === 'form') {
+    return { ...decision, vars: summaryVars(s), acks: [...acks, ...decision.acks] };
+  }
+  if (decision.kind === 'complete') return { ...decision, vars: summaryVars(s), acks: [...acks, ...decision.acks] };
+  if (acks.length && decision.kind === 'prompt') return { ...decision, acks: [...acks, ...decision.acks] };
+  return decision;
 }
 
 /** Everything the summary just read back, as one comparable value: every slot's window too, so a
@@ -184,9 +247,15 @@ function completeForm(s: Session, form: FormId, acks: Ack[]): Decision {
   // goes first; only when nothing else is left does the queue hand the caller over.
   const idx = s.queued.findIndex((q) => FORMS[q].completion.kind === 'prompt');
   const next = idx >= 0 ? s.queued.splice(idx, 1)[0] : s.queued.shift();
+  // A plain completion ends the call, so the offer and booking it read stay on the session: the
+  // completion's variables were built from them, and settleBookings renders them again unchanged.
   if (!next) return { kind: 'complete', form, promptId: completion.promptId, vars, acks, completed: [...s.completed] };
+  // A chained form keeps the identity and the daypart the caller asked for, but the provider,
+  // the day, and every booking that hung off them belong to the form just closed.
   s.slots.provider = emptySlot();
   s.slots.date = emptySlot();
+  s.offer = null;
+  s.existing = null;
   setForm(s, next);
   // The request was added on this very turn, so the caller already hears it bridged into;
   // promising it "after this" as well would say the same thing twice.
@@ -636,7 +705,8 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       return { ...base, decision, frames: decisionToFrames(decision, tc.render) };
     }
     case 'dtmf': {
-      const { decision, rows } = handleDtmf(s, event.digit, tc);
+      const { decision: handled, rows } = handleDtmf(s, event.digit, tc);
+      const decision = settleBookings(s, handled, tc.directory);
       bookkeep(s, decision, `dtmf:${event.digit}`);
       return { ...base, rows, decision, frames: decisionToFrames(decision, tc.render) };
     }
@@ -674,7 +744,7 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       const rung = frustrationOf(verdict);
       if (rung !== undefined) s.frustratedTurns += 1;
       const { decision: resolved, events } = handleVerdict(s, verdict, answers, ctx, tc);
-      const decision = escalate(s, resolved, rung);
+      const decision = settleBookings(s, escalate(s, resolved, rung), tc.directory);
       rows.push(...slotRows(events, tc.thresholds));
       bookkeep(s, decision, verdict.kind);
       // The barge-in has now been reported to the model; it does not carry into the next turn.

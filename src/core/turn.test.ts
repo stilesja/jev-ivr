@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plan, resolve, type TurnContext, type TurnResult } from './turn';
+import { buildOffer, plan, resolve, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
 import { INTENT_LABELS, type FormId } from '../domain/intents';
 import { DEFAULT_THRESHOLDS } from './thresholds';
@@ -8,10 +8,11 @@ import { choice, noul, score } from '../testing/answers';
 import type { AnswerMap } from '../jev/types';
 import { answerHeuristically } from '../jev/heuristicStub';
 import { spokenText } from '../prompts/render';
-import type { DateWindow } from './extract/date';
+import { describeDay, type DateWindow } from './extract/date';
+import { DAYPART_ORDER, DemoDirectory, daypartOf, type Daypart } from '../domain/directory';
 import type { Ack } from './fia';
 
-const tc: TurnContext = { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } };
+const tc: TurnContext = { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, directory: new DemoDirectory('2026-09-18') };
 
 const ACK = (form: FormId): Ack => ({ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } });
 
@@ -646,7 +647,12 @@ describe('final confirm', () => {
     const r = turns.at(-1)!;
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm', options: ['yes', 'no'] });
     // The member ID is on the billing form only, so it is the summary's one empty var.
-    expect(varsOf(r.decision)).toEqual({ name: 'Jason Stiles', dob: 'March 5th, 1980', memberId: '', provider: 'Dr. Chen', date: 'Tuesday, September 22' });
+    const first = r.session.offer!.times[0]!;
+    const found = r.session.existing!;
+    expect(varsOf(r.decision)).toEqual({
+      name: 'Jason Stiles', dob: 'March 5th, 1980', memberId: '', provider: 'Dr. Chen', date: 'Tuesday, September 22',
+      when: `Tuesday, September 22 at ${first}`, time: first, existing: `${describeDay(found.date)} at ${found.time}`,
+    });
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
     // the name and birthday turns asked the next question directly: no readback, no ack
     expect(turns[1]!.decision).toMatchObject({ promptId: 'ask_dob', acks: [] });
@@ -660,7 +666,7 @@ describe('final confirm', () => {
     expect(r.session.slots.dob.confirmed).toBe(true);
     expect(r.session.slots.provider.confirmed).toBe(true);
     expect(r.session.slots.date.confirmed).toBe(true);
-    expect(spokenText(r.decision)).toBe('Your appointment is moved. Goodbye.');
+    expect(spokenText(r.decision)).toBe(`Your appointment is moved to Tuesday, September 22 at ${r.session.offer!.times[0]}. Goodbye.`);
   });
 
   it('refills a corrected slot from a no and re-asks the summary', () => {
@@ -1346,5 +1352,78 @@ describe('provider help', () => {
     r = say(r.session, "I don't know", { intentChange: ANSWERING, providerNameStatus: NO_NAME });
     expect(r.decision).toMatchObject({ promptId: 'provider_list' });
     expect(r.session.slots.provider.helped).toEqual(['provider_list']);
+  });
+});
+
+describe('bookings', () => {
+  const RESCHEDULE_OPENER = 'I need to reschedule my appointment with Dr. Chen next week';
+
+  it('reads the found booking back on a confirm summary, with its time', () => {
+    let r = say(started(), 'confirm my appointment with dr chen', { intent: choice({ confirm_appointment: 0.95, none: 0.05 }), provider: choice({ chen: 0.92, none: 0.08 }) });
+    r = identify(r.session);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_appointment_details', target: 'confirm' });
+    const found = tc.directory.find('jason stiles', '1980-03-05', 'chen');
+    expect(r.session.existing).toEqual(found);
+    expect(varsOf(r.decision).existing).toBe(`${describeDay(found!.date)} at ${found!.time}`);
+    expect(spokenText(r.decision)).toContain(`It's on ${describeDay(found!.date)} at ${found!.time}, for Jason Stiles`);
+  });
+
+  it('offers the first opening on the chosen day and books it on yes', () => {
+    const r = afterTurns(HAPPY);
+    const offer = r.session.offer!;
+    expect(offer.date).toBe('2026-09-22');
+    expect(offer.index).toBe(0);
+    expect(offer.times).toEqual(tc.directory.openings('chen', '2026-09-22'));
+    expect(varsOf(r.decision).when).toBe(`Tuesday, September 22 at ${offer.times[0]}`);
+    expect(varsOf(r.decision).existing).toBe(`${describeDay(r.session.existing!.date)} at ${r.session.existing!.time}`);
+    const done = afterTurns([...HAPPY, 'yes']);
+    expect(done.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
+    expect(spokenText(done.decision)).toContain(`Your appointment is moved to Tuesday, September 22 at ${offer.times[0]}.`);
+  });
+
+  it.skip('opens the offer inside a daypart the caller volunteered on the opener', () => {
+    // Task 3 adds the timeOfDay question; unskip there.
+    const day = '2026-09-22';
+    const times = tc.directory.openings('chen', day);
+    const afternoon = times.findIndex((t) => daypartOf(t) === 'afternoon');
+    const part: Daypart = afternoon >= 0 ? 'afternoon' : daypartOf(times[times.length - 1]!);
+    const r = afterTurns([{ say: `${RESCHEDULE_OPENER} in the ${part}`, over: { timeOfDay: choice({ [part]: 0.9, none: 0.1 }) } }, 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday']);
+    expect(r.session.daypart).toBe(part);
+    expect(daypartOf(r.session.offer!.times[r.session.offer!.index]!)).toBe(part);
+  });
+
+  it.skip('offers the nearest opening, and says so, when the day has none in the daypart', () => {
+    // Task 3 adds the timeOfDay question; unskip there.
+    const day = '2026-09-22';
+    const times = tc.directory.openings('chen', day);
+    const missing = DAYPART_ORDER.find((p) => !times.some((t) => daypartOf(t) === p));
+    if (!missing) return; // this seed happens to cover every window; the buildOffer unit test pins the rule
+    const r = afterTurns([{ say: `${RESCHEDULE_OPENER} in the ${missing}`, over: { timeOfDay: choice({ [missing]: 0.9, none: 0.1 }) } }, 'Jason Stiles', 'March fifth nineteen eighty', 'Tuesday']);
+    expect(r.decision).toMatchObject({ acks: [{ promptId: 'slot_nearest', vars: { daypart: missing, time: r.session.offer!.times[r.session.offer!.index] } }] });
+  });
+
+  it('rebuilds the offer when a correction moves the day, and clears it for a chained form', () => {
+    let r = afterTurns([...HAPPY, 'no, Thursday']);
+    expect(r.session.offer!.date).toBe('2026-09-24');
+    expect(r.session.offer!.index).toBe(0);
+    expect(varsOf(r.decision).when).toContain('Thursday, September 24 at');
+    // The heuristic stub never reads "adding" off an utterance, so the label is given, as in the
+    // final-confirm test that queues billing on yes.
+    const adding = { intentChange: choice({ adding: 0.9, answering: 0.05, replacing: 0.05 }) };
+    r = afterTurns([...HAPPY, { say: 'yes, and also my bill', over: adding }]);
+    expect(r.session.form).toBe('billing');
+    // The completion ack was rendered before the reset, so it still names the booked opening.
+    expect(spokenText(r.decision)).toContain('Your appointment is moved to Tuesday, September 22 at');
+    expect(r.session.offer).toBeNull();
+    expect(r.session.existing).toBeNull();
+  });
+});
+
+describe('buildOffer', () => {
+  it('picks the nearest opening to a window with none, by clock distance', () => {
+    expect(buildOffer('2026-10-06', ['9:15 AM', '11:15 AM', '1:00 PM'], 'afternoon')).toEqual({ offer: { date: '2026-10-06', times: ['9:15 AM', '11:15 AM', '1:00 PM'], index: 2 }, nearest: true });
+    expect(buildOffer('2026-10-06', ['11:15 AM', '2:45 PM', '4:15 PM'], 'morning')).toEqual({ offer: { date: '2026-10-06', times: ['11:15 AM', '2:45 PM', '4:15 PM'], index: 0 }, nearest: true });
+    expect(buildOffer('2026-10-06', ['9:15 AM', '2:45 PM', '4:15 PM'], 'afternoon')).toMatchObject({ offer: { index: 1 }, nearest: false });
+    expect(buildOffer('2026-10-06', ['9:15 AM', '2:45 PM'], null)).toMatchObject({ offer: { index: 0 }, nearest: false });
   });
 });

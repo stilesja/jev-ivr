@@ -1,11 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { summaryVars, type TurnResult } from '../core/turn';
+import { settleBookings, summaryVars, type TurnResult } from '../core/turn';
 import { emptySlot, missingSlots, newSession, setForm, type Session } from '../core/session';
 import { confirmForm, contextForm, offerTransfer, type CorpusEntry } from '../jev/corpus';
 import { JevClientError, type JevClient } from '../jev/types';
 import { promptText } from '../prompts/render';
 import { ALL_SLOTS, FORMS, type SlotId } from '../domain/forms';
+import { DemoDirectory, type AppointmentDirectory } from '../domain/directory';
 import type { SlotCandidate } from '../domain/slots';
 import { promptFrame, setupFrame, dtmfFrames, silenceFrame } from '../channel/frames';
 export { runTurn, nowOf, type RunOptions, type TurnRun } from '../run/turn';
@@ -52,7 +53,7 @@ const PLACEHOLDER_SLOTS: Record<SlotId, SlotCandidate> = {
 };
 
 /** The mid-call state a corpus entry's context implies: its form, the slots already collected, and the prompt being answered. */
-export function seedCorpusSession(session: Session, entry: CorpusEntry): Session {
+export function seedCorpusSession(session: Session, entry: CorpusEntry, directory: AppointmentDirectory): Session {
   if (entry.context === 'no_form') return session;
   const form = contextForm(entry.context)!;
   setForm(session, form);
@@ -77,6 +78,9 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry): Session
     session.pendingConfirmation = { target: 'form', form, attempts: 0 };
     session.promptedFor = 'confirm';
     session.lastPromptId = promptId;
+    // The summary the caller is answering named the found booking and the offered opening, so they
+    // are looked up before its text is rendered. A decision that is not a prompt only fills the session.
+    settleBookings(session, { kind: 'ignore' }, directory);
     session.lastPromptText = promptText(promptId, summaryVars(session));
     session.lastPromptOptions = ['yes', 'no'];
     return session;
@@ -102,10 +106,11 @@ export function seedCorpusSession(session: Session, entry: CorpusEntry): Session
 export async function runCorpusEntry(entry: CorpusEntry, opts: RunOptions): Promise<{ outcome: Outcome; run: TurnRun; setup: TurnRun }> {
   // Seed before the greeting so the setup trace record already reports the placeholder slots
   // as filled; otherwise summarize() credits the entry's one utterance with filling them.
-  const start = seedCorpusSession(newSession(entry.id, nowOf(opts)()), entry);
+  const directory = opts.directory ?? new DemoDirectory(opts.todayIso);
+  const start = seedCorpusSession(newSession(entry.id, nowOf(opts)()), entry, directory);
   const setup = await runTurn(start, setupFrame(entry.id), opts);
   // The greeting's own bookkeeping resets what the last prompt asked for, so re-apply it.
-  const session = seedCorpusSession(setup.result.session, entry);
+  const session = seedCorpusSession(setup.result.session, entry, directory);
   const run = await runTurn(session, promptFrame(entry.text), opts);
   // The setup run is returned as well as traced: a summary that leaves it out would read
   // the seeded placeholders as slots this one utterance filled.

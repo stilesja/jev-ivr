@@ -66,7 +66,7 @@ export const DEMO_TIMES: readonly string[] = [
 /**
  * FNV-1a over the string, as a non-negative 32-bit integer. Stable across runs and platforms.
  * Walks UTF-16 code units rather than code points, so a high and low surrogate of an astral
- * character each contribute their own byte instead of the pair collapsing to one.
+ * character each contribute their own code unit instead of the pair collapsing to one.
  */
 export function hashOf(text: string): number {
   const s = text.toLowerCase();

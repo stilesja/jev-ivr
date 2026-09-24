@@ -99,8 +99,9 @@ describe('DemoDirectory', () => {
       }
     }
     // Both the ordinary case (a slot in every window) and the case the nearest-opening rule
-    // needs (a day that skips a window) have to actually turn up in the sweep.
-    expect(oneEachWindow).toBeGreaterThan(0);
+    // needs (a day that skips a window) have to actually turn up in the sweep. A fair draw gives
+    // one time per window in 27 of the 84 possible sets, about 80 of these 248 days; 40 leaves room.
+    expect(oneEachWindow).toBeGreaterThan(40);
     expect(missingAWindow).toBeGreaterThan(0);
   });
 

@@ -155,12 +155,13 @@ describe('adapter', () => {
     expect(texts(sock).at(-1)).toBe('next week. Which day works for you?');
     await handleSocketMessage(d, sock, ctx, prompt('Tuesday'));
     // The summary reads the whole form back, the year included: a lone four-digit run is left
-    // for TTS to read as a year rather than spelled out the way a member ID is.
-    const summary = 'Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980. Shall I make that change?';
+    // for TTS to read as a year rather than spelled out the way a member ID is. The booking the
+    // demo directory found and the opening it offers are fixed by the call's date, so they are too.
+    const summary = 'Your appointment with Dr. Chen is on Wednesday, September 23 at 9:15 AM. It would move to Tuesday, September 22 at 8:30 AM, for Jason Stiles, born March 5th, 1980. Shall I make that change?';
     expect(texts(sock).at(-1)).toBe(summary);
     expect(d.store.get('CA1')?.session.lastPromptText).toBe(summary);
     await handleSocketMessage(d, sock, ctx, prompt('yes'));
-    expect(texts(sock).at(-2)).toBe('Your appointment is moved.');
+    expect(texts(sock).at(-2)).toBe('Your appointment is moved to Tuesday, September 22 at 8:30 AM.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');
     expect(sock.sent.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"completed","completed":["reschedule"]}' });
     // Twilio still has the queued clips to play; the server leaves the socket open for it and
@@ -218,7 +219,7 @@ describe('adapter', () => {
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '#' }));
     expect(sock.sent.length).toBe(before);
     await handleSocketMessage(d, sock, ctx, JSON.stringify({ type: 'dtmf', digit: '0' }));
-    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim would be cancelled, for Jason Stiles, born March 5th, 1980. Shall I cancel it?');
+    expect(texts(sock).at(-1)).toBe('Your appointment with Dr. Kim is on Tuesday, September 22 at 9:15 AM. It would be cancelled, for Jason Stiles, born March 5th, 1980. Shall I cancel it?');
     await handleSocketMessage(d, sock, ctx, prompt('yes'));
     expect(texts(sock).at(-2)).toBe('Your appointment is cancelled.');
     expect(texts(sock).at(-1)).toBe('Goodbye.');

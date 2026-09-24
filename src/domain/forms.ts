@@ -46,3 +46,8 @@ export const FORMS: Record<FormId, FormSpec> = {
     summaryPromptId: null,
   },
 };
+
+/** Forms that book an opening the system offers (spec 2026-09-24 appointment-slots §3). */
+export const SCHEDULING_FORMS: readonly FormId[] = ['schedule_new', 'reschedule'];
+/** Forms that act on a booking the directory finds. */
+export const EXISTING_FORMS: readonly FormId[] = ['confirm_appointment', 'cancel', 'reschedule'];

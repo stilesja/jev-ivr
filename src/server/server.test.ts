@@ -237,11 +237,11 @@ describe('server end to end', () => {
     relay.prompt('March fifth nineteen eighty');
     expect((await relay.waitForTexts(5)).at(-1)).toBe('next week. Which day works for you?');
     relay.prompt('Tuesday');
-    expect((await relay.waitForTexts(6)).at(-1)).toBe('Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980. Shall I make that change?');
+    expect((await relay.waitForTexts(6)).at(-1)).toBe('Your appointment with Dr. Chen is on Wednesday, September 23 at 9:15 AM. It would move to Tuesday, September 22 at 8:30 AM, for Jason Stiles, born March 5th, 1980. Shall I make that change?');
     relay.prompt('yes');
     const end = await relay.waitFor((m) => m.type === 'end');
     expect(end.handoffData).toBe('{"reasonCode":"completed","completed":["reschedule"]}');
-    expect(relay.texts().at(-2)).toBe('Your appointment is moved.');
+    expect(relay.texts().at(-2)).toBe('Your appointment is moved to Tuesday, September 22 at 8:30 AM.');
     expect(relay.texts().at(-1)).toBe('Goodbye.');
     // The server leaves the socket open after `end` so Twilio can finish playing the queued
     // clips; it is Twilio, not the server, that closes the connection once it is done.

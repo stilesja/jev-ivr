@@ -45,7 +45,7 @@ describe('reduce', () => {
     expect(v.callSid).toBe(CALL);
     expect(v.lines.map((l) => l.kind)).toEqual(['system', 'caller', 'system', 'caller', 'system', 'caller', 'system', 'caller', 'system']);
     expect(v.lines[0]!.text).toBe('Thanks for calling Stiles Family Medical Practice. How can I help you today?');
-    expect(v.lines.at(-1)!.text).toMatch(/^Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980/);
+    expect(v.lines.at(-1)!.text).toMatch(/^Your appointment with Dr. Chen is on Wednesday, September 23 at 9:15 AM\. It would move to Tuesday, September 22 at 8:30 AM, for Jason Stiles, born March 5th, 1980/);
     expect(v.form).toBe('reschedule');
     expect(v.chips.map((c) => [c.id, c.state])).toEqual([['name', 'filled'], ['dob', 'filled'], ['provider', 'filled'], ['date', 'filled']]);
     expect(v.pending).toBe('confirm · summary (reschedule) · attempt 0');

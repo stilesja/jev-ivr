@@ -2,6 +2,7 @@ import type { FormId, Intent } from '../domain/intents';
 import { FORMS, type SlotId } from '../domain/forms';
 import type { SlotPartial } from '../domain/slots/types';
 import type { AnswerMap } from '../jev/types';
+import type { Booking, Daypart } from '../domain/directory';
 
 export interface SlotState {
   value: string | null;
@@ -63,6 +64,13 @@ export type PendingConfirmation =
       resume?: PendingConfirmation;
     };
 
+/** The openings the caller is being offered on one day, and which one the summary names. */
+export interface Offer {
+  date: string;
+  times: string[];
+  index: number;
+}
+
 export interface Interrupt {
   utteranceUntilInterrupt: string;
   durationUntilInterruptMs: number;
@@ -101,6 +109,12 @@ export interface Session {
   frustratedTurns: number;
   /** the caller turned the transfer offer down; it is not offered again on this call */
   transferDeclined: boolean;
+  /** The booking the directory found for the identity and provider on a confirm, cancel or reschedule form; read at the summary. */
+  existing: Booking | null;
+  /** The openings offered on a schedule or reschedule form; the summary names `times[index]`. */
+  offer: Offer | null;
+  /** The part of the day the caller asked for, if they ever did. Read, never asked; carries across a chained form with the identity slots. */
+  daypart: Daypart | null;
   ended: boolean;
 }
 
@@ -151,6 +165,9 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
     consecutiveFailures: 0,
     frustratedTurns: 0,
     transferDeclined: false,
+    existing: null,
+    offer: null,
+    daypart: null,
     ended: false,
   };
 }
@@ -176,6 +193,8 @@ export function cloneSession(s: Session): Session {
     queued: [...s.queued],
     completed: [...s.completed],
     lastInterrupt: s.lastInterrupt ? { ...s.lastInterrupt } : null,
+    existing: s.existing ? { ...s.existing } : null,
+    offer: s.offer ? { ...s.offer, times: [...s.offer.times] } : null,
   };
 }
 

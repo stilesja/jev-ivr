@@ -28,6 +28,9 @@ export const DEFAULT_THRESHOLDS = {
   SLOT_CHOICE_CONFIRM: 0.45,
   SLOT_CHOICE_MARGIN: 0.15,
   SLOT_HELP: 0.6,
+  // appointment slots (spec 2026-09-24 appointment-slots §7)
+  TIME_OF_DAY: 0.6,
+  TIME_PREFERENCE: 0.6,
   // confirmations and menus
   CONFIRM_YES: 0.7,
   CONFIRM_NO: 0.7,

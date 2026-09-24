@@ -204,7 +204,7 @@
       },
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
-      "text": "Your appointment is moved."
+      "text": "Your appointment is moved to Wednesday, September 23 at"
     }
   },
   {
@@ -1125,7 +1125,7 @@
       "decision": "complete",
       "promptId": "reschedule_confirmed",
       "form": "reschedule",
-      "text": "Your appointment is moved."
+      "text": "Your appointment is moved to Tuesday, September 22 at"
     }
   },
   {

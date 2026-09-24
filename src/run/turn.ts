@@ -6,6 +6,7 @@ import type { TurnState } from '../core/state';
 import type { Thresholds } from '../core/thresholds';
 import { JevClientError, type JevClient, type JevResponse, type JsonValue, type QuestionMap } from '../jev/types';
 import type { RenderContext } from '../prompts/render';
+import { DemoDirectory, type AppointmentDirectory } from '../domain/directory';
 import { buildTraceRecord, type TraceWriter } from '../trace/writer';
 import type { TraceRecord } from '../trace/types';
 
@@ -26,6 +27,8 @@ export interface RunOptions {
   render?: RenderContext | null;
   /** A live watcher of the dialogue (the dashboard). Unset in the harness and the CLI. */
   observe?: TurnObserver | null;
+  /** Bookings and openings. The harness, the CLI and the server all use the demo directory today. */
+  directory?: AppointmentDirectory;
 }
 
 export function nowOf(opts: RunOptions): () => number {
@@ -42,7 +45,13 @@ export interface TurnRun {
 
 export async function runTurn(session: Session, event: InboundFrame, opts: RunOptions): Promise<TurnRun> {
   const now = nowOf(opts);
-  const tc: TurnContext = { nowMs: now(), todayIso: opts.todayIso, thresholds: opts.thresholds, render: opts.render ?? null };
+  const tc: TurnContext = {
+    nowMs: now(),
+    todayIso: opts.todayIso,
+    thresholds: opts.thresholds,
+    render: opts.render ?? null,
+    directory: opts.directory ?? new DemoDirectory(opts.todayIso),
+  };
   const t0 = performance.now();
   const p = plan(session, event, tc);
   const t1 = performance.now();
