@@ -355,7 +355,10 @@ function continueForm(s: Session, acks: Ack[], disambiguate: FillResult['disambi
   return askSlot(next.slot, next.window, acks);
 }
 
-/** "I'd be happy to help you ...": every form entry is said out loud (spec 2026-09-24 §4). */
+/**
+ * "I'd be happy to help you ...": every form the caller picks is said out loud (spec 2026-09-24
+ * §4); a queued form chained in by completeForm is bridged with bridge_next instead.
+ */
 function ackIntent(form: FormId): Ack {
   return { promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } };
 }

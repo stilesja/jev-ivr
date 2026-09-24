@@ -233,6 +233,9 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
     else if (label === 'repeat_prompt' && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'replay' }; outcome = 'replay'; }
     else if (informPromptId !== undefined && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'inform', promptId: informPromptId }; outcome = 'inform'; }
     else if (isFormIntent(label) && top.p >= t.INTENT_ROUTE) { routeVerdict = { kind: 'route', intent: label, confirm: 'none' }; outcome = 'route'; }
+    // Every form entry is acknowledged now (spec 2026-09-24 §4), so this band no longer earns the
+    // caller a different turn from a plain route -- only the dropped second task below and the
+    // 'route_implicit' debug label still tell the two apart.
     else if (isFormIntent(label) && top.p >= t.INTENT_IMPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'implicit' }; outcome = 'route_implicit'; }
     else if (isFormIntent(label) && top.p >= t.INTENT_EXPLICIT) { routeVerdict = { kind: 'route', intent: label, confirm: 'explicit' }; outcome = 'route_explicit'; }
     else { routeVerdict = { kind: 'intent_failed' }; outcome = 'failed'; }

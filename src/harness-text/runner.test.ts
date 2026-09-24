@@ -239,13 +239,15 @@ describe('runScenario', () => {
     const confident = await runScenario({ id: 'acks-confident', steps, expect: { decision: 'prompt' } }, opts);
     expect(confident.outcome.acks).toEqual(['ack_intent']);
 
-    // an intent in the implicit band is acknowledged before the next prompt too
+    // an intent in the implicit band is acknowledged too, and a provider named in the same
+    // breath at implicit confidence (SLOT_CHOICE_CONFIRM <= top < SLOT_CHOICE_FILL) adds its own
+    // ack right after -- the recorder still distinguishes the two ack lists.
     const implicitClient = new FixtureStubClient(
-      [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.65, reschedule: 0.2 } } } }],
+      [{ ...entries[0]!, answers: { intent: { probabilities: { cancel: 0.65, reschedule: 0.2 } }, provider: { probabilities: { patel: 0.5 } } } }],
       { sharpness: 0.9, fallback: new HeuristicStubClient({ todayIso: '2026-09-18' }) },
     );
     const acked = await runScenario({ id: 'acks-implicit', steps, expect: { decision: 'prompt' } }, { ...opts, client: implicitClient });
-    expect(acked.outcome.acks).toEqual(['ack_intent']);
+    expect(acked.outcome.acks).toEqual(['ack_intent', 'ack_provider']);
   });
 
   it('reports mismatches', async () => {

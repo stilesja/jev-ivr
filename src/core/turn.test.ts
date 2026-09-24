@@ -147,6 +147,16 @@ describe('turn', () => {
     expect(explicit.decision).toMatchObject({ promptId: 'ask_name', acks: [ACK('cancel')] });
   });
 
+  it('acks once when a spoken menu number enters a form (gate 7)', () => {
+    let r = say(started(), 'blah', { intent: choice({ none: 0.7, other: 0.3 }) });
+    r = say(r.session, 'blah', { intent: choice({ none: 0.7, other: 0.3 }) });
+    expect(r.decision).toMatchObject({ promptId: 'nomatch_dtmf_menu' });
+    expect(r.session.menuActive).toBe(true);
+    r = say(r.session, 'three', { menuNumberSaid: choice({ '3': 0.9, none: 0.1 }), spokeAMenuNumber: noul(0.9) });
+    expect(r.decision).toMatchObject({ promptId: 'ask_name', acks: [ACK('cancel')] });
+    expect(r.session.form).toBe('cancel');
+  });
+
   it('asks an explicit confirmation and acts on yes', () => {
     let r = say(started(), 'maybe cancel', { intent: choice({ cancel: 0.5, none: 0.5 }) });
     expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit', options: ['yes', 'no'] });
