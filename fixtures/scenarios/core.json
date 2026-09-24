@@ -2002,7 +2002,8 @@
       "form": "schedule_new",
       "slots": {
         "provider": "chen"
-      }
+      },
+      "text": "Thursday, September 24 at 4:15 PM"
     }
   },
   {
@@ -2126,13 +2127,68 @@
       },
       {
         "say": "that time doesn't work"
+      },
+      {
+        "say": "that time doesn't work"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_dtmf",
+      "form": "reschedule",
+      "text": "Press 1 to confirm, or 2 to change something."
+    }
+  },
+  {
+    "id": "slot-nearest-opening",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "afternoon please"
       }
     ],
     "expect": {
       "decision": "prompt",
       "promptId": "confirm_reschedule",
       "form": "reschedule",
-      "text": "That's the latest opening that day."
+      "text": "The closest I have to the afternoon is 12:30 PM."
+    }
+  },
+  {
+    "id": "slot-daypart-remembered",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "sometime around lunchtime works"
+      },
+      {
+        "say": "Tuesday"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule",
+      "text": "Tuesday, September 22 at 12:30 PM"
     }
   }
 ]

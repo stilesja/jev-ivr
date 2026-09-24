@@ -1766,13 +1766,55 @@
   "slot-different-to-edge": {
     "id": "slot-different-to-edge",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_dtmf",
     "acks": [
       "slot_edge_later"
     ],
     "reason": null,
     "decidedGate": "confirmation",
     "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "slot-nearest-opening": {
+    "id": "slot-nearest-opening",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [
+      "slot_nearest"
+    ],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirm_unanswered",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "slot-daypart-remembered": {
+    "id": "slot-daypart-remembered",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
     "form": "reschedule",
     "slots": {
       "name": "jason stiles",
