@@ -108,3 +108,22 @@ describe('slot registry', () => {
     expect(slotsFor('cancel').map((s) => s.id)).toEqual(['name', 'dob', 'provider']);
   });
 });
+
+describe('a full date beats a weekday', () => {
+  it('takes the month and day when the model splits the mode between weekday and absolute', () => {
+    const answers = {
+      dateMode: choice({ weekday: 0.5, absolute: 0.48, none: 0.02 }),
+      dateMonth: choice({ september: 0.99, none: 0.01 }),
+      dateDay: choice({ '28': 1 }),
+      dateWeekday: choice({ monday: 1 }),
+      dateWeekdayQualifier: choice({ none: 1 }),
+    };
+    // From Friday 2026-09-18 a bare Monday is the 21st; the date the caller said is the 28th.
+    expect(dateSlot.fill(answers, ctx)).toMatchObject({ kind: 'filled', value: '2026-09-28' });
+  });
+
+  it('still reads a bare weekday as the next one when no date is named', () => {
+    const answers = { dateMode: choice({ weekday: 0.9, none: 0.1 }), dateWeekday: choice({ monday: 1 }), dateMonth: choice({ none: 1 }), dateDay: choice({ none: 1 }), dateWeekdayQualifier: choice({ none: 1 }) };
+    expect(dateSlot.fill(answers, ctx)).toMatchObject({ kind: 'filled', value: '2026-09-21' });
+  });
+});

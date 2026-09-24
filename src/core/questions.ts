@@ -204,12 +204,12 @@ function timePreference(): QuestionMap {
   return {
     timePreference: {
       type: 'choice',
-      instructions: 'Read asr.text and node.promptJustPlayed. The caller was offered an appointment at a specific time. Do they ask for a different time on the same day, and in which direction?',
+      instructions: 'Read asr.text and node.promptJustPlayed. The caller was offered an appointment at a specific time. Do they ask for a different time on the same day, and in which direction? A bare no, or a refusal that does not mention the time, answers the yes/no question and is none.',
       criteria: {
         earlier: 'Asks for an earlier time, or anything before the offered time, as in earlier, sooner in the day, or before that',
         later: 'Asks for a later time, or anything after the offered time, as in later, after that, or later in the day',
-        different: 'Says the offered time does not work without saying which way, as in not that time, a different time, or that time is no good',
-        none: 'Accepts, declines for another reason, names a day or a part of the day such as the morning or the afternoon, or says nothing about the time',
+        different: 'Says the offered time itself does not work, without saying which way, as in not that time, a different time, or that time is no good; the time has to be what they object to',
+        none: 'Accepts, says a bare no or declines without mentioning the time, names a day or a part of the day such as the morning or the afternoon, or says nothing about the time',
       },
     },
   };
