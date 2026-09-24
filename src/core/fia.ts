@@ -28,8 +28,10 @@ export interface FillResult {
   events: FillEvent[];
   acks: Ack[];
   disambiguate: { slot: SlotId; a: SlotCandidate; b: SlotCandidate } | null;
-  /** true if any slot was filled, narrowed to a window, or needs disambiguation */
+  /** true if any slot was filled, narrowed to a window, or needs disambiguation, or asked for help */
   progress: boolean;
+  /** A help prompt to play in place of the question, for the slot the caller was just asked (spec 2026-09-24 §3.3). */
+  help: { slot: SlotId; promptId: string } | null;
 }
 
 export interface FillOptions {
@@ -109,6 +111,7 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
   const acks: Ack[] = [];
   let disambiguate: FillResult['disambiguate'] = null;
   let progress = false;
+  let help: FillResult['help'] = null;
 
   // Read every spec before applying any of it: the same-day rule compares the slots against each
   // other. Each spec sees only its own slot's pending partial, which no other spec's fill touches,
@@ -118,8 +121,21 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
 
   for (const { spec, outcome } of results) {
     if (outcome.kind === 'absent' || dropped.has(spec.id)) continue;
-    events.push({ slot: spec.id, outcome });
     const slot = session.slots[spec.id];
+    if (outcome.kind === 'help') {
+      // Honoured only for the slot the caller was asked for, and once per prompt since the slot
+      // was last emptied (`helped` is part of what `emptySlot` clears, so a queued second form
+      // asks again). Anywhere else it is exactly a miss: no event, no progress -- the same as an
+      // absent outcome. `slot.helped` is checked, not written, here: a decision this turn takes
+      // is not yet a prompt spoken, so `bookkeep` (turn.ts) is what records it, once the decision
+      // that plays it survives `escalate` and `continueForm`'s own precedence over disambiguation.
+      if (session.promptedFor !== spec.id || slot.helped.includes(outcome.promptId)) continue;
+      events.push({ slot: spec.id, outcome });
+      help = { slot: spec.id, promptId: outcome.promptId };
+      progress = true;
+      continue;
+    }
+    events.push({ slot: spec.id, outcome });
     switch (outcome.kind) {
       case 'filled': {
         // The slot's own policy, not the fill outcome, decides whether a spoken value is
@@ -165,7 +181,7 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
         break;
     }
   }
-  return { session, events, acks, disambiguate, progress };
+  return { session, events, acks, disambiguate, progress, help };
 }
 
 export type NextPrompt =

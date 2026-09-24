@@ -4,7 +4,7 @@ import { renderTemplate, promptText, promptEntry, decisionToFrames, promptFrames
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
 import { allSlots } from '../domain/slots';
-import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
+import { INTENT_MENU, INTENT_LABELS, INFORMATIONAL_INTENTS } from '../domain/intents';
 import { textFrame } from '../channel/frames';
 import { recordableClips } from './clips';
 import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR, VOCAB_VARS, type Segment } from './segments';
@@ -30,6 +30,12 @@ describe('manifest', () => {
     expect(manifest).toHaveProperty(handoffPromptId('max-attempts'));
     expect(manifest).toHaveProperty(handoffPromptId('system-failure'));
   });
+
+  it('has a manifest entry for every informational intent, so a typo in the table fails here rather than on a live call', () => {
+    for (const promptId of Object.values(INFORMATIONAL_INTENTS)) {
+      expect(() => promptEntry(promptId), promptId).not.toThrow();
+    }
+  });
 });
 
 describe('keypad prompts match the tables they read from', () => {
@@ -49,6 +55,19 @@ describe('keypad prompts match the tables they read from', () => {
     for (const { digit } of INTENT_MENU) {
       expect(manifest.nomatch_dtmf_menu.text, digit).toContain(`press ${digit}`);
     }
+  });
+
+  it('reads every provider in roster order in the spoken list', () => {
+    const text = manifest.provider_list.text;
+    let cursor = -1;
+    for (const p of PROVIDERS) {
+      const at = text.indexOf(`Dr. ${p.name}`, cursor + 1);
+      expect(at, `${p.name} is listed after the previous provider`).toBeGreaterThan(cursor);
+      cursor = at;
+    }
+    const parts = text.split(';');
+    expect(parts).toHaveLength(2);
+    for (const part of parts) expect(part.match(/Dr\./g)).toHaveLength(4);
   });
 });
 
@@ -87,6 +106,22 @@ describe('decisionToFrames', () => {
   it('emits nothing for ignore and hold', () => {
     expect(decisionToFrames({ kind: 'ignore' })).toEqual([]);
     expect(decisionToFrames({ kind: 'hold' })).toEqual([]);
+  });
+
+  it('plays an ack with its own manifest flag, so the long capabilities line can be talked over', () => {
+    const frames = decisionToFrames({
+      kind: 'prompt', promptId: 'ask_intent', vars: {}, target: 'intent', options: [],
+      acks: [{ promptId: 'ack_frustration', vars: {} }, { promptId: 'capabilities', vars: {} }],
+    });
+    expect(frames.map((f) => (f.type === 'text' ? f.interruptible : f.type))).toEqual([false, true, true]);
+  });
+
+  it('keeps a handoff decision\'s capabilities ack non-interruptible, as a terminal decision\'s acks stay', () => {
+    const frames = decisionToFrames({
+      kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent',
+      acks: [{ promptId: 'capabilities', vars: {} }], completed: [], queued: [], slots: {},
+    });
+    expect(frames[0]).toMatchObject({ type: 'text', interruptible: false });
   });
 });
 
@@ -129,8 +164,8 @@ describe('completion and chaining', () => {
   });
 
   it('speaks acks before a handoff and reports completed forms', () => {
-    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'ask about billing' } }], completed: ['reschedule'], queued: [], slots: { memberId: '4471 8293' } });
-    expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's ask about billing.", 'Connecting you to billing now.', 'end']);
+    const frames = decisionToFrames({ kind: 'handoff', reason: 'billing', promptId: 'handoff_billing', acks: [{ promptId: 'bridge_next', vars: { intentLabel: 'talk to billing' } }], completed: ['reschedule'], queued: [], slots: { memberId: '4471 8293' } });
+    expect(frames.map((f) => (f.type === 'text' ? f.token : f.type))).toEqual(["Now, let's talk to billing.", 'Connecting you to billing now.', 'end']);
     expect(frames.at(-1)).toEqual({ type: 'end', handoffData: '{"reasonCode":"billing","completed":["reschedule"],"slots":{"memberId":"4471 8293"}}' });
   });
 

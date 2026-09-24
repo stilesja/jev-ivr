@@ -61,8 +61,8 @@ describe('vocabularyClipId', () => {
   it('maps display values back to clip ids', () => {
     expect(vocabularyClipId('provider', 'Dr. Chen')).toBe('provider.chen');
     expect(vocabularyClipId('a', 'Dr. Cheng')).toBe('provider.cheng');
-    expect(vocabularyClipId('intentLabel', 'cancel an appointment')).toBe('intent.cancel');
-    expect(vocabularyClipId('b', 'ask about billing')).toBe('intent.billing');
+    expect(vocabularyClipId('intentLabel', 'cancel your appointment')).toBe('intent.cancel');
+    expect(vocabularyClipId('b', 'talk to billing')).toBe('intent.billing');
     expect(vocabularyClipId('window', 'next week')).toBe('window.next_week');
     expect(vocabularyClipId('window', 'in September')).toBe('window.in_september');
     expect(vocabularyClipId('provider', 'Dr. Nobody')).toBeNull();
@@ -89,7 +89,7 @@ describe('recordableClips', () => {
     expect(rows.find((r) => r.id === 'ack_provider.0')).toMatchObject({ text: 'With', note: 'open' });
     expect(rows.find((r) => r.id === 'date_narrow_window.0')).toMatchObject({ text: 'Which day works for you?', note: 'closed' });
     expect(rows.find((r) => r.id === 'provider.chen')).toMatchObject({ text: 'Dr. Chen', note: 'closed' });
-    expect(rows.find((r) => r.id === 'intent.reschedule')).toMatchObject({ text: 'reschedule an appointment', note: 'closed' });
+    expect(rows.find((r) => r.id === 'intent.reschedule')).toMatchObject({ text: 'reschedule your appointment', note: 'closed' });
     expect(rows.find((r) => r.id === 'window.this_week')).toMatchObject({ text: 'this week' });
     expect(rows.find((r) => r.id === 'window.in_january')).toMatchObject({ text: 'in January' });
     expect(rows.filter((r) => r.id.startsWith('provider.'))).toHaveLength(8);

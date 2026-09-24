@@ -269,9 +269,9 @@ describe('pendingSlotConfirmation', () => {
     expect(pendingSlotConfirmation(s)).toBeNull();
     // The member ID is the slot that used to raise one; under the summary policy the final
     // confirm reads it back instead, so it stays silent however it is filled.
-    s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: false, attempts: 0, window: null };
+    s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: false, attempts: 0, window: null, helped: [] };
     expect(pendingSlotConfirmation(s)).toBeNull();
-    s.slots.provider = { value: 'chen', display: 'Dr. Chen', confirmed: false, attempts: 0, window: null };
+    s.slots.provider = { value: 'chen', display: 'Dr. Chen', confirmed: false, attempts: 0, window: null, helped: [] };
     expect(pendingSlotConfirmation(s)).toBeNull();
     for (const id of ALL_SLOTS) expect(SLOTS[id].spokenConfirm, id).not.toBe('always');
   });
@@ -293,7 +293,7 @@ describe('fillSlots member id policy', () => {
 
   it('keeps a confirmed member id confirmed when the caller repeats it unchanged', () => {
     const s = setForm(newSession('s', 0), 'billing');
-    s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: true, attempts: 0, window: null };
+    s.slots.memberId = { value: '44718293', display: '4471 8293', confirmed: true, attempts: 0, window: null, helped: [] };
     const r = fillSlots(s, answers, spoken, slotsFor('billing'));
     expect(r.session.slots.memberId.confirmed).toBe(true);
     expect(r.acks).toEqual([]);
@@ -327,7 +327,7 @@ describe('fillSlots correcting a filled slot', () => {
   const nextWeek = { dateMode: choice({ window: 0.9, none: 0.1 }), dateWindow: choice({ next_week: 0.9, none: 0.1 }) };
   const filled = (): Session => {
     const s = setForm(newSession('s', 0), 'reschedule');
-    s.slots.date = { value: '2026-09-22', display: 'Tuesday, September 22', confirmed: true, attempts: 0, window: null };
+    s.slots.date = { value: '2026-09-22', display: 'Tuesday, September 22', confirmed: true, attempts: 0, window: null, helped: [] };
     return s;
   };
 
@@ -344,5 +344,35 @@ describe('fillSlots correcting a filled slot', () => {
     expect(s.slots.date).toMatchObject({ value: null, display: null, confirmed: false });
     expect((s.slots.date.window as DateWindow | null)?.label).toBe('next_week');
     expect(r.progress).toBe(true);
+  });
+});
+
+describe('fillSlots help', () => {
+  const NO_NAME = { provider: choice({ none: 0.9, chen: 0.1 }), providerNameStatus: choice({ no_name: 0.9, neither: 0.1 }) };
+
+  it('carries help for the prompted slot when not yet played, as progress', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'provider';
+    const first = fillSlots(s, NO_NAME, ctx(), [SLOTS.provider]);
+    expect(first.help).toEqual({ slot: 'provider', promptId: 'provider_list' });
+    expect(first.progress).toBe(true);
+    expect(first.events).toEqual([{ slot: 'provider', outcome: { kind: 'help', promptId: 'provider_list' } }]);
+    // fillSlots only reads `helped`; recording it is turn.ts' `bookkeep`, once the decision that
+    // plays the prompt is the one actually spoken (escalate can still replace it).
+    expect(s.slots.provider.helped).toEqual([]);
+    s.slots.provider.helped.push('provider_list');
+    const again = fillSlots(s, NO_NAME, ctx(), [SLOTS.provider]);
+    expect(again.help).toBeNull();
+    expect(again.progress).toBe(false);
+  });
+
+  it('ignores help for a slot that was not asked, and records no event for it', () => {
+    const s = setForm(newSession('s', 0), 'reschedule');
+    s.promptedFor = 'name';
+    const r = fillSlots(s, NO_NAME, ctx(), [SLOTS.provider]);
+    expect(r.help).toBeNull();
+    expect(r.progress).toBe(false);
+    expect(r.events).toEqual([]);
+    expect(s.slots.provider.helped).toEqual([]);
   });
 });

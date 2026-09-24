@@ -227,7 +227,9 @@
     "id": "dtmf-menu",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": null,
     "verdict": null,
@@ -247,7 +249,9 @@
     "id": "spoken-menu-number",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "menuNumber",
     "verdict": "route",
@@ -267,7 +271,9 @@
     "id": "explicit-confirm-yes",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
@@ -469,7 +475,9 @@
     "id": "client-failure-once",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "intent",
     "verdict": "route",
@@ -958,7 +966,9 @@
     "id": "tentative-carries-slots",
     "decision": "prompt",
     "promptId": "ask_name",
-    "acks": [],
+    "acks": [
+      "ack_intent"
+    ],
     "reason": null,
     "decidedGate": "confirmation",
     "verdict": "confirmed",
@@ -1520,6 +1530,132 @@
       "name": null,
       "dob": null,
       "memberId": "12345678",
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "capabilities-open": {
+    "id": "capabilities-open",
+    "decision": "prompt",
+    "promptId": "ask_name",
+    "acks": [
+      "ack_intent"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "name": null,
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "capabilities-midform": {
+    "id": "capabilities-midform",
+    "decision": "prompt",
+    "promptId": "ask_dob",
+    "acks": [
+      "capabilities"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "inform",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "capabilities-at-summary": {
+    "id": "capabilities-at-summary",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [
+      "capabilities"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "inform",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "chen",
+      "date": "2026-09-22"
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "provider-no-name": {
+    "id": "provider-no-name",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "kim",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "provider-has-name": {
+    "id": "provider-has-name",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "kim",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "provider-no-twice": {
+    "id": "provider-no-twice",
+    "decision": "prompt",
+    "promptId": "ask_provider_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
       "provider": null,
       "date": null
     },

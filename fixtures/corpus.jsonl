@@ -62,7 +62,7 @@
 
 {"id":"rp-01","text":"Can you repeat that","intent":"repeat_prompt","context":"no_form"}
 {"id":"rp-02","text":"Say that again","intent":"repeat_prompt","context":"no_form"}
-{"id":"rp-03","text":"What were the options","intent":"repeat_prompt","context":"no_form"}
+{"id":"rp-03","text":"What were the options","intent":"capabilities","context":"no_form","tags":["capabilities"]}
 {"id":"rp-04","text":"Sorry, I didn't hear that","intent":"repeat_prompt","context":"no_form"}
 
 {"id":"ot-01","text":"What are your hours","intent":"other","context":"no_form"}
@@ -133,7 +133,7 @@
 {"id":"pv-04","text":"Dr. Cheng, C H E N G","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"cheng"}}
 {"id":"pv-05","text":"Doctor Okafor","intent":"none","context":"confirm_appointment","prompted":"provider","slots":{"provider":"okafor"}}
 {"id":"pv-06","text":"Dr. Kim, and can we do next Monday","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"kim","date":{"mode":"weekday","weekday":"monday","weekdayQualifier":"next"}},"tags":["over_answer"]}
-{"id":"pv-07","text":"I don't remember the doctor's name","intent":"none","context":"cancel","prompted":"provider","tags":["no_progress"]}
+{"id":"pv-07","text":"I don't remember the doctor's name","intent":"none","context":"cancel","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
 {"id":"pv-08","text":"Alvarez","intent":"none","context":"cancel","prompted":"provider","slots":{"provider":"alvarez"}}
 
 {"id":"dt-01","text":"tomorrow","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"relative_day","relativeDay":"tomorrow"}}}
@@ -232,3 +232,15 @@
 {"id":"ft-04","text":"keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
 {"id":"ft-05","text":"no thanks, keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no","tags":["offer_transfer"]}
 {"id":"ft-06","text":"make it Dr. Chen","intent":"none","context":"offer_transfer","prompted":"provider","slots":{"provider":"chen"},"tags":["offer_transfer"]}
+{"id":"cp-01","text":"what can you do","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-02","text":"what are my options","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-03","text":"what is this","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-04","text":"I'd like to learn more about what you are and what you do","intent":"capabilities","context":"no_form","tags":["capabilities"]}
+{"id":"cp-05","text":"what else can you do","intent":"capabilities","context":"reschedule","prompted":"dob","tags":["capabilities"]}
+{"id":"ph-01","text":"no I don't","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-02","text":"I don't know","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-03","text":"I don't have it","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-04","text":"who are the doctors","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-05","text":"yes I do","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"has_name","tags":["provider_help"]}
+{"id":"ph-06","text":"yes, it's Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"tags":["provider_help"]}
+{"id":"ph-07","text":"I still don't know","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}

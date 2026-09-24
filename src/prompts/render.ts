@@ -88,11 +88,13 @@ export function decisionToFrames(decision: Decision, ctx?: RenderContext | null)
     case 'replay':
       return [textFrame(decision.text, true)];
     case 'prompt': {
-      const frames: OutboundFrame[] = decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx));
+      const frames: OutboundFrame[] = decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, promptEntry(a.promptId).interruptible, ctx));
       frames.push(...promptFrames(decision.promptId, decision.vars, promptEntry(decision.promptId).interruptible, ctx));
       return frames;
     }
     case 'complete':
+      // A barge-in on an ack here could cut the closing line before the end frame, so only a
+      // prompt's acks read their own manifest flag; a terminal decision's acks stay non-interruptible.
       return [
         ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
         ...promptFrames(decision.promptId, decision.vars, false, ctx),
@@ -100,6 +102,7 @@ export function decisionToFrames(decision: Decision, ctx?: RenderContext | null)
         endFrame('completed', decision.completed),
       ];
     case 'handoff':
+      // Same reasoning as 'complete': the call is ending, so nothing here is interruptible.
       return [
         ...decision.acks.flatMap((a) => promptFrames(a.promptId, a.vars, false, ctx)),
         ...promptFrames(decision.promptId, {}, false, ctx),

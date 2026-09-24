@@ -14,6 +14,8 @@ export interface PromptDecision {
   options: string[];
   /** this prompt played the DTMF intent menu, so the next digit picks an option */
   menu?: boolean;
+  /** the help prompt this decision plays in place of the target slot's question; recorded on the slot once it is actually spoken */
+  help?: { slot: SlotId; promptId: string };
 }
 
 export interface CompleteDecision {

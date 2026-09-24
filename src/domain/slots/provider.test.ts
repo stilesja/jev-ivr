@@ -36,6 +36,26 @@ describe('providerSlot', () => {
     expect(providerSlot.fill({ provider: choice({ chen: 0.3, kim: 0.1, none: 0.6 }) }, ctx)).toEqual({ kind: 'absent' });
   });
 
+  it('asks the name-status choice with neither first', () => {
+    const q = providerSlot.questions(ctx);
+    expect(q.providerNameStatus?.type).toBe('choice');
+    if (q.providerNameStatus?.type === 'choice') expect(Object.keys(q.providerNameStatus.criteria)).toEqual(['neither', 'has_name', 'no_name']);
+  });
+
+  it('asks for help when no provider is named and the caller says whether they know the name', () => {
+    const none = choice({ none: 0.9, chen: 0.1 });
+    expect(providerSlot.fill({ provider: none, providerNameStatus: choice({ no_name: 0.8, neither: 0.15, has_name: 0.05 }) }, ctx)).toEqual({ kind: 'help', promptId: 'provider_list' });
+    expect(providerSlot.fill({ provider: none, providerNameStatus: choice({ has_name: 0.7, neither: 0.2, no_name: 0.1 }) }, ctx)).toEqual({ kind: 'help', promptId: 'ask_provider_name' });
+    expect(providerSlot.fill({ provider: none, providerNameStatus: choice({ no_name: 0.5, neither: 0.5 }) }, ctx)).toEqual({ kind: 'absent' });
+    expect(providerSlot.fill({ provider: none, providerNameStatus: choice({ neither: 0.9, no_name: 0.1 }) }, ctx)).toEqual({ kind: 'absent' });
+    expect(providerSlot.fill({ provider: none }, ctx)).toEqual({ kind: 'absent' });
+  });
+
+  it('lets a named provider win over the status', () => {
+    expect(providerSlot.fill({ provider: choice({ chen: 0.9, none: 0.1 }), providerNameStatus: choice({ has_name: 0.9, neither: 0.1 }) }, ctx))
+      .toMatchObject({ kind: 'filled', value: 'chen' });
+  });
+
   it('parses a dtmf menu digit', () => {
     expect(providerSlot.dtmf!.parse('3', ctx)).toEqual({ value: 'patel', display: 'Dr. Patel' });
     expect(providerSlot.dtmf!.parse('9', ctx)).toBeNull();

@@ -15,6 +15,7 @@ const INTENT_KEYWORDS: Array<[string, RegExp]> = [
   ['billing', /\b(bill|billing|charge|charged|payment|invoice|insurance|copay|owe)\b/],
   ['agent', /\b(agent|representative|person|human|operator|someone|somebody)\b/],
   ['repeat_prompt', /\b(repeat|say that again|what were the options|didn't hear)\b/],
+  ['capabilities', /\b(what (can|do) you do|what are you|what (are|is) my options|what can i (do|say|ask)|what is this|what does this do|what else can you do)\b/],
 ];
 
 const NUMBER_WORD_DIGIT: Record<string, string> = { zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5' };
@@ -277,6 +278,13 @@ export function answerHeuristically(id: string, q: Question, text: string, today
           : /\b(day|date|when)\b/.test(text) ? 'date' : /\b(doctor|dr|provider|who)\b/.test(text) ? 'provider'
           : /\b(member|id|number)\b/.test(text) ? 'memberId' : 'none';
         return choiceAnswer(sharp(labels, labels.includes(winner) ? winner : 'none', 0.9));
+      }
+      case 'providerNameStatus': {
+        const named = PROVIDERS.some((p) => new RegExp(`\\b${p.name.toLowerCase()}\\b`).test(text));
+        const winner = named ? 'neither'
+          : has(text, /\b(no|nope|don'?t know|do not know|not sure|no idea|don'?t have|do not have|can'?t remember|who are the|which doctors)\b/) ? 'no_name'
+          : has(text, /^(yes|yeah|yep|i do)\b/) ? 'has_name' : 'neither';
+        return choiceAnswer(sharp(labels, winner, 0.9));
       }
       case 'menuNumberSaid': {
         const tok = text.trim().split(/\s+/)[0] ?? '';

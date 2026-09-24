@@ -43,7 +43,7 @@ describe('print', () => {
 });
 
 describe('formatSlots', () => {
-  const empty = { value: null, display: null, confirmed: false, attempts: 0, window: null };
+  const empty = { value: null, display: null, confirmed: false, attempts: 0, window: null, helped: [] };
   it('lists only filled slots with value, display and confirmation', () => {
     const text = formatSlots({
       name: empty,

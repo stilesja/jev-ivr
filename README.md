@@ -16,7 +16,7 @@ labeled corpus.
 
     System   Thanks for calling Stiles Family Medical Practice. How can I help you today?
     Caller   I need to reschedule my appointment, it's with Dr. Chen sometime next week.
-    System   What's your first and last name?
+    System   I'd be happy to help you reschedule your appointment. What's your first and last name?
     Caller   Jason Stiles.
     System   And your date of birth?
     Caller   March fifth, nineteen eighty.
@@ -61,8 +61,8 @@ checking today's behaviour against an old recording rather than reproducing it.
 In the REPL, type an utterance, `dtmf:44718293` to send keypad digits,
 `/silence` (or an empty line) to run a silence turn — as if the caller said
 and pressed nothing — or `/reset` to start a new call. A scenario step can be
-`{ "silence": true }` for the same thing. The corpus has 217 labeled
-outcomes and there are 75 scenarios available for multi-turn testing.
+`{ "silence": true }` for the same thing. The corpus has 229 labeled
+outcomes and there are 81 scenarios available for multi-turn testing.
 
 ## Regression
 
@@ -88,7 +88,9 @@ Corpus entries carry several kinds of label the stub answers from: the
 intent and slots, `tentative` (the caller hedges the request, so it is
 confirmed explicitly), `change` (`adding` or `replacing`, for an utterance
 that asks for another task, including at the summary), `providerUnsure` (a
-hedged or dual provider name is read back), `confirm` (`yes`, `no`, or
+hedged or dual provider name is read back), `providerNameStatus`
+(`has_name` or `no_name`: the caller says whether they know the provider's
+name without saying it, at the provider question), `confirm` (`yes`, `no`, or
 `unanswered`: how an utterance at the summary answers it), `changeSlot`
 (`name`, `dob`, `provider`, `date`, or `memberId`: which detail the caller
 names when asked what to change), and `secondIntent` (a second form intent named alongside
@@ -293,7 +295,7 @@ than asking the same question forever.
 ### Confirmation and multi-intent
 
 A hedged request ("maybe cancel it") is confirmed before anything happens:
-"Just to check, do you want to cancel an appointment?" The slots spoken in
+"Just to check, do you want to cancel your appointment?" The slots spoken in
 that utterance are kept and filled once the caller says yes.
 
 Every form that fills its last slot ends with a summary question instead of
@@ -333,7 +335,7 @@ data instead.
 
 A request added mid-task ("can I also ask about my bill") is acknowledged
 once and queued: the current task completes with its short line, and the
-call moves on with "Now, let's ask about billing." The name,
+call moves on with "Now, let's talk to billing." The name,
 the date of birth and the member ID carry over; provider and date are asked
 again, because an added task is a different appointment. Billing chained after
 a scheduling form therefore asks for the member ID before it hands off: the
@@ -347,7 +349,7 @@ queued.
 An opening utterance that names two tasks queues the second one the same
 way: "I need to reschedule my appointment with Dr. Alvarez for next
 Thursday, and also I have a question about my bill" is acknowledged with
-"Sure, we'll ask about billing after this." before the first question is
+"Sure, we'll talk to billing after this." before the first question is
 even asked, as long as the first task routes plainly. A hedged opener
 ("maybe reschedule, and also my bill") confirms the first task explicitly
 instead and drops the second; the caller can add it again once the form is
@@ -368,6 +370,29 @@ same as a decline. A third frustrated turn, or a second one after a decline,
 transfers directly with "Let me get you to someone who can help." The
 wording never claims a problem the system does not otherwise know about — it
 reacts to how the caller sounds, not to a guess at what's wrong.
+
+Every form entry is acknowledged, however confident the intent was: "I'd be
+happy to help you reschedule your appointment." plays before the first
+question, after a keypad pick, and after a "yes" to the explicit check. A
+caller who asks what the line can do, at any point, hears "I can help you
+schedule, reschedule, cancel, or confirm an appointment, or connect you to
+billing. You can just tell me what you need in your own words, and if you'd
+rather talk to a person, say so anytime." and is then asked the question
+they were on again: the open question at the start, the current slot
+question mid-form, the summary at the summary, the keypad menu if that was
+up. It costs no attempt. `capabilities` is one row in
+`INFORMATIONAL_INTENTS`; another informational intent is another row.
+
+The provider question asks "Do you have the name of the provider?" A name
+in the answer fills as before ("yes, Dr. Chen"). A bare "yes" is answered
+with "Which doctor is it with?"; a "no", an "I don't know", or "who are the
+doctors" is answered with the list: "Our providers are Dr. Chen, Dr. Cheng,
+Dr. Patel, or Dr. Okafor; Dr. Nguyen, Dr. Rossi, Dr. Kim, or Dr. Alvarez.
+Which one is your appointment with?" Neither counts as an attempt, and each
+plays at most once for the slot; a second "I don't know" after the list is
+an ordinary miss, so the retry line, the keypad list, and the transfer
+follow as they always did. The slot decides this through a `help` outcome
+the form loop plays in place of its question; any slot can return one.
 
 ### Recorded prompts
 
@@ -399,6 +424,14 @@ going?") — and re-record `handoff_frustrated.0` for its new text ("Let me
 get you to someone who can help."). `pnpm prompts:check` reports 2 missing
 and 1 stale until those are recorded (Task 3 of
 `docs/superpowers/plans/2026-09-22-frustration-escalation.md`).
+
+The demo polish adds three clips, `capabilities.0`, `provider_list.0` and
+`ask_provider_name.0`, and re-records `ask_provider.0` ("Do you have the
+name of the provider?"), `ack_intent.0` ("I'd be happy to help you"), and
+the vocabulary clips `intent.reschedule`, `intent.cancel`,
+`intent.confirm_appointment` and `intent.billing` for their new labels.
+`pnpm prompts:check` reports 3 missing and 6 stale until those are recorded
+(Task 5 of `docs/superpowers/plans/2026-09-24-demo-polish.md`).
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
 and are discovered by filename; adding one needs no manifest edit. A clip
@@ -507,7 +540,8 @@ and on every record the trace route returns — before it leaves the server.
    speak, and confirm that starting to talk during a long pause stops the
    re-ask rather than racing it.
 7. Say: "I need to reschedule my appointment, it's with Dr. Chen sometime next
-   week." Expect: "What's your first and last name?"
+   week." Expect: "I'd be happy to help you reschedule your appointment.
+   What's your first and last name?"
 8. Say "Jason Stiles". Expect "And your date of birth?" — the name fills
    silently, with no readback of its own; it is confirmed only in the summary
    (step 10).
@@ -547,13 +581,13 @@ and on every record the trace route returns — before it leaves the server.
     the new name. Say "yes" to finish.
 17. Call again and say: "I need to reschedule my appointment with Dr.
     Alvarez for next Thursday, and also I have a question about my bill."
-    Expect "Sure, we'll ask about billing after this." before the name
+    Expect "Sure, we'll talk to billing after this." before the name
     question. Give the name and birthday, say "yes" at the summary, and expect
-    "Now, let's ask about billing." followed by "What's your member ID?" — a
+    "Now, let's talk to billing." followed by "What's your member ID?" — a
     chained billing task collects its own ID before the handoff, because the
     scheduling form never asked for one.
 18. Call again and say "I have a question about my bill" on its own. Expect
-    "What's your member ID?", the eight digits spoken or keyed, then the
+    "I'd be happy to help you talk to billing. What's your member ID?", the eight digits spoken or keyed, then the
     billing handoff: billing is the one form that still identifies the caller
     by member ID.
 19. Call again and say "agent". Expect the transfer to `HANDOFF_NUMBER`.
@@ -579,6 +613,15 @@ and on every record the trace route returns — before it leaves the server.
     rather than the retry text. Expect the cassette to re-key every turn that
     follows a first-rung outburst: the acknowledgment becomes part of the
     prompt the model sees.
+24. The demo caller's path: at the greeting say "I'd like to learn more about
+    what you are and what you do". Expect the capabilities line and then
+    "How can I help you today?" with no attempt spent. Say "I'd like to
+    reschedule": expect "I'd be happy to help you reschedule your
+    appointment. What's your first and last name?" Give the name and
+    birthday; at "Do you have the name of the provider?" say "no": expect
+    the list, split in two runs of four. Say "Dr. Kim" and expect the day
+    question. On another call say "yes" at the provider question and expect
+    "Which doctor is it with?"
 
 Things to note on the first real call, per the spec's open questions: whether
 `speechModel="flux"` is accepted alongside partial prompts, how long Deepgram
