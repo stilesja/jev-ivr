@@ -4,7 +4,7 @@ import { renderTemplate, promptText, promptEntry, decisionToFrames, promptFrames
 import manifest from './manifest.json';
 import { PROVIDERS } from '../domain/slots/provider';
 import { allSlots } from '../domain/slots';
-import { INTENT_MENU, INTENT_LABELS } from '../domain/intents';
+import { INTENT_MENU, INTENT_LABELS, INFORMATIONAL_INTENTS } from '../domain/intents';
 import { textFrame } from '../channel/frames';
 import { recordableClips } from './clips';
 import { isPauseOnly, joinSpoken, segmentTemplate, stripLeadingPause, VAR, VOCAB_VARS, type Segment } from './segments';
@@ -29,6 +29,12 @@ describe('manifest', () => {
     expect(handoffPromptId('live-agent')).toBe('handoff_live_agent');
     expect(manifest).toHaveProperty(handoffPromptId('max-attempts'));
     expect(manifest).toHaveProperty(handoffPromptId('system-failure'));
+  });
+
+  it('has a manifest entry for every informational intent, so a typo in the table fails here rather than on a live call', () => {
+    for (const promptId of Object.values(INFORMATIONAL_INTENTS)) {
+      expect(() => promptEntry(promptId), promptId).not.toThrow();
+    }
   });
 });
 

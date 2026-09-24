@@ -1063,6 +1063,52 @@ describe('capabilities', () => {
     const r = say(started(), 'what the hell can you even do', { intent: ASKS, frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }) });
     expect(r.decision).toMatchObject({ promptId: 'ask_intent', acks: [{ promptId: 'ack_frustration', vars: {} }, CAPABILITIES] });
   });
+
+  it('gives the keypad menu back when an informational intent answers it, rung intact', () => {
+    const MISS = choice({ none: 0.7, other: 0.3 });
+    let r = say(started(), 'uh', { intent: MISS });
+    r = say(r.session, 'uh', { intent: MISS });
+    expect(r.decision).toMatchObject({ promptId: 'nomatch_dtmf_menu', menu: true });
+    expect(r.session.intentAttempts).toBe(2);
+    r = say(r.session, 'what are my options', { intent: ASKS });
+    expect(r.decision).toMatchObject({ promptId: 'nomatch_dtmf_menu', menu: true, acks: [CAPABILITIES] });
+    expect(r.session.menuActive).toBe(true);
+    expect(r.session.intentAttempts).toBe(2);
+    const d = resolve(r.session, dtmfFrames('3')[0]!, null, tc);
+    expect(d.session.form).toBe('cancel');
+  });
+
+  it('re-asks a pending explicit intent confirmation without counting', () => {
+    let r = say(started(), 'maybe cancel', { intent: choice({ cancel: 0.5, none: 0.5 }) });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_intent_explicit' });
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
+    r = say(r.session, 'what can you do', { intent: ASKS, confirmsYes: noul(0.1), confirmsNo: noul(0.1) });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_intent_explicit', acks: [CAPABILITIES] });
+    expect(r.session.intentAttempts).toBe(0);
+    expect(r.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
+  });
+
+  it('re-asks a slot narrowed to a pending window as it was', () => {
+    let r = say(started(), 'reschedule', { intent: choice({ reschedule: 0.9, none: 0.1 }) });
+    r = say(r.session, 'jason stiles', { intentChange: ANSWERING, ...NAME_ANSWERS });
+    r = say(r.session, 'march fifth', {
+      intentChange: ANSWERING, dobGiven: noul(0.95), dobMonth: choice({ march: 0.9 }), dobDay: choice({ '5': 0.9 }), dobYear: choice({ none: 0.9 }),
+    });
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year' });
+    r = say(r.session, 'what can you do', { intent: ASKS, intentChange: ANSWERING });
+    expect(r.decision).toMatchObject({ promptId: 'ask_dob_year', acks: [CAPABILITIES] });
+    expect(r.session.slots.dob.attempts).toBe(0);
+  });
+
+  it('declines the transfer offer rather than describing itself: gate 6 settles every non-yes there first', () => {
+    const OPENER = 'ugh, I already told you, I need to reschedule my appointment';
+    const ANGRY = 'ugh, come on, third time now';
+    const TO_OFFER: Turn[] = [OPENER, ANGRY];
+    const r = afterTurns([...TO_OFFER, { say: 'what can you do', over: { intent: ASKS } }]);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_name' });
+    if ('acks' in r.decision) expect(r.decision.acks.some((a) => a.promptId === 'capabilities')).toBe(false);
+    expect(r.session.transferDeclined).toBe(true);
+  });
 });
 
 /**

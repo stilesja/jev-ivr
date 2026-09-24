@@ -244,11 +244,18 @@ type TransferConfirmation = Extract<PendingConfirmation, { target: 'transfer' }>
  * Back to wherever the call was, without counting a turn against the caller: a pending
  * confirmation asked again, an open form's next question, or the plain intent question. The
  * declined transfer offer and an informational intent (spec 2026-09-24 §2.3) both come back
- * through here, because in both the caller answered something, just not the question asked.
+ * through here, because neither is a turn the caller spent failing the question beneath. A
+ * transfer target never reaches here: gate 6 settles every spoken answer at the offer, and
+ * `escalate` never nests an offer inside one, so `reaskConfirmation`'s transfer branch is not
+ * relied on by this function. A choice named in the same breath as an informational question at
+ * a confirmation is dropped, not carried into the reask: `disambiguate` only reaches
+ * `continueForm`, and a pending confirmation is re-asked as it was.
  */
 function resume(s: Session, t: Thresholds, acks: Ack[], disambiguate: FillResult['disambiguate'] = null): Decision {
   if (s.pendingConfirmation) return reaskConfirmation(s, t, acks, false);
   if (s.form) return continueForm(s, acks, disambiguate);
+  // The caller was on the keypad menu before this turn: it comes back with the rung intact.
+  if (s.menuActive) return { ...prompt('nomatch_dtmf_menu', 'intent', {}, acks, INTENT_MENU.map((m) => m.digit)), menu: true };
   // Before any task is started the form loop has nothing to ask: the plain intent question comes
   // back, not the "Sorry, I didn't catch that" retry.
   return prompt('ask_intent', 'intent', {}, acks);
