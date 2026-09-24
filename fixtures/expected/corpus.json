@@ -1141,12 +1141,14 @@
   },
   "rp-03": {
     "id": "rp-03",
-    "decision": "replay",
-    "promptId": null,
-    "acks": [],
+    "decision": "prompt",
+    "promptId": "ask_intent",
+    "acks": [
+      "capabilities"
+    ],
     "reason": null,
     "decidedGate": "intent",
-    "verdict": "replay",
+    "verdict": "inform",
     "form": null,
     "slots": {
       "name": null,
@@ -2302,7 +2304,7 @@
   "pv-07": {
     "id": "pv-07",
     "decision": "prompt",
-    "promptId": "ask_provider_retry",
+    "promptId": "provider_list",
     "acks": [],
     "reason": null,
     "decidedGate": null,
