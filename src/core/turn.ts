@@ -239,8 +239,8 @@ function readDaypart(answers: AnswerMap, t: Thresholds): Daypart | null {
  * ladder. Only reached when the provider and the day are unchanged: a correction that changes
  * either is progress on the fill and never gets here.
  *
- * `different` steps forward like `later` and stops at the last opening rather than wrapping (a
- * deliberate departure from spec §6): every move re-arms the summary with a fresh count, so a
+ * `different` steps forward like `later` and stops at the last opening rather than wrapping
+ * (spec §6, as amended): every move re-arms the summary with a fresh count, so a
  * wrap would let a caller who turns every opening down circle the day forever instead of
  * reaching the keypad, and the edge ack tells them to ask for earlier or another day.
  */

@@ -43,7 +43,7 @@ Two derived values, filled by the turn, never asked for:
 
 ```ts
 existing: Booking | null;                                     // confirm, cancel, reschedule
-offer: { date: string; times: string[]; index: number } | null; // schedule, reschedule
+offer: { provider: string; date: string; times: string[]; index: number } | null; // schedule, reschedule
 daypart: 'morning' | 'midday' | 'afternoon' | null;           // the caller's stated preference
 ```
 
@@ -94,8 +94,8 @@ Corpus-level truth for the stub: `timeOfDay` and `timePreference` are answered f
 ## 8. Harness
 
 - Corpus: opener entries with a window ("book me with Dr. Chen next Thursday afternoon", "reschedule to Tuesday morning"), day answers with a window ("Thursday, in the afternoon"), and `confirm_schedule_new` / `confirm_reschedule` entries: "earlier", "later", "the morning", "afternoon please", "that time doesn't work", "no, Thursday", "no, Thursday morning". Labels `timeOfDay` and `timePreference`.
-- Scenarios: schedule with a volunteered afternoon (first offer is the afternoon slot); schedule then "later" then yes (completion says the new time); reschedule with "earlier" twice at the earliest slot (edge ack, then keypad prompt) then "Thursday" (new day, offer restarts); confirm and cancel reading the found booking; a window with no opening that day (`slot_nearest`).
-- Baseline re-recorded from the stub. Cassette: every schedule and reschedule turn re-keys (`timeOfDay` joins the form's questions) and every summary turn re-keys (prompt text and `timePreference`); confirm and cancel identity turns stand. Jason records.
+- Scenarios: schedule with a volunteered afternoon (the first offer is the 4:15 PM opening); reschedule then "later" then yes (the completion names the new time); reschedule with "earlier" at the first opening (edge ack) then "no, Thursday morning" (new day, offer restarts in the morning); "that time doesn't work" four times (three moves to the last opening, then the edge ack, then the keypad prompt); confirm and cancel reading the found booking; a window with no opening that day (`slot_nearest`); a daypart said on a missed day answer and honoured when the day fills.
+- Baseline re-recorded from the stub. Cassette: every out-of-form turn re-keys (`timeOfDay` is asked on every opener), every schedule and reschedule turn re-keys (it joins the form's questions) and every summary turn re-keys (prompt text and `timePreference`); confirm and cancel identity turns inside their forms stand. Jason records.
 - Demo directory in the harness is seeded from the run's `todayIso`, so a replayed call reproduces its bookings.
 
 ## 9. Tests

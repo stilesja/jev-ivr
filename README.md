@@ -471,7 +471,7 @@ the vocabulary clips `intent.reschedule`, `intent.cancel`,
 `pnpm prompts:check` reports 3 missing and 6 stale until those are recorded
 (Task 5 of `docs/superpowers/plans/2026-09-24-demo-polish.md`).
 
-The appointment-slots change adds six clips (`slot_edge_earlier.0`,
+The appointment-slots change adds seven clips (`slot_edge_earlier.0`,
 `slot_edge_later.0`, `slot_nearest.0` and `.1`, and the vocabulary clips
 `daypart.morning`, `daypart.midday`, `daypart.afternoon`) and re-records the
 four summaries (`confirm_schedule`, `confirm_reschedule`, `confirm_cancel`,
@@ -602,8 +602,9 @@ and on every record the trace route returns — before it leaves the server.
 9. Say "March fifth, nineteen eighty". Expect the window question on its own,
    again with no readback: "next week. Which day works for you?"
 10. Say "Tuesday". Expect the summary question: "Your appointment with Dr. Chen
-    would move to Tuesday, September 22, for Jason Stiles, born March 5th,
-    1980. Shall I make that change?" Listen to how the year comes out: a lone
+    is on Wednesday, September 23 at 9:15 AM. It would move to Tuesday,
+    September 22 at 8:30 AM, for Jason Stiles, born March 5th, 1980. Shall I
+    make that change?" Listen to how the year comes out: a lone
     four-digit run is left to TTS to read as a year, so it should say "nineteen
     eighty", not "one nine eight zero".
 11. Call again and give the birthday without a year: say "Jason Stiles", then
@@ -626,7 +627,7 @@ and on every record the trace route returns — before it leaves the server.
     again, then the keypad offer ("Press 1 to confirm, or 2 to change
     something."), then the transfer.
 15. Call again, repeat through step 10, then say "yes". Expect "Your
-    appointment is moved." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
+    appointment is moved to Tuesday, September 22 at 8:30 AM." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
     finish the queued clips, and Twilio closes it and hits `/cr-action` with
     `SessionStatus=ended`.
 16. Call again, repeat through step 10, then say "no, Thursday" instead of
@@ -679,9 +680,11 @@ and on every record the trace route returns — before it leaves the server.
 25. Call again and say "Book me with Dr. Chen next Thursday afternoon". Give
     the name and birthday. Expect the summary to offer an afternoon opening,
     not just any opening on Thursday.
-26. On that same call, say "earlier" at the offer. Expect "That's the
-    earliest opening that day." then the summary question again, still
-    naming Thursday.
+26. On that same call, say "earlier" at the offer. Expect the summary again
+    one opening earlier (Dr. Chen's Thursday openings are 10:00 AM, 11:15 AM
+    and 4:15 PM, so 4:15 PM becomes 11:15 AM). Say "earlier" twice more:
+    the second lands on 10:00 AM, and the third plays "That's the earliest
+    opening that day." before the summary, still naming Thursday.
 27. Call again, reschedule with Dr. Chen through the day question, say
     "later" at the offer, then "yes". Expect the completion to name the
     moved-to time: "Your appointment is moved to Tuesday, September 22 at

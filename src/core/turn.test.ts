@@ -1438,6 +1438,11 @@ describe('bookings', () => {
     // The completion ack was rendered before the reset, so it still names the booked opening.
     expect(spokenText(r.decision)).toContain('Your appointment is moved to Tuesday, September 22 at');
     expect(r.session.offer).toBeNull();
+    // The daypart carries over with the identity slots (spec §3): a second appointment on the same
+    // call is still wanted in the same part of the day.
+    const kept = afterTurns(HAPPY).session;
+    kept.daypart = 'afternoon';
+    expect(heuristicTurn(kept, 'yes, and also my bill', adding).session.daypart).toBe('afternoon');
     expect(r.session.existing).toBeNull();
   });
 });

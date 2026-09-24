@@ -348,10 +348,10 @@ exports[`question redesign > pins every question the model sees at the summary (
     "criteria": {
       "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
       "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
-      "morning": "Asks for the morning, first thing, early, or a time before eleven",
+      "morning": "Asks for the morning, first thing, early in the day, or a time before eleven",
       "none": "Says nothing about the part of the day",
     },
-    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day.",
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.",
     "type": "choice",
   },
   "timePreference": {
@@ -722,10 +722,10 @@ exports[`question redesign > pins every question the model sees inside a form (a
     "criteria": {
       "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
       "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
-      "morning": "Asks for the morning, first thing, early, or a time before eleven",
+      "morning": "Asks for the morning, first thing, early in the day, or a time before eleven",
       "none": "Says nothing about the part of the day",
     },
-    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day.",
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.",
     "type": "choice",
   },
   "triedSelfService": {
@@ -1104,10 +1104,10 @@ exports[`question redesign > pins every question the model sees outside a form (
     "criteria": {
       "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
       "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
-      "morning": "Asks for the morning, first thing, early, or a time before eleven",
+      "morning": "Asks for the morning, first thing, early in the day, or a time before eleven",
       "none": "Says nothing about the part of the day",
     },
-    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day.",
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.",
     "type": "choice",
   },
   "triedSelfService": {
