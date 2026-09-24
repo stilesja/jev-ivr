@@ -65,7 +65,9 @@ export function safeFileStem(callSid: string): string {
 export async function startServer(config: ServerConfig, overrides: ServerOverrides = {}): Promise<RunningServer> {
   const log = overrides.log ?? ((line: string) => console.log(`[server] ${line}`));
   const now = overrides.now ?? (() => Date.now());
-  const thresholds = { ...DEFAULT_THRESHOLDS };
+  // The one threshold the phone line sets from its environment: the ask budget is a property of the
+  // deployment's network and the day's question count, not of the dialogue policy.
+  const thresholds = { ...DEFAULT_THRESHOLDS, JEV_TIMEOUT_MS: config.jevTimeoutMs };
   const client = overrides.client ?? buildClient(config.jevClient, DEFAULT_CORPUS_FILE, thresholds);
   // Wall-clock date in the configured zone: a caller at 8pm Pacific means today, not tomorrow.
   const todayIso = () => config.todayOverride ?? localDateIso(now(), config.timezone);
