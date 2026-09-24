@@ -1982,5 +1982,157 @@
       "form": "reschedule",
       "text": "Sorry, which doctor is it with?"
     }
+  },
+  {
+    "id": "slot-daypart-opener",
+    "steps": [
+      {
+        "say": "Book me with Dr. Chen next Thursday afternoon"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_schedule",
+      "form": "schedule_new",
+      "slots": {
+        "provider": "chen"
+      }
+    }
+  },
+  {
+    "id": "slot-later-then-yes",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "later please"
+      },
+      {
+        "say": "yes"
+      }
+    ],
+    "expect": {
+      "decision": "complete",
+      "promptId": "reschedule_confirmed",
+      "form": "reschedule",
+      "text": "Your appointment is moved to Tuesday, September 22 at 10:00 AM"
+    }
+  },
+  {
+    "id": "slot-earlier-edge-then-day",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "earlier"
+      },
+      {
+        "say": "no, Thursday morning"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule",
+      "slots": {
+        "date": "2026-09-24"
+      },
+      "text": "Thursday, September 24 at 10:00 AM"
+    }
+  },
+  {
+    "id": "slot-found-on-confirm",
+    "steps": [
+      {
+        "say": "Just confirming my visit with Dr. Chen next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_appointment_details",
+      "form": "confirm_appointment",
+      "text": "I found your appointment with Dr. Chen. It's on"
+    }
+  },
+  {
+    "id": "slot-found-on-cancel",
+    "steps": [
+      {
+        "say": "I want to cancel my visit with Dr. Chen, my name is Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_cancel",
+      "form": "cancel",
+      "text": "would be cancelled, for Jason Stiles"
+    }
+  },
+  {
+    "id": "slot-different-to-edge",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment, it's with Dr. Chen sometime next week"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "Tuesday"
+      },
+      {
+        "say": "that time doesn't work"
+      },
+      {
+        "say": "that time doesn't work"
+      },
+      {
+        "say": "that time doesn't work"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "confirm_reschedule",
+      "form": "reschedule",
+      "text": "That's the latest opening that day."
+    }
   }
 ]

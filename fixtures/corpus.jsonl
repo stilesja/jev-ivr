@@ -244,3 +244,15 @@
 {"id":"ph-05","text":"yes I do","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"has_name","tags":["provider_help"]}
 {"id":"ph-06","text":"yes, it's Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"tags":["provider_help"]}
 {"id":"ph-07","text":"I still don't know","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ts-01","text":"Book me with Dr. Chen next Thursday afternoon","intent":"schedule_new","context":"no_form","slots":{"provider":"chen","date":{"mode":"weekday","weekday":"thursday","weekdayQualifier":"next"}},"timeOfDay":"afternoon","tags":["time_of_day"]}
+{"id":"ts-02","text":"I need to reschedule to Tuesday morning","intent":"reschedule","context":"no_form","slots":{"date":{"mode":"weekday","weekday":"tuesday"}},"timeOfDay":"morning","tags":["time_of_day"]}
+{"id":"ts-03","text":"Thursday, in the afternoon","intent":"none","context":"reschedule","prompted":"date","slots":{"date":{"mode":"weekday","weekday":"thursday"}},"timeOfDay":"afternoon","tags":["time_of_day"]}
+{"id":"ts-04","text":"sometime around lunchtime works","intent":"none","context":"schedule_new","prompted":"date","timeOfDay":"midday","tags":["time_of_day"]}
+{"id":"ts-05","text":"earlier","intent":"none","context":"confirm_reschedule","confirm":"unanswered","timePreference":"earlier","tags":["time_preference"]}
+{"id":"ts-06","text":"later please","intent":"none","context":"confirm_reschedule","confirm":"unanswered","timePreference":"later","tags":["time_preference"]}
+{"id":"ts-07","text":"no, later in the day","intent":"none","context":"confirm_schedule_new","confirm":"no","timePreference":"later","tags":["time_preference"]}
+{"id":"ts-08","text":"that time doesn't work","intent":"none","context":"confirm_schedule_new","confirm":"no","timePreference":"different","tags":["time_preference"]}
+{"id":"ts-09","text":"no, the morning","intent":"none","context":"confirm_reschedule","confirm":"no","timeOfDay":"morning","tags":["time_of_day"]}
+{"id":"ts-10","text":"afternoon please","intent":"none","context":"confirm_schedule_new","confirm":"unanswered","timeOfDay":"afternoon","tags":["time_of_day"]}
+{"id":"ts-11","text":"no, Thursday morning","intent":"none","context":"confirm_reschedule","confirm":"no","slots":{"date":{"mode":"weekday","weekday":"thursday"}},"timeOfDay":"morning","tags":["time_of_day"]}
+{"id":"ts-12","text":"yes, that works","intent":"none","context":"confirm_schedule_new","confirm":"yes","tags":["time_preference"]}
