@@ -727,7 +727,7 @@ describe('final confirm', () => {
     expect(r.session.slots.date.display).toBe('Thursday, September 24');
     expect(r.session.pendingConfirmation).toBeNull();
     // A confidently heard date needs no ack of its own; the next summary reads it back.
-    expect(spokenText(r.decision)).toBe('Which provider is the appointment with?');
+    expect(spokenText(r.decision)).toBe('Do you have the name of the provider?');
     // And a new value for the detail they named answers it outright.
     const both = afterTurns([...HAPPY, 'the doctor, Dr. Alvarez']);
     expect(both.decision).toMatchObject({ promptId: 'confirm_reschedule' });
@@ -1205,5 +1205,71 @@ describe('silence', () => {
 
   it('needs no model', () => {
     expect(plan(started(), silenceFrame(), tc).needsModel).toBe(false);
+  });
+});
+
+describe('provider help', () => {
+  const NO_NAME = choice({ no_name: 0.9, has_name: 0.05, neither: 0.05 });
+  const HAS_NAME = choice({ has_name: 0.9, no_name: 0.05, neither: 0.05 });
+  const KIM = choice({ kim: 0.92, none: 0.08 });
+
+  /** A reschedule with the caller identified, so the provider question is up. */
+  function atProvider(): TurnResult {
+    const r = say(started(), 'reschedule', { intent: choice({ reschedule: 0.9, none: 0.1 }) });
+    const at = identify(r.session);
+    expect(at.decision).toMatchObject({ promptId: 'ask_provider', target: 'provider' });
+    return at;
+  }
+
+  it('reads the list when the caller has no name, then fills from it, without counting', () => {
+    let r = say(atProvider().session, 'no', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'provider_list', target: 'provider', acks: [] });
+    expect(r.session.slots.provider).toMatchObject({ attempts: 0, helped: ['provider_list'] });
+    r = say(r.session, 'dr kim', { intentChange: ANSWERING, provider: KIM });
+    expect(r.session.slots.provider.value).toBe('kim');
+    expect(r.decision).toMatchObject({ promptId: 'ask_date' });
+  });
+
+  it('asks which doctor after a bare yes', () => {
+    let r = say(atProvider().session, 'yes', { intentChange: ANSWERING, providerNameStatus: HAS_NAME });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider_name', target: 'provider' });
+    expect(r.session.slots.provider.attempts).toBe(0);
+    r = say(r.session, 'dr kim', { intentChange: ANSWERING, provider: KIM });
+    expect(r.decision).toMatchObject({ promptId: 'ask_date' });
+  });
+
+  it('fills in one turn when the yes carries the name', () => {
+    const r = say(atProvider().session, 'yes, dr kim', { intentChange: ANSWERING, providerNameStatus: HAS_NAME, provider: KIM });
+    expect(r.session.slots.provider.value).toBe('kim');
+    expect(r.decision).toMatchObject({ promptId: 'ask_date' });
+  });
+
+  it('treats a second no after the list as a miss, so the ladder walks', () => {
+    let r = say(atProvider().session, 'no', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    r = say(r.session, 'I still do not know', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider_retry', target: 'provider' });
+    expect(r.session.slots.provider.attempts).toBe(1);
+    r = say(r.session, 'no idea', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(r.decision).toMatchObject({ promptId: 'ask_provider_dtmf' });
+  });
+
+  it('plays each help prompt once: a yes after the list still asks which doctor, a second yes is a miss', () => {
+    let r = say(atProvider().session, 'no', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    r = say(r.session, 'oh yes I do', { intentChange: ANSWERING, providerNameStatus: HAS_NAME });
+    expect(r.decision).toMatchObject({ promptId: 'ask_provider_name' });
+    r = say(r.session, 'yes', { intentChange: ANSWERING, providerNameStatus: HAS_NAME });
+    expect(r.decision).toMatchObject({ promptId: 'ask_provider_retry' });
+  });
+
+  it('ignores help on a slot that was not asked', () => {
+    const r = say(started(), 'reschedule', { intent: choice({ reschedule: 0.9, none: 0.1 }) });
+    const at = say(r.session, 'I do not know the doctor', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(at.decision).toMatchObject({ promptId: 'ask_name_retry', target: 'name' });
+    expect(at.session.slots.provider.helped).toEqual([]);
+  });
+
+  it('shows help as a passed slot row', () => {
+    const r = say(atProvider().session, 'no', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(r.rows.find((g) => g.gate === 'slot:provider')).toMatchObject({ outcome: 'help', passed: true, value: null });
   });
 });

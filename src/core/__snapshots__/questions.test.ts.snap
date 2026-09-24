@@ -319,6 +319,15 @@ exports[`question redesign > pins every question the model sees at the summary (
     "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I'm not sure" or "either" is not a correction; name the provider they mention.",
     "type": "choice",
   },
+  "providerNameStatus": {
+    "criteria": {
+      "has_name": "Says yes, that they have or know the provider's name, without saying the name",
+      "neither": "Names a provider, or says nothing about whether they know the name",
+      "no_name": "Says no, or that they don't know, don't have, can't remember, or were never told the provider's name, or asks who the doctors are",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. The caller was asked whether they have the provider's name. Do they say whether they know it, without naming a provider?",
+    "type": "choice",
+  },
   "providerUnsure": {
     "criteria": {
       "false": "The caller names a provider plainly, or names none. A caller correcting themselves, as in Dr. Chen, not Dr. Cheng, is sure, and so is a caller who hedges only about what they want done, as in maybe cancel it with Dr. Chen",
@@ -662,6 +671,15 @@ exports[`question redesign > pins every question the model sees inside a form (a
       "rossi": "Dr. Rossi, also said as just Rossi",
     },
     "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I'm not sure" or "either" is not a correction; name the provider they mention.",
+    "type": "choice",
+  },
+  "providerNameStatus": {
+    "criteria": {
+      "has_name": "Says yes, that they have or know the provider's name, without saying the name",
+      "neither": "Names a provider, or says nothing about whether they know the name",
+      "no_name": "Says no, or that they don't know, don't have, can't remember, or were never told the provider's name, or asks who the doctors are",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. The caller was asked whether they have the provider's name. Do they say whether they know it, without naming a provider?",
     "type": "choice",
   },
   "providerUnsure": {
@@ -1013,6 +1031,15 @@ exports[`question redesign > pins every question the model sees outside a form (
       "rossi": "Dr. Rossi, also said as just Rossi",
     },
     "instructions": "Read asr.text. Which provider, if any, does the caller name? When they correct a name, the word not marks the name they are rejecting; choose the other one, as in "not Chen, Cheng" or "Okafor, not Nguyen". A hedge such as "I'm not sure" or "either" is not a correction; name the provider they mention.",
+    "type": "choice",
+  },
+  "providerNameStatus": {
+    "criteria": {
+      "has_name": "Says yes, that they have or know the provider's name, without saying the name",
+      "neither": "Names a provider, or says nothing about whether they know the name",
+      "no_name": "Says no, or that they don't know, don't have, can't remember, or were never told the provider's name, or asks who the doctors are",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. The caller was asked whether they have the provider's name. Do they say whether they know it, without naming a provider?",
     "type": "choice",
   },
   "providerUnsure": {

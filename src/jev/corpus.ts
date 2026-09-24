@@ -64,6 +64,8 @@ export interface CorpusEntry {
   change?: 'adding' | 'replacing';
   /** the caller hedges or names more than one provider (§2.5) */
   providerUnsure?: boolean;
+  /** the caller says whether they know the provider's name without saying it (spec 2026-09-24 §3.2) */
+  providerNameStatus?: 'has_name' | 'no_name';
   /** confirm_ and offer_transfer contexts only: how the utterance answers the question (final-confirm §7) */
   confirm?: 'yes' | 'no' | 'unanswered';
   /** confirm_ contexts only: the detail the caller names when asked what to change (final-confirm §6) */
@@ -110,7 +112,7 @@ export function normalizeText(text: string): string {
 }
 
 const ENTRY_KEYS = new Set([
-  'id', 'text', 'intent', 'context', 'prompted', 'slots', 'tentative', 'change', 'providerUnsure',
+  'id', 'text', 'intent', 'context', 'prompted', 'slots', 'tentative', 'change', 'providerUnsure', 'providerNameStatus',
   'confirm', 'changeSlot', 'secondIntent', 'answers', 'tags',
 ]);
 
@@ -151,6 +153,9 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
     if (entry.providerUnsure !== undefined && typeof entry.providerUnsure !== 'boolean') {
       throw new Error(`corpus ${entry.id}: providerUnsure must be a boolean`);
     }
+    if (entry.providerNameStatus !== undefined && entry.providerNameStatus !== 'has_name' && entry.providerNameStatus !== 'no_name') {
+      throw new Error(`corpus ${entry.id}: providerNameStatus must be has_name or no_name`);
+    }
     if (entry.change !== undefined) {
       if (entry.change !== 'adding' && entry.change !== 'replacing') throw new Error(`corpus ${entry.id}: change must be adding or replacing`);
       if (entry.context === 'no_form') throw new Error(`corpus ${entry.id}: change needs a form context`);
@@ -177,6 +182,9 @@ export function parseCorpus(jsonl: string): CorpusEntry[] {
         if (!formSlots.includes(key)) throw new Error(`corpus ${entry.id}: slot ${key} is not on form ${form}`);
       }
       if (entry.providerUnsure && !formSlots.includes('provider')) {
+        throw new Error(`corpus ${entry.id}: slot provider is not on form ${form}`);
+      }
+      if (entry.providerNameStatus && !formSlots.includes('provider')) {
         throw new Error(`corpus ${entry.id}: slot provider is not on form ${form}`);
       }
     }

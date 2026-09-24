@@ -28,8 +28,10 @@ export interface FillResult {
   events: FillEvent[];
   acks: Ack[];
   disambiguate: { slot: SlotId; a: SlotCandidate; b: SlotCandidate } | null;
-  /** true if any slot was filled, narrowed to a window, or needs disambiguation */
+  /** true if any slot was filled, narrowed to a window, or needs disambiguation, or asked for help */
   progress: boolean;
+  /** A help prompt to play in place of the question, for the slot the caller was just asked (spec 2026-09-24 §3.3). */
+  help: { slot: SlotId; promptId: string } | null;
 }
 
 export interface FillOptions {
@@ -109,6 +111,7 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
   const acks: Ack[] = [];
   let disambiguate: FillResult['disambiguate'] = null;
   let progress = false;
+  let help: FillResult['help'] = null;
 
   // Read every spec before applying any of it: the same-day rule compares the slots against each
   // other. Each spec sees only its own slot's pending partial, which no other spec's fill touches,
@@ -163,9 +166,18 @@ export function fillSlots(session: Session, answers: AnswerMap, ctx: SlotContext
         break;
       case 'invalid':
         break;
+      case 'help': {
+        // Honoured only for the slot the caller was asked for, and once per prompt per call; anywhere
+        // else it is a turn without progress, so the ladder walks as it would for a miss.
+        if (session.promptedFor !== spec.id || slot.helped.includes(outcome.promptId) || help !== null) break;
+        slot.helped.push(outcome.promptId);
+        help = { slot: spec.id, promptId: outcome.promptId };
+        progress = true;
+        break;
+      }
     }
   }
-  return { session, events, acks, disambiguate, progress };
+  return { session, events, acks, disambiguate, progress, help };
 }
 
 export type NextPrompt =

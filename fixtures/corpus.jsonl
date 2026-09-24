@@ -237,3 +237,10 @@
 {"id":"cp-03","text":"what is this","intent":"capabilities","context":"no_form","tags":["capabilities"]}
 {"id":"cp-04","text":"I'd like to learn more about what you are and what you do","intent":"capabilities","context":"no_form","tags":["capabilities"]}
 {"id":"cp-05","text":"what else can you do","intent":"capabilities","context":"reschedule","prompted":"dob","tags":["capabilities"]}
+{"id":"ph-01","text":"no I don't","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-02","text":"I don't know","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-03","text":"I don't have it","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-04","text":"who are the doctors","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
+{"id":"ph-05","text":"yes I do","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"has_name","tags":["provider_help"]}
+{"id":"ph-06","text":"yes, it's Dr. Chen","intent":"none","context":"reschedule","prompted":"provider","slots":{"provider":"chen"},"tags":["provider_help"]}
+{"id":"ph-07","text":"I still don't know","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}

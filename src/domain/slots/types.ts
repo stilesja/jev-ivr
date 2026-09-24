@@ -40,7 +40,9 @@ export type SlotOutcome =
   | { kind: 'filled'; value: string; display: string; confidence: number; confirm: 'none' | 'implicit' }
   | { kind: 'disambiguate'; a: SlotCandidate; b: SlotCandidate }
   | { kind: 'window'; window: SlotPartial; confidence: number }
-  | { kind: 'invalid'; reason: string; raw: string };
+  | { kind: 'invalid'; reason: string; raw: string }
+  /** The caller said whether they know the value rather than saying it; play this prompt in place of the question (spec 2026-09-24 §3.3). */
+  | { kind: 'help'; promptId: string };
 
 export interface SlotSpec {
   id: SlotId;

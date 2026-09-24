@@ -139,6 +139,8 @@ describe('parseCorpus', () => {
     expect(() => parseCorpus('{"id":"f","text":"x","intent":"cancel","context":"no_form","tentative":"true"}\n')).toThrow(/must be a boolean/);
     expect(() => parseCorpus('{"id":"g","text":"x","intent":"none","context":"reschedule","change":"adding"}\n')).toThrow(/needs an intent/);
     expect(() => parseCorpus('{"id":"h","text":"x","intent":"cancel","context":"billing","providerUnsure":true}\n')).toThrow(/not on form billing/);
+    expect(parseCorpus('{"id":"i","text":"no I don\'t","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name"}\n')[0]?.providerNameStatus).toBe('no_name');
+    expect(() => parseCorpus('{"id":"j","text":"x","intent":"none","context":"reschedule","providerNameStatus":"maybe"}\n')).toThrow(/has_name or no_name/);
   });
 
   it('accepts confirm contexts with confirm, changeSlot, and slot labels, and secondIntent outside a form', () => {

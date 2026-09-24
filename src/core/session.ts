@@ -9,6 +9,8 @@ export interface SlotState {
   confirmed: boolean;
   attempts: number;
   window: SlotPartial | null;
+  /** help prompts already played for this slot on this call; each plays at most once */
+  helped: string[];
 }
 
 export interface HistoryEntry {
@@ -105,11 +107,11 @@ export interface Session {
 export const DEFAULT_CALLER: CallerRecord = { verified: false, openAppointment: true, priorCalls7d: 0 };
 
 export function emptySlot(): SlotState {
-  return { value: null, display: null, confirmed: false, attempts: 0, window: null };
+  return { value: null, display: null, confirmed: false, attempts: 0, window: null, helped: [] };
 }
 
 function cloneSlot(s: SlotState): SlotState {
-  return { ...s, window: s.window ? { ...s.window } : null };
+  return { ...s, helped: [...s.helped], window: s.window ? { ...s.window } : null };
 }
 
 /**

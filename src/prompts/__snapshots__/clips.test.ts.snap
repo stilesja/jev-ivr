@@ -70,7 +70,7 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "ask_provider.0",
     "note": "closed",
-    "text": "Which provider is the appointment with?",
+    "text": "Do you have the name of the provider?",
   },
   {
     "id": "ask_provider_retry.0",
@@ -81,6 +81,16 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "id": "ask_provider_dtmf.0",
     "note": "closed",
     "text": "Using the keypad: for Dr. Chen press 1, Dr. Cheng 2, Dr. Patel 3, Dr. Okafor 4, Dr. Nguyen 5, Dr. Rossi 6, Dr. Kim 7, Dr. Alvarez 8.",
+  },
+  {
+    "id": "ask_provider_name.0",
+    "note": "closed",
+    "text": "Which doctor is it with?",
+  },
+  {
+    "id": "provider_list.0",
+    "note": "closed",
+    "text": "Our providers are Dr. Chen, Dr. Cheng, Dr. Patel, or Dr. Okafor; Dr. Nguyen, Dr. Rossi, Dr. Kim, or Dr. Alvarez. Which one is your appointment with?",
   },
   {
     "id": "ask_date.0",

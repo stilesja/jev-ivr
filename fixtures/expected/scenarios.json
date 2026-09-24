@@ -1590,5 +1590,65 @@
     "queued": [],
     "pass": true,
     "mismatches": []
+  },
+  "provider-no-name": {
+    "id": "provider-no-name",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "kim",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "provider-has-name": {
+    "id": "provider-has-name",
+    "decision": "prompt",
+    "promptId": "ask_date",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "kim",
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
+  },
+  "provider-no-twice": {
+    "id": "provider-no-twice",
+    "decision": "prompt",
+    "promptId": "ask_provider_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": null,
+      "date": null
+    },
+    "queued": [],
+    "pass": true,
+    "mismatches": []
   }
 }

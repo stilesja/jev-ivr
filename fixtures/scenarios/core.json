@@ -1900,5 +1900,87 @@
       "form": "reschedule",
       "text": "Shall I make that change?"
     }
+  },
+  {
+    "id": "provider-no-name",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "I don't know"
+      },
+      {
+        "say": "Dr. Kim"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_date",
+      "form": "reschedule",
+      "slots": {
+        "provider": "kim"
+      }
+    }
+  },
+  {
+    "id": "provider-has-name",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "yes I do"
+      },
+      {
+        "say": "Dr. Kim"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_date",
+      "form": "reschedule",
+      "slots": {
+        "provider": "kim"
+      }
+    }
+  },
+  {
+    "id": "provider-no-twice",
+    "steps": [
+      {
+        "say": "I need to reschedule my appointment"
+      },
+      {
+        "say": "Jason Stiles"
+      },
+      {
+        "say": "March fifth nineteen eighty"
+      },
+      {
+        "say": "I don't know"
+      },
+      {
+        "say": "I still don't know"
+      }
+    ],
+    "expect": {
+      "decision": "prompt",
+      "promptId": "ask_provider_retry",
+      "form": "reschedule",
+      "text": "Sorry, which doctor is it with?"
+    }
   }
 ]

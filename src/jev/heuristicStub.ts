@@ -279,6 +279,13 @@ export function answerHeuristically(id: string, q: Question, text: string, today
           : /\b(member|id|number)\b/.test(text) ? 'memberId' : 'none';
         return choiceAnswer(sharp(labels, labels.includes(winner) ? winner : 'none', 0.9));
       }
+      case 'providerNameStatus': {
+        const named = PROVIDERS.some((p) => new RegExp(`\\b${p.name.toLowerCase()}\\b`).test(text));
+        const winner = named ? 'neither'
+          : has(text, /\b(no|nope|don'?t know|do not know|not sure|no idea|don'?t have|do not have|can'?t remember|who are the|which doctors)\b/) ? 'no_name'
+          : has(text, /^(yes|yeah|yep|i do)\b/) ? 'has_name' : 'neither';
+        return choiceAnswer(sharp(labels, winner, 0.9));
+      }
       case 'menuNumberSaid': {
         const tok = text.trim().split(/\s+/)[0] ?? '';
         const digit = /^\d$/.test(tok) ? tok : NUMBER_WORD_DIGIT[tok];

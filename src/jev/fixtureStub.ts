@@ -62,6 +62,7 @@ function labeledAnswer(id: string, q: Question, entry: CorpusEntry, sharpness: n
     }
     if (id === 'intentChange') return choiceAnswer(sharp(labels, entry.change ?? 'answering', sharpness));
     if (id === 'changeSlot') return pick(entry.changeSlot);
+    if (id === 'providerNameStatus') return choiceAnswer(sharp(labels, entry.providerNameStatus ?? 'neither', sharpness));
     if (id === 'secondIntent') return pick(entry.secondIntent);
     if (Object.hasOwn(DATE_IDS, id)) return pick(slots.date?.[DATE_IDS[id]!]);
     return quietAnswer(id, q, sharpness);

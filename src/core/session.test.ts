@@ -6,7 +6,7 @@ describe('session', () => {
   it('starts with no form and empty slots', () => {
     const s = newSession('s1', 1000);
     expect(s.form).toBeNull();
-    expect(s.slots.memberId).toEqual({ value: null, display: null, confirmed: false, attempts: 0, window: null });
+    expect(s.slots.memberId).toEqual({ value: null, display: null, confirmed: false, attempts: 0, window: null, helped: [] });
     expect(s.turnIndex).toBe(0);
   });
 
@@ -41,10 +41,13 @@ describe('session', () => {
   it('cloneSession copies slot windows', () => {
     const s = newSession('s1', 0);
     s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };
+    s.slots.provider.helped = ['provider_list'];
     const clone = cloneSession(s);
     (clone.slots.date.window as DateWindow).label = 'changed';
     expect(s.slots.date.window.label).toBe('next_week');
     expect(clone.slots.date.window).not.toBe(s.slots.date.window);
+    expect(clone.slots.provider.helped).toEqual(s.slots.provider.helped);
+    expect(clone.slots.provider.helped).not.toBe(s.slots.provider.helped);
   });
 
   it('starts with no frustrated turns and the transfer offer never declined', () => {

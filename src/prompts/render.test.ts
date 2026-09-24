@@ -56,6 +56,17 @@ describe('keypad prompts match the tables they read from', () => {
       expect(manifest.nomatch_dtmf_menu.text, digit).toContain(`press ${digit}`);
     }
   });
+
+  it('reads every provider in roster order in the spoken list', () => {
+    const text = manifest.provider_list.text;
+    let cursor = -1;
+    for (const p of PROVIDERS) {
+      const at = text.indexOf(`Dr. ${p.name}`, cursor + 1);
+      expect(at, `${p.name} is listed after the previous provider`).toBeGreaterThan(cursor);
+      cursor = at;
+    }
+    expect(text.split(';')).toHaveLength(2);
+  });
 });
 
 describe('spokenText', () => {
@@ -101,6 +112,14 @@ describe('decisionToFrames', () => {
       acks: [{ promptId: 'ack_frustration', vars: {} }, { promptId: 'capabilities', vars: {} }],
     });
     expect(frames.map((f) => (f.type === 'text' ? f.interruptible : f.type))).toEqual([false, true, true]);
+  });
+
+  it('keeps a handoff decision\'s capabilities ack non-interruptible, as a terminal decision\'s acks stay', () => {
+    const frames = decisionToFrames({
+      kind: 'handoff', reason: 'live-agent', promptId: 'handoff_live_agent',
+      acks: [{ promptId: 'capabilities', vars: {} }], completed: [], queued: [], slots: {},
+    });
+    expect(frames[0]).toMatchObject({ type: 'text', interruptible: false });
   });
 });
 

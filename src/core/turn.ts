@@ -70,7 +70,7 @@ function slotRows(events: FillEvent[], t: Thresholds): GateRow[] {
     gate: `slot:${slot}`,
     value: outcome.kind === 'filled' || outcome.kind === 'window' ? outcome.confidence : null,
     threshold: slotThreshold(slot, t),
-    passed: outcome.kind === 'filled' || outcome.kind === 'window' || outcome.kind === 'disambiguate',
+    passed: outcome.kind === 'filled' || outcome.kind === 'window' || outcome.kind === 'disambiguate' || outcome.kind === 'help',
     outcome: outcome.kind === 'invalid' ? `${outcome.kind}:${outcome.reason}` : outcome.kind,
     decided: false,
   }));
@@ -242,18 +242,18 @@ type TransferConfirmation = Extract<PendingConfirmation, { target: 'transfer' }>
 
 /**
  * Back to wherever the call was, without counting a turn against the caller: a pending
- * confirmation asked again, an open form's next question, or the plain intent question. The
- * declined transfer offer and an informational intent (spec 2026-09-24 §2.3) both come back
- * through here, because neither is a turn the caller spent failing the question beneath. A
- * transfer target never reaches here: gate 6 settles every spoken answer at the offer, and
+ * confirmation asked again, an open form's next question, the plain intent question, or the
+ * keypad menu. The declined transfer offer and an informational intent (spec 2026-09-24 §2.3)
+ * both come back through here, because neither is a turn the caller spent failing the question
+ * beneath. A transfer target never reaches here: gate 6 settles every spoken answer at the offer, and
  * `escalate` never nests an offer inside one, so `reaskConfirmation`'s transfer branch is not
  * relied on by this function. A choice named in the same breath as an informational question at
  * a confirmation is dropped, not carried into the reask: `disambiguate` only reaches
  * `continueForm`, and a pending confirmation is re-asked as it was.
  */
-function resume(s: Session, t: Thresholds, acks: Ack[], disambiguate: FillResult['disambiguate'] = null): Decision {
+function resume(s: Session, t: Thresholds, acks: Ack[], disambiguate: FillResult['disambiguate'] = null, help: FillResult['help'] = null): Decision {
   if (s.pendingConfirmation) return reaskConfirmation(s, t, acks, false);
-  if (s.form) return continueForm(s, acks, disambiguate);
+  if (s.form) return continueForm(s, acks, disambiguate, help);
   // The caller was on the keypad menu before this turn: it comes back with the rung intact.
   if (s.menuActive) return { ...prompt('nomatch_dtmf_menu', 'intent', {}, acks, INTENT_MENU.map((m) => m.digit)), menu: true };
   // Before any task is started the form loop has nothing to ask: the plain intent question comes
@@ -334,7 +334,7 @@ function handleSilence(s: Session, t: Thresholds): Decision {
 }
 
 /** After slots changed: disambiguate, ask the next slot, or complete. */
-function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: { display: string }; b: { display: string } } | null): Decision {
+function continueForm(s: Session, acks: Ack[], disambiguate: FillResult['disambiguate'], help: FillResult['help'] = null): Decision {
   // Gates never proceed outside a form, but the defensive queue path can; re-ask for an intent rather than crash.
   if (!s.form) return prompt('nomatch_open', 'intent', {}, acks);
   if (disambiguate) {
@@ -345,6 +345,9 @@ function continueForm(s: Session, acks: Ack[], disambiguate: { slot: SlotId; a: 
     s.pendingConfirmation = readback;
     return prompt(`confirm_${readback.slot}`, readback.slot, { [readback.slot]: readback.display }, acks, ['yes', 'no']);
   }
+  // The caller said whether they know the answer rather than answering: the slot's help prompt
+  // takes the question's place this once, and the attempt count does not move (spec 2026-09-24 §3.3).
+  if (help) return prompt(help.promptId, help.slot, {}, acks);
   const next = nextPrompt(s);
   if (next.kind === 'complete') return askSummary(s, s.form, acks);
   return askSlot(next.slot, next.window, acks);
@@ -359,7 +362,7 @@ function enterForm(s: Session, form: FormId, confirm: 'none' | 'implicit', answe
   // A task added on this same utterance is promised before the one being started is named.
   const acks: Ack[] = [...enqueue(s, queue), ...(confirm === 'implicit' || switching ? [{ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } }] : [])];
   const fill = fillSlots(s, answers, ctx, slotsFor(form));
-  return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+  return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate, fill.help), events: fill.events };
 }
 
 function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: SlotContext, tc: TurnContext): { decision: Decision; events: FillEvent[] } {
@@ -382,7 +385,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       // The answer plays as an ack in front of the question the caller was on. What else the
       // breath carried still fills, as on the queue verdict; no attempt counter moves.
       const fill = fillSlots(s, answers, ctx, s.form ? slotsFor(s.form) : allSlots());
-      return { decision: resume(s, t, [{ promptId: verdict.promptId, vars: {} }, ...fill.acks], fill.disambiguate), events: fill.events };
+      return { decision: resume(s, t, [{ promptId: verdict.promptId, vars: {} }, ...fill.acks], fill.disambiguate, fill.help), events: fill.events };
     }
     case 'confirmed': {
       const pc = s.pendingConfirmation!;
@@ -501,7 +504,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       const acks = enqueue(s, verdict.intent);
       const fill = fillSlots(s, answers, ctx, slotsFor(s.form));
       // Adding a request is not a failed answer: re-ask the open slot without counting an attempt.
-      return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+      return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate, fill.help), events: fill.events };
     }
     case 'proceed': {
       const specs = s.form ? slotsFor(s.form) : allSlots();
@@ -513,7 +516,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         const target = asked === 'intent' || asked === 'confirm' ? (missingSlots(s)[0] ?? 'intent') : asked;
         return { decision: failAttempt(s, target, t), events: fill.events };
       }
-      return { decision: continueForm(s, fill.acks, fill.disambiguate), events: fill.events };
+      return { decision: continueForm(s, fill.acks, fill.disambiguate, fill.help), events: fill.events };
     }
   }
 }
