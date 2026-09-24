@@ -55,6 +55,10 @@ describe('joinSpoken', () => {
       date: 'Tuesday, September 22',
       a: 'Dr. Chen',
       b: 'Dr. Cheng',
+      when: 'Tuesday, September 22 at 2:45 PM',
+      existing: 'Wednesday, September 23 at 9:15 AM',
+      time: '1:00 PM',
+      daypart: 'afternoon',
     };
     const lookup = (name: string): string => {
       const v = vars[name];

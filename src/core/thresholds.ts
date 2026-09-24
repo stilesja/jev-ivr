@@ -3,7 +3,12 @@
 
 export const DEFAULT_THRESHOLDS = {
   // gate ladder
-  GATE_ADDRESSED: 0.7,
+  // 0.70 → 0.65 on 2026-09-24: "Agent" alone scored 0.67 on jev-1.13.0 once timeOfDay joined the opener's
+  // questions; the sweep grid gains that one outcome anywhere from 0.55 to 0.65 and loses none, and declined
+  // to move on its own, so this is a judgment step like GATE_INTELLIGIBLE's. The trade: "um" scores 0.66, so
+  // a filler now gets the open re-ask instead of being ignored, which costs a caller one rung; "Agent" being
+  // ignored until the no-input timer is the worse failure.
+  GATE_ADDRESSED: 0.65,
   // 0.50 → 0.45 on 2026-09-20: "Agent" alone scored 0.49 on jev-1.13.0; the sweep grid is flat from 0.05 to 0.45 (one
   // outcome better, none worse) and the unbounded-plateau rule declined to move it, so this is a judgment step.
   GATE_INTELLIGIBLE: 0.45,
@@ -28,6 +33,9 @@ export const DEFAULT_THRESHOLDS = {
   SLOT_CHOICE_CONFIRM: 0.45,
   SLOT_CHOICE_MARGIN: 0.15,
   SLOT_HELP: 0.6,
+  // appointment slots (spec 2026-09-24 appointment-slots §7)
+  TIME_OF_DAY: 0.6,
+  TIME_PREFERENCE: 0.6,
   // confirmations and menus
   CONFIRM_YES: 0.7,
   CONFIRM_NO: 0.7,

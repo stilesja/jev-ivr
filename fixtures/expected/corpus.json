@@ -4301,5 +4301,229 @@
       "date": null
     },
     "queued": []
+  },
+  "ts-01": {
+    "id": "ts-01",
+    "decision": "prompt",
+    "promptId": "ask_name",
+    "acks": [
+      "ack_intent"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "schedule_new",
+    "slots": {
+      "name": null,
+      "dob": null,
+      "memberId": null,
+      "provider": "chen",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "ts-02": {
+    "id": "ts-02",
+    "decision": "prompt",
+    "promptId": "ask_name",
+    "acks": [
+      "ack_intent"
+    ],
+    "reason": null,
+    "decidedGate": "intent",
+    "verdict": "route",
+    "form": "reschedule",
+    "slots": {
+      "name": null,
+      "dob": null,
+      "memberId": null,
+      "provider": null,
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-03": {
+    "id": "ts-03",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "ts-04": {
+    "id": "ts-04",
+    "decision": "prompt",
+    "promptId": "ask_date_retry",
+    "acks": [],
+    "reason": null,
+    "decidedGate": null,
+    "verdict": "proceed",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": null
+    },
+    "queued": []
+  },
+  "ts-05": {
+    "id": "ts-05",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [
+      "slot_edge_earlier"
+    ],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirm_unanswered",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-06": {
+    "id": "ts-06",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirm_unanswered",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-07": {
+    "id": "ts-07",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-08": {
+    "id": "ts-08",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-09": {
+    "id": "ts-09",
+    "decision": "prompt",
+    "promptId": "ask_change",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-10": {
+    "id": "ts-10",
+    "decision": "prompt",
+    "promptId": "confirm_schedule",
+    "acks": [
+      "slot_nearest"
+    ],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirm_unanswered",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
+  },
+  "ts-11": {
+    "id": "ts-11",
+    "decision": "prompt",
+    "promptId": "confirm_reschedule",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "rejected",
+    "form": "reschedule",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-24"
+    },
+    "queued": []
+  },
+  "ts-12": {
+    "id": "ts-12",
+    "decision": "complete",
+    "promptId": "schedule_confirmed",
+    "acks": [],
+    "reason": null,
+    "decidedGate": "confirmation",
+    "verdict": "confirmed",
+    "form": "schedule_new",
+    "slots": {
+      "name": "jason stiles",
+      "dob": "1980-03-05",
+      "memberId": null,
+      "provider": "patel",
+      "date": "2026-09-22"
+    },
+    "queued": []
   }
 }

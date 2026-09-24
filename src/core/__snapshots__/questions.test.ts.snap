@@ -12,7 +12,7 @@ exports[`question redesign > pins every question the model sees at the summary (
   },
   "changeSlot": {
     "criteria": {
-      "date": "They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong",
+      "date": "They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong (not a different time on the same day)",
       "dob": "They name their date of birth or birthday as the thing to change, without saying the new date, as in the birthday, or my date of birth is wrong",
       "name": "They name their own name as the thing to change, without saying a new name, as in the name, or you got my name wrong",
       "none": "They say a new value rather than naming which detail is wrong, such as a weekday, a doctor name, or a string of digits; or they only answer yes or no; or they name nothing",
@@ -343,6 +343,26 @@ exports[`question redesign > pins every question the model sees at the summary (
   "spokeAMenuNumber": {
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
     "type": "noul",
+  },
+  "timeOfDay": {
+    "criteria": {
+      "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
+      "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
+      "morning": "Asks for the morning, first thing, early in the day, or a time before eleven",
+      "none": "Says nothing about the part of the day",
+    },
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.",
+    "type": "choice",
+  },
+  "timePreference": {
+    "criteria": {
+      "different": "Says the offered time itself does not work, without saying which way, as in not that time, a different time, or that time is no good; the time has to be what they object to",
+      "earlier": "Asks for an earlier time, or anything before the offered time, as in earlier, sooner in the day, or before that",
+      "later": "Asks for a later time, or anything after the offered time, as in later, after that, or later in the day",
+      "none": "Accepts, says a bare no or declines without mentioning the time, names a day or a part of the day such as the morning or the afternoon, or says nothing about the time",
+    },
+    "instructions": "Read asr.text and node.promptJustPlayed. The caller was offered an appointment at a specific time. Do they ask for a different time on the same day, and in which direction? A bare no, or a refusal that does not mention the time, answers the yes/no question and is none.",
+    "type": "choice",
   },
   "triedSelfService": {
     "instructions": "Read asr.text. Does the caller say they already tried the website, the app, or an earlier call?",
@@ -697,6 +717,16 @@ exports[`question redesign > pins every question the model sees inside a form (a
   "spokeAMenuNumber": {
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
     "type": "noul",
+  },
+  "timeOfDay": {
+    "criteria": {
+      "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
+      "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
+      "morning": "Asks for the morning, first thing, early in the day, or a time before eleven",
+      "none": "Says nothing about the part of the day",
+    },
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.",
+    "type": "choice",
   },
   "triedSelfService": {
     "instructions": "Read asr.text. Does the caller say they already tried the website, the app, or an earlier call?",
@@ -1069,6 +1099,16 @@ exports[`question redesign > pins every question the model sees outside a form (
   "spokeAMenuNumber": {
     "instructions": "Read asr.text. Does the caller say a single number as if choosing a menu option, such as "one" or "press two"?",
     "type": "noul",
+  },
+  "timeOfDay": {
+    "criteria": {
+      "afternoon": "Asks for the afternoon, late in the day, after work, end of day, or a time from two onward",
+      "midday": "Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two",
+      "morning": "Asks for the morning, first thing, early in the day, or a time before eleven",
+      "none": "Says nothing about the part of the day",
+    },
+    "instructions": "Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.",
+    "type": "choice",
   },
   "triedSelfService": {
     "instructions": "Read asr.text. Does the caller say they already tried the website, the app, or an earlier call?",

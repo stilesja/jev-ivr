@@ -20,6 +20,7 @@ import { TraceWriter } from '../trace/writer';
 import { FORM_INTENTS } from '../domain/intents';
 import { FORMS } from '../domain/forms';
 import { PROMPTS } from '../prompts/render';
+import { DemoDirectory } from '../domain/directory';
 
 /** Every record a run wrote, read back from a throwaway trace file. */
 function traceSink(): { trace: TraceWriter; records: () => TraceRecord[] } {
@@ -122,9 +123,11 @@ describe('summaryPromptId', () => {
 });
 
 describe('seedCorpusSession', () => {
+  const directory = new DemoDirectory('2026-09-18');
+
   it('seeds a confirm context with every slot filled and the summary pending', () => {
     const entry = parseCorpus('{"id":"fc-1","text":"yes","intent":"none","context":"confirm_reschedule","confirm":"yes"}')[0]!;
-    const s = seedCorpusSession(newSession('fc-1', 0), entry);
+    const s = seedCorpusSession(newSession('fc-1', 0), entry, directory);
     expect(s.form).toBe('reschedule');
     expect(s.slots.name.value).not.toBeNull();
     expect(s.slots.dob.value).not.toBeNull();
@@ -136,11 +139,15 @@ describe('seedCorpusSession', () => {
     expect(s.lastPromptOptions).toEqual(['yes', 'no']);
     expect(s.lastPromptText).toContain('Dr. Patel');
     expect(s.lastPromptText).toContain('Tuesday, September 22');
+    // The summary reads the booking the directory found and the opening it offered.
+    expect(s.existing).toEqual(directory.find('jason stiles', '1980-03-05', 'patel'));
+    expect(s.offer).toMatchObject({ date: '2026-09-22', index: 0 });
+    expect(s.lastPromptText).toContain(`It would move to Tuesday, September 22 at ${s.offer!.times[0]},`);
   });
 
   it('seeds a non-confirm context exactly as before: placeholders only up to the prompted slot', () => {
     const entry = prompted;
-    const s = seedCorpusSession(newSession('d1', 0), entry);
+    const s = seedCorpusSession(newSession('d1', 0), entry, directory);
     expect(s.slots.name.value).toBe('jason stiles');
     expect(s.slots.dob.value).toBe('1980-03-05');
     expect(s.slots.provider.value).toBe('patel');
@@ -152,7 +159,7 @@ describe('seedCorpusSession', () => {
 
   it('seeds the transfer offer pending, mid-form, with two frustrated turns behind it', () => {
     const entry = parseCorpus('{"id":"ft-1","text":"keep going","intent":"none","context":"offer_transfer","prompted":"provider","confirm":"no"}')[0]!;
-    const s = seedCorpusSession(newSession('ft-1', 0), entry);
+    const s = seedCorpusSession(newSession('ft-1', 0), entry, directory);
     expect(s.form).toBe('reschedule');
     // The question the caller was on is still open, so a declined offer has somewhere to go back to.
     expect(s.slots.name.value).toBe('jason stiles');
@@ -168,12 +175,12 @@ describe('seedCorpusSession', () => {
 
   it('leaves a no_form session untouched', () => {
     const untouched = newSession('c1', 0);
-    expect(seedCorpusSession(untouched, entries[0]!)).toBe(untouched);
+    expect(seedCorpusSession(untouched, entries[0]!, directory)).toBe(untouched);
   });
 
   it('seeds a form context with no prompted at the first missing slot, leaving every slot null', () => {
     const entry: CorpusEntry = { id: 'sn1', text: 'i need a new appointment', intent: 'schedule_new', context: 'schedule_new' };
-    const s = seedCorpusSession(newSession('sn1', 0), entry);
+    const s = seedCorpusSession(newSession('sn1', 0), entry, directory);
     expect(s.slots.name.value).toBeNull();
     expect(s.slots.provider.value).toBeNull();
     expect(s.slots.date.value).toBeNull();
@@ -181,9 +188,9 @@ describe('seedCorpusSession', () => {
   });
 
   it('yields the same state when the seed is applied twice to the same session, as runCorpusEntry does', () => {
-    const once = seedCorpusSession(newSession('d1', 0), prompted);
-    const applied = seedCorpusSession(newSession('d1', 0), prompted);
-    const twice = seedCorpusSession(applied, prompted);
+    const once = seedCorpusSession(newSession('d1', 0), prompted, directory);
+    const applied = seedCorpusSession(newSession('d1', 0), prompted, directory);
+    const twice = seedCorpusSession(applied, prompted, directory);
     expect(twice).toEqual(once);
   });
 });

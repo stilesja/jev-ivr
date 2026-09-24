@@ -45,7 +45,7 @@ describe('reduce', () => {
     expect(v.callSid).toBe(CALL);
     expect(v.lines.map((l) => l.kind)).toEqual(['system', 'caller', 'system', 'caller', 'system', 'caller', 'system', 'caller', 'system']);
     expect(v.lines[0]!.text).toBe('Thanks for calling Stiles Family Medical Practice. How can I help you today?');
-    expect(v.lines.at(-1)!.text).toMatch(/^Your appointment with Dr. Chen would move to Tuesday, September 22, for Jason Stiles, born March 5th, 1980/);
+    expect(v.lines.at(-1)!.text).toMatch(/^Your appointment with Dr. Chen is on Wednesday, September 23 at 9:15 AM\. It would move to Tuesday, September 22 at 8:30 AM, for Jason Stiles, born March 5th, 1980/);
     expect(v.form).toBe('reschedule');
     expect(v.chips.map((c) => [c.id, c.state])).toEqual([['name', 'filled'], ['dob', 'filled'], ['provider', 'filled'], ['date', 'filled']]);
     expect(v.pending).toBe('confirm · summary (reschedule) · attempt 0');
@@ -135,7 +135,7 @@ describe('reduce', () => {
 
     const answering = reduce(events);
     const group = answering.jev.groups.find((g) => g.name === 'confirmation')!;
-    expect(group.rows.map((r) => r.id).sort()).toEqual(['changeSlot', 'confirmsNo', 'confirmsYes']);
+    expect(group.rows.map((r) => r.id).sort()).toEqual(['changeSlot', 'confirmsNo', 'confirmsYes', 'timePreference']);
     expect(answering.jev.groups.map((g) => g.name).slice(0, 3)).toEqual(['gates', 'intent', 'confirmation']);
 
     // The turn that speaks the summary asked nothing about it yet: no confirmation group at all.
@@ -383,6 +383,8 @@ describe('row helpers', () => {
     expect(thresholdFor('nameGiven', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.SLOT_DETECT);
     expect(thresholdFor('dobMonth', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.SLOT_CHOICE_CONFIRM);
     expect(thresholdFor('providerUnsure', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.PROVIDER_UNSURE);
+    expect(thresholdFor('timeOfDay', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.TIME_OF_DAY);
+    expect(thresholdFor('timePreference', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.TIME_PREFERENCE);
   });
 
   /** INTENT_ROUTE is never applied at runtime: gates.ts routes at EXPLICIT, or SWITCH in a form. */

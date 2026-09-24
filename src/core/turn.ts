@@ -1,12 +1,13 @@
-import type { AnswerMap, QuestionMap } from '../jev/types';
+import { isChoice, rankProbabilities, type AnswerMap, type QuestionMap } from '../jev/types';
 import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
-import { ALL_SLOTS, FORMS } from '../domain/forms';
+import { ALL_SLOTS, EXISTING_FORMS, FORMS, SCHEDULING_FORMS } from '../domain/forms';
+import { daypartBounds, daypartOf, minutesOf, type AppointmentDirectory, type Daypart } from '../domain/directory';
 import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain/intents';
 import { allSlots, slotsFor, EXCLUDED_NAME_TOKENS, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
-import { describeWindow } from './extract/date';
+import { describeDay, describeWindow } from './extract/date';
 import { candidateSpans, candidateWordSpans } from './spans';
-import { cloneSession, emptySlot, missingSlots, setForm, type PendingConfirmation, type Session } from './session';
+import { cloneSession, emptySlot, missingSlots, setForm, type Offer, type PendingConfirmation, type Session } from './session';
 import { buildTurnState, type TurnState } from './state';
 import { buildQuestions } from './questions';
 import { evaluateGates, frustrationOf, type FrustrationRung, type GateRow, type Verdict } from './gates';
@@ -20,6 +21,7 @@ export interface TurnContext {
   todayIso: string;
   thresholds: Thresholds;
   render?: RenderContext | null;
+  directory: AppointmentDirectory;
 }
 
 export interface Plan {
@@ -116,7 +118,88 @@ function askSlot(slot: SlotId, window: SlotPartial | null, acks: Ack[]): PromptD
 export function summaryVars(s: Session): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const id of ALL_SLOTS) vars[id] = s.slots[id].display ?? '';
+  // A full day has no opening to name, so it renders nothing rather than "at undefined".
+  const at = s.offer?.times[s.offer.index];
+  vars.when = at ? describeWhen(s.offer!.date, at) : '';
+  vars.time = at ?? '';
+  vars.existing = s.existing ? describeWhen(s.existing.date, s.existing.time) : '';
   return vars;
+}
+
+/** "Tuesday, October 6 at 2:45 PM": the one spoken span a summary or completion reads a booking as. */
+export function describeWhen(date: string, time: string): string {
+  return `${describeDay(date)} at ${time}`;
+}
+
+/**
+ * The index the offer opens at: the first opening inside the caller's daypart when they named
+ * one and the day has one; otherwise the day's first opening. `nearest` is set when the caller
+ * named a daypart the day cannot serve, so the caller is told which opening they got instead.
+ */
+export function buildOffer(provider: string, date: string, times: string[], daypart: Daypart | null): { offer: Offer; nearest: boolean } {
+  if (daypart === null || times.length === 0) return { offer: { provider, date, times, index: 0 }, nearest: false };
+  const inside = times.findIndex((t) => daypartOf(t) === daypart);
+  if (inside >= 0) return { offer: { provider, date, times, index: inside }, nearest: false };
+  // Closest by clock distance to the window's edges. The window's end is its first minute
+  // outside, so the last minute inside it is `end - 1` and a time at `end` is one minute away.
+  const { start, end } = daypartBounds(daypart);
+  const distance = (t: string): number => {
+    const m = minutesOf(t);
+    return m < start ? start - m : m >= end ? m - end + 1 : 0;
+  };
+  let best = 0;
+  times.forEach((t, i) => {
+    if (distance(t) < distance(times[best]!)) best = i;
+  });
+  return { offer: { provider, date, times, index: best }, nearest: true };
+}
+
+/** The decision reads the form back: its summary question with that summary pending, or the completion. */
+function readsSummary(s: Session, decision: Decision): boolean {
+  if (decision.kind === 'complete') return true;
+  const pc = s.pendingConfirmation;
+  return decision.kind === 'prompt' && pc?.target === 'form' && decision.promptId === FORMS[pc.form].summaryPromptId;
+}
+
+/**
+ * Look the bookings up that the summary or completion about to be spoken names, and render its
+ * variables again with them. Runs on every spoken turn, after the decision is made and before it
+ * is spoken (resolve), so the form loop never needs the directory: a summary asked on the same
+ * turn the date filled reads back the opening this step found.
+ *
+ * The found booking is looked up again every time from the current name, birthday and provider,
+ * so a correction to any of them is read back with the booking it now points at. The offer waits
+ * for the summary: built earlier, a daypart the caller names after the day would be ignored at the
+ * first offer, and "The closest I have to the afternoon" would ride on a slot question instead of
+ * sitting right before the summary that names it. It is rebuilt when the provider or the day moved
+ * and kept otherwise, so an index moved by earlier/later stands; a turn that does not read the
+ * summary back drops a stale offer so the next summary builds a fresh one.
+ */
+export function settleBookings(s: Session, decision: Decision, directory: AppointmentDirectory): Decision {
+  if (!s.form) return decision;
+  const { name, dob, provider, date } = s.slots;
+  s.existing = EXISTING_FORMS.includes(s.form) && name.value && dob.value && provider.value
+    ? directory.find(name.value, dob.value, provider.value)
+    : null;
+  const reads = readsSummary(s, decision);
+  const acks: Ack[] = [];
+  if (!SCHEDULING_FORMS.includes(s.form) || !provider.value || !date.value) {
+    s.offer = null;
+  } else if (s.offer === null || s.offer.provider !== provider.value || s.offer.date !== date.value) {
+    s.offer = null;
+    if (reads) {
+      const built = buildOffer(provider.value, date.value, directory.openings(provider.value, date.value), s.daypart);
+      s.offer = built.offer;
+      const at = built.offer.times[built.offer.index];
+      if (built.nearest && s.daypart && at) acks.push({ promptId: 'slot_nearest', vars: { daypart: s.daypart, time: at } });
+    }
+  }
+  if (!reads) return decision;
+  // The ack goes last, so "The closest I have to the afternoon is 1:00 PM." is the sentence right
+  // before the summary that names it. A plain completion is rendered again too; its variables
+  // were built from this same offer and booking, so that is harmless.
+  if (decision.kind === 'prompt' || decision.kind === 'complete') return { ...decision, vars: summaryVars(s), acks: [...decision.acks, ...acks] };
+  return decision;
 }
 
 /** Everything the summary just read back, as one comparable value: every slot's window too, so a
@@ -137,6 +220,62 @@ function correctingFill(s: Session, answers: AnswerMap, ctx: SlotContext, form: 
   // A disambiguation changes no slot yet and still has to be asked, so it is progress either way.
   if (!fill.progress || fill.disambiguate || summaryState(s) !== before) return fill;
   return { ...fill, progress: false };
+}
+
+/** Spec §5: a part of the day the caller volunteers anywhere on a scheduling form is remembered. */
+function readDaypart(answers: AnswerMap, t: Thresholds): Daypart | null {
+  const a = answers.timeOfDay;
+  const [top] = isChoice(a) ? rankProbabilities(a.probabilities) : [];
+  if (!top || top.label === 'none' || top.p < t.TIME_OF_DAY) return null;
+  return top.label as Daypart;
+}
+
+/**
+ * At a scheduling summary, move along the day's openings (spec §6 cases 2 and 3): a daypart to
+ * the first opening inside it (or the nearest, said out loud); when that leaves the index where it
+ * was, an earlier/later/different in the same breath still steps from there. `moved` is false at
+ * an edge or when nothing in the answer asked for a move; an edge says so with an ack. The caller
+ * answered the summary, so the caller of this helper decides what an unmoved offer costs on the
+ * ladder. Only reached when the provider and the day are unchanged: a correction that changes
+ * either is progress on the fill and never gets here.
+ *
+ * `different` steps forward like `later` and stops at the last opening rather than wrapping
+ * (spec §6, as amended): every move re-arms the summary with a fresh count, so a
+ * wrap would let a caller who turns every opening down circle the day forever instead of
+ * reaching the keypad, and the edge ack tells them to ask for earlier or another day.
+ */
+function moveOffer(s: Session, answers: AnswerMap, t: Thresholds): { moved: boolean; acks: Ack[] } {
+  const offer = s.offer;
+  if (!offer || offer.times.length === 0) return { moved: false, acks: [] };
+  const acks: Ack[] = [];
+  const part = readDaypart(answers, t);
+  if (part !== null) {
+    s.daypart = part;
+    const built = buildOffer(offer.provider, offer.date, offer.times, part);
+    // settleBookings keeps an offer whose provider and day are unchanged, so it adds no second
+    // "closest I have" of its own: this is the one the re-read summary carries.
+    const nearest: Ack[] = built.nearest ? [{ promptId: 'slot_nearest', vars: { daypart: part, time: built.offer.times[built.offer.index]! } }] : [];
+    if (built.offer.index !== offer.index) {
+      s.offer = built.offer;
+      return { moved: true, acks: nearest };
+    }
+    acks.push(...nearest);
+  }
+  const a = answers.timePreference;
+  const [top] = isChoice(a) ? rankProbabilities(a.probabilities) : [];
+  if (!top || top.label === 'none' || top.p < t.TIME_PREFERENCE) return { moved: false, acks };
+  const last = offer.times.length - 1;
+  if (top.label === 'earlier') {
+    if (offer.index === 0) return { moved: false, acks: [...acks, { promptId: 'slot_edge_earlier', vars: {} }] };
+    offer.index -= 1;
+  } else {
+    // later and different alike; a day with one opening is its own last.
+    if (offer.index === last) return { moved: false, acks: [...acks, { promptId: 'slot_edge_later', vars: {} }] };
+    offer.index += 1;
+  }
+  // The step leaves the opening a "closest I have" would name, so that ack would read back a
+  // time the summary no longer offers; the summary names the new one on its own.
+  return { moved: true, acks: [] };
 }
 
 /** The summary question. Only a form that has one ever sets a form confirmation (askSummary). */
@@ -184,9 +323,15 @@ function completeForm(s: Session, form: FormId, acks: Ack[]): Decision {
   // goes first; only when nothing else is left does the queue hand the caller over.
   const idx = s.queued.findIndex((q) => FORMS[q].completion.kind === 'prompt');
   const next = idx >= 0 ? s.queued.splice(idx, 1)[0] : s.queued.shift();
+  // A plain completion ends the call, so the offer and booking it read stay on the session: the
+  // completion's variables were built from them, and settleBookings renders them again unchanged.
   if (!next) return { kind: 'complete', form, promptId: completion.promptId, vars, acks, completed: [...s.completed] };
+  // A chained form keeps the identity and the daypart the caller asked for, but the provider,
+  // the day, and every booking that hung off them belong to the form just closed.
   s.slots.provider = emptySlot();
   s.slots.date = emptySlot();
+  s.offer = null;
+  s.existing = null;
   setForm(s, next);
   // The request was added on this very turn, so the caller already hears it bridged into;
   // promising it "after this" as well would say the same thing twice.
@@ -368,6 +513,11 @@ function enterForm(s: Session, form: FormId, answers: AnswerMap, ctx: SlotContex
   // the caller which task started, whether the route was confident, mid-confidence, or a
   // switch away from another form.
   setForm(s, form);
+  // A part of the day said on the same breath that opened a scheduling form is kept for its offer.
+  if (SCHEDULING_FORMS.includes(form)) {
+    const part = readDaypart(answers, ctx.thresholds);
+    if (part !== null) s.daypart = part;
+  }
   // Queued after setForm, so the queue is read against the form actually being entered.
   // A task added on this same utterance is promised before the one being started is named.
   const acks: Ack[] = [...enqueue(s, queue), ackIntent(form)];
@@ -377,6 +527,15 @@ function enterForm(s: Session, form: FormId, answers: AnswerMap, ctx: SlotContex
 
 function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: SlotContext, tc: TurnContext): { decision: Decision; events: FillEvent[] } {
   const t = tc.thresholds;
+  // A part of the day is remembered whatever else the turn does, so the offer the summary builds
+  // later opens inside it (spec §5); at the summary itself, moveOffer reads it again to move the
+  // index. Not from a turn the gates set aside: side speech, a held partial, or an unintelligible
+  // turn says nothing the caller meant for the call.
+  const setAside = verdict.kind === 'ignore' || verdict.kind === 'hold' || verdict.kind === 'nomatch';
+  if (!setAside && s.form && SCHEDULING_FORMS.includes(s.form)) {
+    const part = readDaypart(answers, t);
+    if (part !== null) s.daypart = part;
+  }
   switch (verdict.kind) {
     case 'ignore':
       return { decision: { kind: 'ignore' }, events: [] };
@@ -415,7 +574,14 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       if (pc.intent === 'agent') return { decision: handoff(s, 'live-agent'), events: [] };
       if (!isFormIntent(pc.intent)) return { decision: failAttempt(s, 'intent', t), events: [] };
       // Fill from what the caller originally said, not from the "yes".
-      return enterForm(s, pc.intent, pc.answers, slotContext(s, pc.text, tc));
+      const entered = enterForm(s, pc.intent, pc.answers, slotContext(s, pc.text, tc));
+      // "Yes, in the afternoon" is the one thing the yes can add: newer than the opener's part of
+      // the day, so it wins over it.
+      if (SCHEDULING_FORMS.includes(pc.intent)) {
+        const part = readDaypart(answers, t);
+        if (part !== null) s.daypart = part;
+      }
+      return entered;
     }
     case 'rejected': {
       const pc = s.pendingConfirmation!;
@@ -426,6 +592,13 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         // fresh attempt count once the corrected slot -- or the narrowing it needs -- is settled.
         const fill = correctingFill(s, answers, ctx, pc.form);
         if (fill.progress) return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+        if (SCHEDULING_FORMS.includes(pc.form)) {
+          // "No, later" moves the offer: a moved offer is a correction and re-arms the summary; an
+          // edge is an unchanged summary and counts a turn on its ladder (spec §6).
+          const move = moveOffer(s, answers, t);
+          if (move.moved) return { decision: continueForm(s, [...acks, ...fill.acks, ...move.acks], null), events: fill.events };
+          if (move.acks.length) { s.pendingConfirmation = pc; return { decision: reaskConfirmation(s, t, [...acks, ...move.acks]), events: fill.events }; }
+        }
         // Nothing usable came with the no: ask what to change and keep the summary pending. That
         // question is asked once per summary; a caller who answers it with another bare no has
         // spent a turn on the confirmation, so the ladder counts it (keypad, then an agent).
@@ -467,6 +640,16 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
         if (fill.progress) {
           s.pendingConfirmation = null;
           return { decision: continueForm(s, [...acks, ...fill.acks], fill.disambiguate), events: fill.events };
+        }
+        if (SCHEDULING_FORMS.includes(pc.form)) {
+          // "Later", with no yes or no, is the same move as "no, later"; an edge re-asks the summary
+          // still pending, which is where an unanswered turn already counts.
+          const move = moveOffer(s, answers, t);
+          if (move.moved) {
+            s.pendingConfirmation = null;
+            return { decision: continueForm(s, [...acks, ...fill.acks, ...move.acks], null), events: fill.events };
+          }
+          if (move.acks.length) return { decision: reaskConfirmation(s, t, [...acks, ...move.acks], acks.length === 0), events: fill.events };
         }
         return { decision: reaskConfirmation(s, t, acks, acks.length === 0), events: fill.events };
       }
@@ -636,7 +819,8 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       return { ...base, decision, frames: decisionToFrames(decision, tc.render) };
     }
     case 'dtmf': {
-      const { decision, rows } = handleDtmf(s, event.digit, tc);
+      const { decision: handled, rows } = handleDtmf(s, event.digit, tc);
+      const decision = settleBookings(s, handled, tc.directory);
       bookkeep(s, decision, `dtmf:${event.digit}`);
       return { ...base, rows, decision, frames: decisionToFrames(decision, tc.render) };
     }
@@ -650,7 +834,9 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
     case 'error':
       return { ...base, decision: { kind: 'ignore' }, frames: [] };
     case 'silence': {
-      const decision = handleSilence(s, tc.thresholds);
+      // Silence can bring the summary back: two silences decline a transfer offer that displaced
+      // it on the turn the form filled, before any offer was built for it.
+      const decision = settleBookings(s, handleSilence(s, tc.thresholds), tc.directory);
       bookkeep(s, decision, 'silence');
       // Silence resolves whatever was prompted; a stale barge-in marker does not carry into
       // the next turn, same as a real one.
@@ -674,7 +860,7 @@ export function resolve(session: Session, event: InboundFrame, answers: AnswerMa
       const rung = frustrationOf(verdict);
       if (rung !== undefined) s.frustratedTurns += 1;
       const { decision: resolved, events } = handleVerdict(s, verdict, answers, ctx, tc);
-      const decision = escalate(s, resolved, rung);
+      const decision = settleBookings(s, escalate(s, resolved, rung), tc.directory);
       rows.push(...slotRows(events, tc.thresholds));
       bookkeep(s, decision, verdict.kind);
       // The barge-in has now been reported to the model; it does not carry into the next turn.

@@ -7,6 +7,7 @@ import { newSession } from '../core/session';
 import { resolve } from '../core/turn';
 import { DEFAULT_THRESHOLDS } from '../core/thresholds';
 import { setupFrame } from '../channel/frames';
+import { DemoDirectory } from '../domain/directory';
 
 describe('trace', () => {
   it('builds a v1 record and appends one JSON line per write', () => {
@@ -14,7 +15,7 @@ describe('trace', () => {
     const path = join(dir, 'out', 'run.jsonl');
     const writer = new TraceWriter(path);
     const event = setupFrame('s');
-    const result = resolve(newSession('s', 0), event, null, { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS } });
+    const result = resolve(newSession('s', 0), event, null, { nowMs: 0, todayIso: '2026-09-18', thresholds: { ...DEFAULT_THRESHOLDS }, directory: new DemoDirectory('2026-09-18') });
     const record = buildTraceRecord({
       result, event, questions: null, response: null, error: null,
       timing: { planMs: 0, askMs: 0, resolveMs: 1, totalMs: 1 }, ts: '2026-09-18T00:00:00.000Z',

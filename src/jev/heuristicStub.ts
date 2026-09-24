@@ -99,7 +99,7 @@ const MAX_NAME_WORDS = MAX_WORD_NGRAM;
  */
 const NON_NAME_WORDS: ReadonlySet<string> = new Set([
   ...FILLER_WORDS, 'about', 'regarding', 'member', 'id', 'number', 'dr', 'doctor',
-  'born', 'birthday', 'birth', ...MONTHS,
+  'born', 'birthday', 'birth', ...MONTHS, ...WEEKDAYS, 'morning', 'midday', 'afternoon',
 ]);
 
 function looksLikeName(span: string): boolean {
@@ -284,6 +284,21 @@ export function answerHeuristically(id: string, q: Question, text: string, today
         const winner = named ? 'neither'
           : has(text, /\b(no|nope|don'?t know|do not know|not sure|no idea|don'?t have|do not have|can'?t remember|who are the|which doctors)\b/) ? 'no_name'
           : has(text, /^(yes|yeah|yep|i do)\b/) ? 'has_name' : 'neither';
+        return choiceAnswer(sharp(labels, winner, 0.9));
+      }
+      case 'timeOfDay': {
+        // Midday is tested first so "late morning" and "early afternoon" land there rather than on
+        // the morning or the afternoon their second word names. A greeting ("good morning") names
+        // no part of the day, and "early evening" is the afternoon, not the morning.
+        const winner = has(text, /\b(midday|mid-day|noon|lunch|lunchtime|late morning|early afternoon)\b/) ? 'midday'
+          : has(text, /\b((?<!good )morning|first thing|early(?! (afternoon|evening|next|this))|before (eleven|11))\b/) ? 'morning'
+          : has(text, /\b((?<!good )afternoon|late in the day|after work|end of (the )?day|evening)\b/) ? 'afternoon' : 'none';
+        return choiceAnswer(sharp(labels, winner, 0.9));
+      }
+      case 'timePreference': {
+        const winner = has(text, /\b(earlier|sooner|before that)\b/) ? 'earlier'
+          : has(text, /\b(later|after that)\b/) ? 'later'
+          : has(text, /\b(different time|not that time|another time|time (doesn'?t|does not|won'?t) work|no good|not that one)\b/) ? 'different' : 'none';
         return choiceAnswer(sharp(labels, winner, 0.9));
       }
       case 'menuNumberSaid': {

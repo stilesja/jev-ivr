@@ -22,10 +22,11 @@ labeled corpus.
     Caller   March fifth, nineteen eighty.
     System   next week. Which day works for you?
     Caller   Tuesday.
-    System   Your appointment with Dr. Chen would move to Tuesday, September 22,
-             for Jason Stiles, born March 5th, 1980. Shall I make that change?
+    System   Your appointment with Dr. Chen is on Wednesday, September 23 at 9:15 AM.
+             It would move to Tuesday, September 22 at 8:30 AM, for Jason Stiles,
+             born March 5th, 1980. Shall I make that change?
     Caller   Yes.
-    System   Your appointment is moved. Goodbye.
+    System   Your appointment is moved to Tuesday, September 22 at 8:30 AM. Goodbye.
 
 The four scheduling forms (`schedule_new`, `reschedule`, `cancel`,
 `confirm_appointment`) identify the caller by first-and-last name and date of
@@ -61,8 +62,8 @@ checking today's behaviour against an old recording rather than reproducing it.
 In the REPL, type an utterance, `dtmf:44718293` to send keypad digits,
 `/silence` (or an empty line) to run a silence turn — as if the caller said
 and pressed nothing — or `/reset` to start a new call. A scenario step can be
-`{ "silence": true }` for the same thing. The corpus has 229 labeled
-outcomes and there are 81 scenarios available for multi-turn testing.
+`{ "silence": true }` for the same thing. The corpus has 241 labeled
+outcomes and there are 89 scenarios available for multi-turn testing.
 
 ## Regression
 
@@ -93,8 +94,12 @@ hedged or dual provider name is read back), `providerNameStatus`
 name without saying it, at the provider question), `confirm` (`yes`, `no`, or
 `unanswered`: how an utterance at the summary answers it), `changeSlot`
 (`name`, `dob`, `provider`, `date`, or `memberId`: which detail the caller
-names when asked what to change), and `secondIntent` (a second form intent named alongside
-the main one, `no_form` entries only). An entry with none of the optional
+names when asked what to change), `secondIntent` (a second form intent named alongside
+the main one, `no_form` entries only), `timeOfDay` (`morning`, `midday`, or
+`afternoon`: a part of the day the caller volunteers, on scheduling forms and
+on openers whose intent is a scheduling form), and `timePreference`
+(`earlier`, `later`, or `different`: a move along the day's openings, at a
+scheduling summary). An entry with none of the optional
 labels is a plain, committed answer to the current question. Contexts add
 `confirm_<form>` for the summary turn, alongside a plain form or `no_form`:
 `confirm_schedule_new`, `confirm_reschedule`, `confirm_cancel`, and
@@ -301,20 +306,26 @@ that utterance are kept and filled once the caller says yes.
 Every form that fills its last slot ends with a summary question instead of
 finishing outright:
 
-- `confirm_schedule`: "You'd be booked with Dr. Patel on Thursday, September
-  24, for Jason Stiles, born March 5th, 1980. Shall I book that?"
-- `confirm_reschedule`: "Your appointment with Dr. Chen would move to Tuesday,
-  September 22, for Jason Stiles, born March 5th, 1980. Shall I make that
-  change?"
-- `confirm_cancel`: "Your appointment with Dr. Chen would be cancelled, for
-  Jason Stiles, born March 5th, 1980. Shall I cancel it?"
-- `confirm_appointment_details`: "That's your appointment with Dr. Chen, for
-  Jason Stiles, born March 5th, 1980. Is that the one?"
+- `confirm_schedule`: "Dr. Chen has an opening on Tuesday, September 22 at
+  8:30 AM. That would be for Jason Stiles, born March 5th, 1980. Shall I book
+  it?"
+- `confirm_reschedule`: "Your appointment with Dr. Chen is on Wednesday,
+  September 23 at 9:15 AM. It would move to Tuesday, September 22 at 8:30 AM,
+  for Jason Stiles, born March 5th, 1980. Shall I make that change?"
+- `confirm_cancel`: "Your appointment with Dr. Chen is on Wednesday, September
+  23 at 9:15 AM. It would be cancelled, for Jason Stiles, born March 5th,
+  1980. Shall I cancel it?"
+- `confirm_appointment_details`: "I found your appointment with Dr. Chen.
+  It's on Wednesday, September 23 at 9:15 AM, for Jason Stiles, born March
+  5th, 1980. Is that the one?"
 
-Saying "yes" completes the form with a short line, "Your appointment is
-moved." A correction — "no, Thursday", "no, Thursday with Dr. Alvarez", "no,
-it's Jason Miles", "no, born March 6th 1980", or a bare "Thursday" on its own
-— refills the named slot(s) and asks the summary again with the new values.
+Saying "yes" completes the form with a short line naming the booked time:
+"You're booked for Tuesday, September 22 at 8:30 AM." for a new appointment,
+"Your appointment is moved to Tuesday, September 22 at 8:30 AM." for a
+reschedule. A correction — "no, Thursday", "no, Thursday with Dr. Alvarez",
+"no, it's Jason Miles", "no, born March 6th 1980", or a bare "Thursday" on its
+own — refills the named slot(s) and asks the summary again with the new
+values.
 Naming a detail without giving its new value re-asks that detail's own
 question: "the name" is answered with "What's your first and last name?", "the
 birthday" with "And your date of birth?". A bare "no" asks "What should I
@@ -332,6 +343,33 @@ no ack, no readback of their own — and are confirmed only in the summary, wher
 they can be corrected like any other slot. A form that ends in a handoff
 (billing) has no summary; the slots collected so far ride along in the handoff
 data instead.
+
+An `AppointmentDirectory` seam (`src/domain/directory.ts`) backs the summary
+with a booking and, on a scheduling form, an offer. Confirm, cancel and
+reschedule read back the booking the directory found, with its time: the
+`{existing}` span in the examples above. Schedule and reschedule never ask
+the caller for a time; instead they offer an opening the directory found on
+the caller's day, the `{when}` span, and the caller moves it rather than
+naming a time outright. A part of the day the caller volunteers, anywhere on
+the form and never asked for (the three-hour windows are 8 to 11 for morning,
+11 to 2 for midday, and 2 to 5 for afternoon), picks the first opening inside
+that window, or the nearest one to it with an ack first: "The closest I have
+to the afternoon is 12:30 PM." At the summary, "earlier", "later", or "that
+time doesn't work" moves the offer one opening at a time; at either end of
+the day's openings the index does not move and the caller hears "That's the
+earliest opening that day." or "That's the latest opening that day." instead,
+since neither end wraps. Those two lines are the plain-no path in disguise:
+each one still counts a turn on the summary's ladder, so two refusals at the
+same end reach the keypad prompt just as two bare no's would. A correction to
+the day or the doctor rebuilds both the offer and the found booking from the
+new values. The demo directory invents every booking and every day's openings
+deterministically from a hash of the caller's name, birthday and provider, so
+the same caller hears the same appointment on every call; a real deployment
+backs `AppointmentDirectory` with its own scheduling system instead. One
+rough edge: "no, the morning" when the offer is already in the morning has
+nothing to move, so it falls back to the plain-no path and asks "What should
+I change?" rather than acknowledging that the time is already in the window
+asked for.
 
 A request added mid-task ("can I also ask about my bill") is acknowledged
 once and queued: the current task completes with its short line, and the
@@ -432,6 +470,22 @@ the vocabulary clips `intent.reschedule`, `intent.cancel`,
 `intent.confirm_appointment` and `intent.billing` for their new labels.
 `pnpm prompts:check` reports 3 missing and 6 stale until those are recorded
 (Task 5 of `docs/superpowers/plans/2026-09-24-demo-polish.md`).
+
+The appointment-slots change adds seven clips (`slot_edge_earlier.0`,
+`slot_edge_later.0`, `slot_nearest.0` and `.1`, and the vocabulary clips
+`daypart.morning`, `daypart.midday`, `daypart.afternoon`) and re-records the
+four summaries (`confirm_schedule`, `confirm_reschedule`, `confirm_cancel`,
+`confirm_appointment_details`) and the two completions
+(`schedule_confirmed`, `reschedule_confirmed`) for the found booking and the
+offered time. `pnpm prompts:check` reports 10 missing clips
+(`confirm_reschedule.5`, `confirm_cancel.4`, `confirm_appointment_details.4`,
+`slot_edge_earlier.0`, `slot_edge_later.0`, `slot_nearest.0`,
+`slot_nearest.1`, `daypart.morning`, `daypart.midday`, `daypart.afternoon`),
+17 stale ones (`confirm_schedule.0`-`.3`, `confirm_reschedule.1`-`.4`,
+`confirm_cancel.1`-`.3`, `confirm_appointment_details.0`-`.3`,
+`schedule_confirmed.0`, `reschedule_confirmed.0`), and `confirm_schedule.4`
+as unused, until those are recorded (Task 6 of
+`docs/superpowers/plans/2026-09-24-appointment-slots.md`).
 
 Clips live in `assets/audio/` (or `AUDIO_DIR`) as `<clipId>.wav` or `.mp3`
 and are discovered by filename; adding one needs no manifest edit. A clip
@@ -548,8 +602,9 @@ and on every record the trace route returns — before it leaves the server.
 9. Say "March fifth, nineteen eighty". Expect the window question on its own,
    again with no readback: "next week. Which day works for you?"
 10. Say "Tuesday". Expect the summary question: "Your appointment with Dr. Chen
-    would move to Tuesday, September 22, for Jason Stiles, born March 5th,
-    1980. Shall I make that change?" Listen to how the year comes out: a lone
+    is on Wednesday, September 23 at 9:15 AM. It would move to Tuesday,
+    September 22 at 8:30 AM, for Jason Stiles, born March 5th, 1980. Shall I
+    make that change?" Listen to how the year comes out: a lone
     four-digit run is left to TTS to read as a year, so it should say "nineteen
     eighty", not "one nine eight zero".
 11. Call again and give the birthday without a year: say "Jason Stiles", then
@@ -572,7 +627,7 @@ and on every record the trace route returns — before it leaves the server.
     again, then the keypad offer ("Press 1 to confirm, or 2 to change
     something."), then the transfer.
 15. Call again, repeat through step 10, then say "yes". Expect "Your
-    appointment is moved." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
+    appointment is moved to Tuesday, September 22 at 8:30 AM." then "Goodbye.", and the call ends: the server leaves the socket open after `end` so Twilio can
     finish the queued clips, and Twilio closes it and hits `/cr-action` with
     `SessionStatus=ended`.
 16. Call again, repeat through step 10, then say "no, Thursday" instead of
@@ -622,6 +677,26 @@ and on every record the trace route returns — before it leaves the server.
     the list, split in two runs of four. Say "Dr. Kim" and expect the day
     question. On another call say "yes" at the provider question and expect
     "Which doctor is it with?"
+25. Call again and say "Book me with Dr. Chen next Thursday afternoon". Give
+    the name and birthday. Expect the summary to offer an afternoon opening,
+    not just any opening on Thursday.
+26. On that same call, say "earlier" at the offer. Expect the summary again
+    one opening earlier (Dr. Chen's Thursday openings are 10:00 AM, 11:15 AM
+    and 4:15 PM, so 4:15 PM becomes 11:15 AM). Say "earlier" twice more:
+    the second lands on 10:00 AM, and the third plays "That's the earliest
+    opening that day." before the summary, still naming Thursday.
+27. Call again, reschedule with Dr. Chen through the day question, say
+    "later" at the offer, then "yes". Expect the completion to name the
+    moved-to time: "Your appointment is moved to Tuesday, September 22 at
+    <time>."
+28. Call again and say "confirm my appointment with Dr. Chen". Give the name
+    and birthday. Expect "I found your appointment with Dr. Chen. It's on
+    ..." reading back the booking the directory found, not a bare "Is that
+    the one?"
+29. Call again to reschedule with Dr. Chen and, at the day question, say
+    "sometime around lunchtime". Expect the day question again, since a part
+    of the day on its own does not answer it. Then say "Tuesday" and expect the
+    summary to offer the midday opening.
 
 Things to note on the first real call, per the spec's open questions: whether
 `speechModel="flux"` is accepted alongside partial prompts, how long Deepgram

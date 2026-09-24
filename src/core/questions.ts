@@ -1,6 +1,6 @@
 import type { QuestionMap } from '../jev/types';
 import { FORM_INTENTS, INTENTS, INTENT_CRITERIA, INTENT_MENU, type FormId } from '../domain/intents';
-import { FORMS, type SlotId } from '../domain/forms';
+import { FORMS, SCHEDULING_FORMS, type SlotId } from '../domain/forms';
 import { allSlots, slotsFor, type SlotContext } from '../domain/slots';
 import { slotCtx } from './fia';
 import type { Session } from './session';
@@ -161,7 +161,7 @@ const CHANGE_SLOT_TEXT: Record<SlotId, string> = {
   name: 'They name their own name as the thing to change, without saying a new name, as in the name, or you got my name wrong',
   dob: 'They name their date of birth or birthday as the thing to change, without saying the new date, as in the birthday, or my date of birth is wrong',
   provider: 'They name the doctor or provider as the thing to change, without saying who instead, as in the doctor, or not that doctor',
-  date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong',
+  date: 'They name the day or date as the thing to change, without saying which day instead, as in the day, or the date is wrong (not a different time on the same day)',
   memberId: 'They name the member ID or member number as the thing to change, without saying the digits',
 };
 
@@ -179,6 +179,38 @@ function formConfirmation(form: FormId): QuestionMap {
       type: 'choice',
       instructions: 'Read asr.text and node.promptJustPlayed. The caller was read a summary of their appointment and asked to confirm it, or asked what to change. Which detail do they name as wrong or ask to change?',
       criteria,
+    },
+  };
+}
+
+/** Spec 2026-09-24 appointment-slots §5: a part of the day the caller volunteers, on the opener or a scheduling form. Read, never asked. */
+function timeOfDay(): QuestionMap {
+  return {
+    timeOfDay: {
+      type: 'choice',
+      instructions: 'Read asr.text. Does the caller say what part of the day they want the appointment in? Read only what they say about the time of day; a weekday or a date on its own says nothing about it, a greeting such as good morning or good afternoon says nothing about it, and earlier or later on their own, including later in the day, are not a part of the day; early next week or early this month is about the day, not the time of day.',
+      criteria: {
+        morning: 'Asks for the morning, first thing, early in the day, or a time before eleven',
+        midday: 'Asks for midday, noon, lunchtime, late morning, early afternoon, or a time between eleven and two',
+        afternoon: 'Asks for the afternoon, late in the day, after work, end of day, or a time from two onward',
+        none: 'Says nothing about the part of the day',
+      },
+    },
+  };
+}
+
+/** Spec §5: at a scheduling summary, a move along the day's openings. */
+function timePreference(): QuestionMap {
+  return {
+    timePreference: {
+      type: 'choice',
+      instructions: 'Read asr.text and node.promptJustPlayed. The caller was offered an appointment at a specific time. Do they ask for a different time on the same day, and in which direction? A bare no, or a refusal that does not mention the time, answers the yes/no question and is none.',
+      criteria: {
+        earlier: 'Asks for an earlier time, or anything before the offered time, as in earlier, sooner in the day, or before that',
+        later: 'Asks for a later time, or anything after the offered time, as in later, after that, or later in the day',
+        different: 'Says the offered time itself does not work, without saying which way, as in not that time, a different time, or that time is no good; the time has to be what they object to',
+        none: 'Accepts, says a bare no or declines without mentioning the time, names a day or a part of the day such as the morning or the afternoon, or says nothing about the time',
+      },
     },
   };
 }
@@ -201,9 +233,12 @@ export function buildQuestions(session: Session, ctx: SlotContext): QuestionMap 
   const specs = session.form ? slotsFor(session.form) : allSlots();
   for (const spec of specs) Object.assign(q, spec.questions(slotCtx(session, ctx, spec.id)));
   if (session.form) Object.assign(q, inForm());
+  // Outside a form too, so a part of the day said on the opener is read with the rest of it.
+  if (!session.form || SCHEDULING_FORMS.includes(session.form)) Object.assign(q, timeOfDay());
   if (!session.form) Object.assign(q, noForm());
   if (session.pendingConfirmation) Object.assign(q, confirmation());
   if (session.pendingConfirmation?.target === 'form') Object.assign(q, formConfirmation(session.pendingConfirmation.form));
+  if (session.pendingConfirmation?.target === 'form' && SCHEDULING_FORMS.includes(session.pendingConfirmation.form)) Object.assign(q, timePreference());
   if (session.menuActive) Object.assign(q, menu());
   return q;
 }

@@ -95,6 +95,13 @@ export const dateSlot: SlotSpec = {
     const t = ctx.thresholds;
     const components = dateComponentsFrom(answers);
     if (components.mode.choice === 'none' || components.mode.p < t.SLOT_CHOICE_CONFIRM) return { kind: 'absent' };
+    // "Monday, September 28" names one calendar day twice. The model splits its mode between the
+    // weekday and the absolute reading, and a coin-flip win for the weekday would land on the next
+    // Monday rather than the date the caller said, so a confident month and day take the mode.
+    const named = (c: ComponentPick): boolean => c.choice !== 'none' && c.p >= t.SLOT_CHOICE_CONFIRM;
+    if (components.mode.choice === 'weekday' && named(components.month) && named(components.day)) {
+      components.mode = { choice: 'absolute', p: components.mode.p };
+    }
     const resolved = resolveDate(components, ctx.todayIso);
     switch (resolved.kind) {
       case 'none':

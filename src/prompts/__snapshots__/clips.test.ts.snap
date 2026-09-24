@@ -165,27 +165,22 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_schedule.0",
     "note": "open",
-    "text": "You'd be booked with",
+    "text": "has an opening on",
   },
   {
     "id": "confirm_schedule.1",
     "note": "open",
-    "text": "on",
+    "text": "That would be for",
   },
   {
     "id": "confirm_schedule.2",
     "note": "open",
-    "text": "for",
-  },
-  {
-    "id": "confirm_schedule.3",
-    "note": "open",
     "text": "born",
   },
   {
-    "id": "confirm_schedule.4",
+    "id": "confirm_schedule.3",
     "note": "closed",
-    "text": "Shall I book that?",
+    "text": "Shall I book it?",
   },
   {
     "id": "confirm_reschedule.0",
@@ -195,20 +190,25 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_reschedule.1",
     "note": "open",
-    "text": "would move to",
+    "text": "is on",
   },
   {
     "id": "confirm_reschedule.2",
     "note": "open",
-    "text": "for",
+    "text": "It would move to",
   },
   {
     "id": "confirm_reschedule.3",
     "note": "open",
-    "text": "born",
+    "text": "for",
   },
   {
     "id": "confirm_reschedule.4",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_reschedule.5",
     "note": "closed",
     "text": "Shall I make that change?",
   },
@@ -220,37 +220,67 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   {
     "id": "confirm_cancel.1",
     "note": "open",
-    "text": "would be cancelled, for",
+    "text": "is on",
   },
   {
     "id": "confirm_cancel.2",
     "note": "open",
-    "text": "born",
+    "text": "It would be cancelled, for",
   },
   {
     "id": "confirm_cancel.3",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_cancel.4",
     "note": "closed",
     "text": "Shall I cancel it?",
   },
   {
     "id": "confirm_appointment_details.0",
     "note": "open",
-    "text": "That's your appointment with",
+    "text": "I found your appointment with",
   },
   {
     "id": "confirm_appointment_details.1",
     "note": "open",
-    "text": "for",
+    "text": "It's on",
   },
   {
     "id": "confirm_appointment_details.2",
     "note": "open",
-    "text": "born",
+    "text": "for",
   },
   {
     "id": "confirm_appointment_details.3",
+    "note": "open",
+    "text": "born",
+  },
+  {
+    "id": "confirm_appointment_details.4",
     "note": "closed",
     "text": "Is that the one?",
+  },
+  {
+    "id": "slot_edge_earlier.0",
+    "note": "closed",
+    "text": "That's the earliest opening that day.",
+  },
+  {
+    "id": "slot_edge_later.0",
+    "note": "closed",
+    "text": "That's the latest opening that day.",
+  },
+  {
+    "id": "slot_nearest.0",
+    "note": "open",
+    "text": "The closest I have to the",
+  },
+  {
+    "id": "slot_nearest.1",
+    "note": "open",
+    "text": "is",
   },
   {
     "id": "ask_change.0",
@@ -289,13 +319,13 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
   },
   {
     "id": "schedule_confirmed.0",
-    "note": "closed",
-    "text": "You're booked.",
+    "note": "open",
+    "text": "You're booked for",
   },
   {
     "id": "reschedule_confirmed.0",
-    "note": "closed",
-    "text": "Your appointment is moved.",
+    "note": "open",
+    "text": "Your appointment is moved to",
   },
   {
     "id": "cancel_confirmed.0",
@@ -501,6 +531,21 @@ exports[`recordableClips > matches the recorded snapshot of clip ids and notes 1
     "id": "window.in_december",
     "note": "closed",
     "text": "in December",
+  },
+  {
+    "id": "daypart.morning",
+    "note": "closed",
+    "text": "morning",
+  },
+  {
+    "id": "daypart.midday",
+    "note": "closed",
+    "text": "midday",
+  },
+  {
+    "id": "daypart.afternoon",
+    "note": "closed",
+    "text": "afternoon",
   },
 ]
 `;

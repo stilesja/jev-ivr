@@ -65,6 +65,7 @@ describe('vocabularyClipId', () => {
     expect(vocabularyClipId('b', 'talk to billing')).toBe('intent.billing');
     expect(vocabularyClipId('window', 'next week')).toBe('window.next_week');
     expect(vocabularyClipId('window', 'in September')).toBe('window.in_september');
+    expect(vocabularyClipId('daypart', 'afternoon')).toBe('daypart.afternoon');
     expect(vocabularyClipId('provider', 'Dr. Nobody')).toBeNull();
     expect(vocabularyClipId('memberId', '4471 8293')).toBeNull();
     expect(vocabularyClipId('date', 'Tuesday, September 22')).toBeNull();

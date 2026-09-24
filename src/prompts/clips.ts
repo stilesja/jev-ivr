@@ -6,6 +6,7 @@ import { isPauseOnly, segmentsOf, stripLeadingPause, VOCAB_VARS } from './segmen
 import { PROVIDERS } from '../domain/slots/provider';
 import { FORM_INTENTS, INTENT_LABELS } from '../domain/intents';
 import { describeWindow, MONTHS, WINDOWS } from '../core/extract/date';
+import { DAYPART_ORDER } from '../domain/directory';
 
 /** wav/mp3 file extension → content type. Task 5 lowercases a discovered filename's extension before looking this up, so keys stay lowercase here even though discovery itself is case-insensitive. */
 export const AUDIO_TYPES: Readonly<Record<string, string>> = { wav: 'audio/wav', mp3: 'audio/mpeg' };
@@ -73,6 +74,7 @@ export function vocabularyClipId(name: string, display: string): string | null {
   if (provider && (name === 'provider' || name === 'a' || name === 'b')) return `provider.${provider.key}`;
   const intent = VOCAB_INTENTS.find((i) => INTENT_LABELS[i] === display);
   if (intent && (name === 'intentLabel' || name === 'a' || name === 'b')) return `intent.${intent}`;
+  if (name === 'daypart' && (DAYPART_ORDER as readonly string[]).includes(display)) return `daypart.${display}`;
   if (name === 'window' && WINDOW_LABELS.includes(display)) return windowId(display);
   return null;
 }
@@ -99,5 +101,6 @@ export function recordableClips(): RecordableClip[] {
   for (const p of PROVIDERS) rows.push({ id: `provider.${p.key}`, text: `Dr. ${p.name}`, note: 'closed' });
   for (const i of VOCAB_INTENTS) rows.push({ id: `intent.${i}`, text: INTENT_LABELS[i], note: 'closed' });
   for (const w of WINDOW_LABELS) rows.push({ id: windowId(w), text: w, note: 'closed' });
+  for (const d of DAYPART_ORDER) rows.push({ id: `daypart.${d}`, text: d, note: 'closed' });
   return rows;
 }

@@ -27,6 +27,9 @@ const GATE_THRESHOLD = {
   changeSlot: 'SLOT_CHANGE',
   menuNumberSaid: 'MENU_NUMBER',
   providerUnsure: 'PROVIDER_UNSURE',
+  // Read against their own thresholds (src/core/turn.ts readDaypart and moveOffer), not a slot's.
+  timeOfDay: 'TIME_OF_DAY',
+  timePreference: 'TIME_PREFERENCE',
 };
 
 /** The ids that belong in the `gates` group: everything the ladder asks except `intent` itself. */
@@ -36,11 +39,11 @@ const GATE_IDS = new Set([
   'languageSwitch', 'intentTentative', 'intentChange', 'secondIntent', 'menuNumberSaid',
   // Only asked while a confirmation is pending, and then they get their own group; listed here
   // so a stale answer still lands somewhere sensible.
-  'confirmsYes', 'confirmsNo', 'changeSlot',
+  'confirmsYes', 'confirmsNo', 'changeSlot', 'timePreference',
 ]);
 
 /** Moved into the `confirmation` group while one is pending. */
-const CONFIRM_IDS = new Set(['confirmsYes', 'confirmsNo', 'changeSlot']);
+const CONFIRM_IDS = new Set(['confirmsYes', 'confirmsNo', 'changeSlot', 'timePreference']);
 
 /**
  * Gate rows whose name is not the question id they were decided from, so a decided row still
@@ -60,13 +63,17 @@ const CONFIRM_DECIDED_ALIAS = {
   rejected: ['confirmsNo'],
 };
 
-/** Question id prefixes per slot; `containsMemberId` is the one id that does not start with its slot. */
+/**
+ * Question id prefixes per slot; `containsMemberId` and `timeOfDay` are the ids that do not start
+ * with their slot. The part of the day picks the opening on the day the date slot holds, so it
+ * sits with the date.
+ */
 const SLOT_PREFIX = {
   name: ['name'],
   dob: ['dob'],
   memberId: ['memberId', 'containsMemberId'],
   provider: ['provider'],
-  date: ['date'],
+  date: ['date', 'timeOfDay'],
 };
 
 /** Mirrors ALL_SLOTS in src/domain/forms.ts. Pinned by view.test.ts. */

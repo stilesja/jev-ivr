@@ -10,6 +10,25 @@ describe('session', () => {
     expect(s.turnIndex).toBe(0);
   });
 
+  it('starts with no booking, no offer and no daypart', () => {
+    const s = newSession('s1', 1000);
+    expect(s.existing).toBeNull();
+    expect(s.offer).toBeNull();
+    expect(s.daypart).toBeNull();
+  });
+
+  it('copies an offer and its times when cloning', () => {
+    const s = newSession('s1', 0);
+    s.offer = { provider: 'chen', date: '2026-09-22', times: ['9:15 AM', '2:45 PM'], index: 1 };
+    s.existing = { date: '2026-09-25', time: '10:00 AM' };
+    const c = cloneSession(s);
+    expect(c.offer).not.toBe(s.offer);
+    expect(c.offer!.times).not.toBe(s.offer.times);
+    expect(c.offer).toEqual(s.offer);
+    expect(c.existing).not.toBe(s.existing);
+    expect(c.existing).toEqual(s.existing);
+  });
+
   it('buckets attempts, elapsed time and prior calls', () => {
     expect(bucketAttempt(0)).toBe('first');
     expect(bucketAttempt(1)).toBe('second');
