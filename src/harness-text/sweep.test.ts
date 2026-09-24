@@ -67,8 +67,8 @@ describe('runSweep', () => {
     expect(r.result.moves[0]!.flips.cosmeticGained).toEqual(['t-1', 't-2']);
     // Below SLOT_CHOICE_CONFIRM (0.45) the constraint SLOT_CHOICE_CONFIRM <= SLOT_CHOICE_FILL forbids the value.
     expect(r.result.table.SLOT_CHOICE_FILL?.points.find((p) => p.value === 0.4)?.status).toBe('skipped');
-    // Above the recorded top probability (0.9 at the default sharpness), the plain corpus's own
-    // fresh stub run flips to implicit too, and no longer matches the DEFAULT_THRESHOLDS baseline.
+    // Above the stub's own provider probability (0.9 at STUB_SHARPNESS), the plain corpus's fresh
+    // stub run flips to implicit too, and no longer matches the DEFAULT_THRESHOLDS baseline.
     expect(r.result.table.SLOT_CHOICE_FILL?.points.find((p) => p.value === 0.95)?.status).toBe('breaks_stub');
     expect(r.result.converged).toBe(true);
     expect(r.result.evaluations).toBe(new Set(r.result.table.SLOT_CHOICE_FILL?.points.filter((p) => p.status !== 'skipped')).size);

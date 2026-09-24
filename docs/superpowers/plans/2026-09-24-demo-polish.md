@@ -18,7 +18,7 @@
 
 **Files:** `src/domain/intents.ts`, `src/domain/domain.test.ts`, `src/core/gates.ts`, `src/core/gates.test.ts`, `src/core/turn.ts`, `src/core/turn.test.ts`, `src/prompts/render.ts`, `src/prompts/render.test.ts`, `src/prompts/manifest.json`, `src/prompts/tags.json`, `src/jev/heuristicStub.ts`, `fixtures/corpus.jsonl`, `fixtures/scenarios/core.json`, `fixtures/expected/*`, snapshots under `src/core/__snapshots__` and `src/prompts/__snapshots__`.
 
-- [ ] **Step 1: The intent and its table.** In `src/domain/intents.ts`:
+- [x] **Step 1: The intent and its table.** In `src/domain/intents.ts`:
 
 ```ts
 export const INTENTS = [
@@ -65,7 +65,7 @@ export const INFORMATIONAL_INTENTS: Partial<Record<Intent, string>> = { capabili
 
 (import `INFORMATIONAL_INTENTS`). Run `pnpm vitest run src/domain`.
 
-- [ ] **Step 2: Gate.** In `src/core/gates.ts`, import `INFORMATIONAL_INTENTS` from `../domain/intents`. Add to `Verdict`, after `replay`:
+- [x] **Step 2: Gate.** In `src/core/gates.ts`, import `INFORMATIONAL_INTENTS` from `../domain/intents`. Add to `Verdict`, after `replay`:
 
 ```ts
   | ({ kind: 'inform'; promptId: string } & Frustrated)
@@ -115,7 +115,7 @@ Tests in `src/core/gates.test.ts`, in the top-level `describe('evaluateGates')`:
 
 Run `pnpm vitest run src/core/gates.test.ts`; expect the new tests to pass and `pnpm typecheck` to fail only in `turn.ts` (unhandled `inform` case), which Step 3 fixes.
 
-- [ ] **Step 3: Turn.** In `src/core/turn.ts`, add `resume` above `declineTransfer` and rewrite `declineTransfer` to use it:
+- [x] **Step 3: Turn.** In `src/core/turn.ts`, add `resume` above `declineTransfer` and rewrite `declineTransfer` to use it:
 
 ```ts
 /**
@@ -204,7 +204,7 @@ describe('capabilities', () => {
 
 Run `pnpm vitest run src/core/turn.test.ts` after Step 4 (the manifest entry is needed for `spokenText`).
 
-- [ ] **Step 4: Prompt and rendering.** In `src/prompts/manifest.json`, after `ack_frustration`:
+- [x] **Step 4: Prompt and rendering.** In `src/prompts/manifest.json`, after `ack_frustration`:
 
 ```json
   "capabilities": { "text": "I can help you schedule, reschedule, cancel, or confirm an appointment, or connect you to billing. You can just tell me what you need in your own words, and if you'd rather talk to a person, say so anytime.", "interruptible": true },
@@ -226,7 +226,7 @@ Test in `src/prompts/render.test.ts`, in `describe('decisionToFrames')`:
 
 Refresh snapshots: `pnpm vitest run src/core/questions.test.ts src/prompts/clips.test.ts -u` (the intent criteria and the new clip `capabilities.0` change them; read the diff and confirm only those lines moved). Run `pnpm vitest run src/prompts src/core`.
 
-- [ ] **Step 5: Heuristic stub.** In `src/jev/heuristicStub.ts`, `INTENT_KEYWORDS`, after the `repeat_prompt` row:
+- [x] **Step 5: Heuristic stub.** In `src/jev/heuristicStub.ts`, `INTENT_KEYWORDS`, after the `repeat_prompt` row:
 
 ```ts
   ['capabilities', /\b(what (can|do) you do|what are you|what (are|is) my options|what can i (do|say|ask)|what is this|what does this do|what else can you do)\b/],
@@ -234,7 +234,7 @@ Refresh snapshots: `pnpm vitest run src/core/questions.test.ts src/prompts/clips
 
 (`options` on its own stays with `repeat_prompt`'s "what were the options".)
 
-- [ ] **Step 6: Corpus and scenarios.** Append to `fixtures/corpus.jsonl` (one JSON object per line; the id prefix `cp` is new):
+- [x] **Step 6: Corpus and scenarios.** Append to `fixtures/corpus.jsonl` (one JSON object per line; the id prefix `cp` is new):
 
 ```jsonl
 {"id":"cp-01","text":"what can you do","intent":"capabilities","context":"no_form","tags":["capabilities"]}
@@ -300,7 +300,7 @@ The step texts other than the `cp-*` ones already exist in the corpus (`reschedu
 
 **Files:** `src/domain/slots/types.ts`, `src/domain/slots/provider.ts`, `src/domain/slots/provider.test.ts`, `src/core/session.ts`, `src/core/session.test.ts`, `src/core/thresholds.ts`, `src/core/fia.ts`, `src/core/fia.test.ts`, `src/core/turn.ts`, `src/core/turn.test.ts`, `src/prompts/manifest.json`, `src/prompts/tags.json`, `src/prompts/render.test.ts`, `src/jev/corpus.ts`, `src/jev/corpus.test.ts`, `src/jev/fixtureStub.ts`, `src/jev/defaults.ts`, `src/jev/heuristicStub.ts`, `fixtures/corpus.jsonl`, `fixtures/scenarios/core.json`, `fixtures/expected/*`, snapshots.
 
-- [ ] **Step 1: Types, state, threshold.** `src/domain/slots/types.ts`, `SlotOutcome`:
+- [x] **Step 1: Types, state, threshold.** `src/domain/slots/types.ts`, `SlotOutcome`:
 
 ```ts
   | { kind: 'invalid'; reason: string; raw: string }
@@ -310,7 +310,7 @@ The step texts other than the `cp-*` ones already exist in the corpus (`reschedu
 
 `src/core/session.ts`, `SlotState` gains `/** help prompts already played for this slot on this call; each plays at most once */ helped: string[];`. `emptySlot()` returns `helped: []`; `cloneSlot` returns `{ ...s, helped: [...s.helped], window: s.window ? { ...s.window } : null }`. `src/core/thresholds.ts`, under `// slots`: `SLOT_HELP: 0.6,`. In `src/core/session.test.ts`, the test `'cloneSession copies slot windows'` also sets `s.slots.provider.helped = ['provider_list']` and asserts the clone's `slots.provider.helped` equals it and is not the same array (`not.toBe`). In `src/core/turn.ts` `slotRows`, `passed` includes `outcome.kind === 'help'`.
 
-- [ ] **Step 2: Provider slot.** In `src/domain/slots/provider.ts`, add to `questions()` after `providerUnsure`:
+- [x] **Step 2: Provider slot.** In `src/domain/slots/provider.ts`, add to `questions()` after `providerUnsure`:
 
 ```ts
       providerNameStatus: {
@@ -365,7 +365,7 @@ function helpOutcome(answers: AnswerMap, t: Thresholds): SlotOutcome {
 
 The existing `'asks the roster choice plus an unsure question'` test still passes. Run `pnpm vitest run src/domain/slots/provider.test.ts`.
 
-- [ ] **Step 3: fillSlots carries help.** In `src/core/fia.ts`, `FillResult` gains:
+- [x] **Step 3: fillSlots carries help.** In `src/core/fia.ts`, `FillResult` gains:
 
 ```ts
   /** A help prompt to play in place of the question, for the slot the caller was just asked (spec 2026-09-24 §3.3). */
@@ -418,7 +418,7 @@ describe('fillSlots help', () => {
 
 `fia.test.ts` already imports `fillSlots`, `newSession`, `setForm`, `SLOTS` and `choice`; its context helper is a function, so write `ctx()` where the block above says `ctx`.
 
-- [ ] **Step 4: The form loop plays it.** In `src/core/turn.ts`, `continueForm` gains a fourth parameter and a branch after the readback check:
+- [x] **Step 4: The form loop plays it.** In `src/core/turn.ts`, `continueForm` gains a fourth parameter and a branch after the readback check:
 
 ```ts
 function continueForm(s: Session, acks: Ack[], disambiguate: FillResult['disambiguate'], help: FillResult['help'] = null): Decision {
@@ -503,7 +503,7 @@ describe('provider help', () => {
 });
 ```
 
-- [ ] **Step 5: Prompts.** In `src/prompts/manifest.json`, change `ask_provider` and add two entries after `ask_provider_dtmf`:
+- [x] **Step 5: Prompts.** In `src/prompts/manifest.json`, change `ask_provider` and add two entries after `ask_provider_dtmf`:
 
 ```json
   "ask_provider": { "text": "Do you have the name of the provider?", "interruptible": true },
@@ -530,7 +530,7 @@ describe('provider help', () => {
 
 Refresh the clips snapshot (`pnpm vitest run src/prompts/clips.test.ts -u`) and the questions snapshot (`pnpm vitest run src/core/questions.test.ts -u`); confirm the diffs are the two new clips, the changed `ask_provider.0` text, and the new question.
 
-- [ ] **Step 6: Harness label.** `src/jev/corpus.ts`: `CorpusEntry` gains `/** the caller says whether they know the provider's name without saying it (spec 2026-09-24 §3.2) */ providerNameStatus?: 'has_name' | 'no_name';`, `ENTRY_KEYS` gains `'providerNameStatus'`, and after the `providerUnsure` type check:
+- [x] **Step 6: Harness label.** `src/jev/corpus.ts`: `CorpusEntry` gains `/** the caller says whether they know the provider's name without saying it (spec 2026-09-24 §3.2) */ providerNameStatus?: 'has_name' | 'no_name';`, `ENTRY_KEYS` gains `'providerNameStatus'`, and after the `providerUnsure` type check:
 
 ```ts
     if (entry.providerNameStatus !== undefined && entry.providerNameStatus !== 'has_name' && entry.providerNameStatus !== 'no_name') {
@@ -571,7 +571,7 @@ and, in the form-context block beside the `providerUnsure` slot check:
       }
 ```
 
-- [ ] **Step 7: Corpus and scenarios.** Append to `fixtures/corpus.jsonl` ("yes" and "no" alone already exist at `no_form`, and texts must be unique, so these are the longer forms a caller also says):
+- [x] **Step 7: Corpus and scenarios.** Append to `fixtures/corpus.jsonl` ("yes" and "no" alone already exist at `no_form`, and texts must be unique, so these are the longer forms a caller also says):
 
 ```jsonl
 {"id":"ph-01","text":"no I don't","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name","tags":["provider_help"]}
@@ -644,7 +644,7 @@ Run `pnpm regress`; the `ph-*` entries and new scenarios show as new, and the ex
 
 **Files:** `src/domain/intents.ts`, `src/core/turn.ts`, `src/core/turn.test.ts`, `src/core/state.test.ts`, `src/prompts/manifest.json`, `src/prompts/clips.test.ts`, `src/prompts/render.test.ts`, `fixtures/scenarios/core.json`, `fixtures/expected/*`, snapshots.
 
-- [ ] **Step 1: Labels and text.** `src/domain/intents.ts`, `INTENT_LABELS`:
+- [x] **Step 1: Labels and text.** `src/domain/intents.ts`, `INTENT_LABELS`:
 
 ```ts
   schedule_new: 'schedule a new appointment',
@@ -656,7 +656,7 @@ Run `pnpm regress`; the `ph-*` entries and new scenarios show as new, and the ex
 
 `src/prompts/manifest.json`: `"ack_intent": { "text": "I'd be happy to help you {intentLabel}.", "interruptible": false },`.
 
-- [ ] **Step 2: Every entry acks.** In `src/core/turn.ts`:
+- [x] **Step 2: Every entry acks.** In `src/core/turn.ts`:
 
 ```ts
 /** "I'd be happy to help you ...": every form entry is said out loud (spec 2026-09-24 §4). */
@@ -676,7 +676,7 @@ function ackIntent(form: FormId): Ack {
 
 Update the comment above `switching` (the variable goes away with it): entering a form is always said out loud, however sure the intent was, so the caller hears which task started. In `handleDtmf`'s menu branch: `return { decision: continueForm(s, [ackIntent(option.intent)], null), rows: [] };`.
 
-- [ ] **Step 3: Tests.** Run `pnpm vitest run src/core src/prompts` and fix every expectation the ack changes; they fall into these groups, and each fix is mechanical:
+- [x] **Step 3: Tests.** Run `pnpm vitest run src/core src/prompts` and fix every expectation the ack changes; they fall into these groups, and each fix is mechanical:
 
   - `acks: []` right after a route or menu pick becomes `acks: [{ promptId: 'ack_intent', vars: { intentLabel: 'reschedule your appointment' } }]` (or the form's label). Define at the top of `turn.test.ts` (adding `type FormId` to the existing `../domain/intents` import): `const ACK = (form: FormId): Ack => ({ promptId: 'ack_intent', vars: { intentLabel: INTENT_LABELS[form] } });` and use it.
   - The frustration test `'acknowledges the first frustrated turn before the question'` expects `acks: [ACK_FRUSTRATION, ACK('reschedule')]` in that order.
@@ -702,7 +702,7 @@ Update the comment above `switching` (the variable goes away with it): entering 
 
   and to the over-answer test, assert the chain order: `acks: [ACK('reschedule')]` followed by the provider ack only if the fill was implicit (it is not at 0.91, so `[ACK('reschedule')]`); add a case with `provider: choice({ chen: 0.5, none: 0.4, cheng: 0.1 })` expecting `[ACK('reschedule'), { promptId: 'ack_provider', vars: { provider: 'Dr. Chen' } }]`.
 
-- [ ] **Step 4: Fixtures.** `fixtures/scenarios/core.json`: any `expect.text` that quotes an old label or "Sure, I can help" changes to the new wording (grep for `ask about billing`, `an appointment`, `Sure, I can`). Refresh the clips snapshot (`pnpm vitest run src/prompts/clips.test.ts -u`; the five vocabulary rows and `ack_intent.0` change). `pnpm regress`: every scenario and corpus entry that enters a form now differs by the ack; `pnpm regress --update`; `pnpm regress`, `pnpm test`, `pnpm typecheck` clean. Commit `feat(core): every form entry is acknowledged; intent labels reworded to follow "help you"`.
+- [x] **Step 4: Fixtures.** `fixtures/scenarios/core.json`: any `expect.text` that quotes an old label or "Sure, I can help" changes to the new wording (grep for `ask about billing`, `an appointment`, `Sure, I can`). Refresh the clips snapshot (`pnpm vitest run src/prompts/clips.test.ts -u`; the five vocabulary rows and `ack_intent.0` change). `pnpm regress`: every scenario and corpus entry that enters a form now differs by the ack; `pnpm regress --update`; `pnpm regress`, `pnpm test`, `pnpm typecheck` clean. Commit `feat(core): every form entry is acknowledged; intent labels reworded to follow "help you"`.
 
 ---
 
@@ -710,7 +710,7 @@ Update the comment above `switching` (the variable goes away with it): entering 
 
 **Files:** `README.md`, this plan.
 
-- [ ] **Step 1: README.** In order:
+- [x] **Step 1: README.** In order:
   - **A call, end to end**: after the caller's opener, the system line becomes `I'd be happy to help you reschedule your appointment. What's your first and last name?` and the provider question, where it appears, reads `Do you have the name of the provider?`.
   - **Text harness**: `217` becomes `229` labeled outcomes and `75` becomes `81` scenarios.
   - **Regression**, the labels paragraph: add `providerNameStatus` (`has_name` or `no_name`: the caller says whether they know the provider's name without saying it, at the provider question) to the list of labels the stub answers from.
@@ -726,7 +726,7 @@ Update the comment above `switching` (the variable goes away with it): entering 
 
     > 24. The demo caller's path: at the greeting say "I'd like to learn more about what you are and what you do". Expect the capabilities line and then "How can I help you today?" with no attempt spent. Say "I'd like to reschedule": expect "I'd be happy to help you reschedule your appointment. What's your first and last name?" Give the name and birthday; at "Do you have the name of the provider?" say "no": expect the list, split in two runs of four. Say "Dr. Kim" and expect the day question. On another call say "yes" at the provider question and expect "Which doctor is it with?"
 
-- [ ] **Step 2: Deviations.** Append `## Deviations recorded during execution` to this plan listing every place the implementers departed from the plan or spec (including the offer-declines-on-capabilities note from Task 1 Step 2 and the `ask_provider` options that stayed empty: `node.options` is for menus and disambiguations, and a yes/no there would change nothing the model reads). Commit `docs: demo polish (capabilities, provider help, intent acknowledgment)`.
+- [x] **Step 2: Deviations.** Append `## Deviations recorded during execution` to this plan listing every place the implementers departed from the plan or spec (including the offer-declines-on-capabilities note from Task 1 Step 2 and the `ask_provider` options that stayed empty: `node.options` is for menus and disambiguations, and a yes/no there would change nothing the model reads). Commit `docs: demo polish (capabilities, provider help, intent acknowledgment)`.
 
 ---
 
@@ -735,3 +735,37 @@ Update the comment above `switching` (the variable goes away with it): entering 
 - [ ] `pnpm prompts:check` reports 3 missing, 7 stale. `pnpm prompts:generate` for the missing; `pnpm prompts:generate --only ask_provider.0 --force`, and the same for `ack_intent.0`, `intent.schedule_new`, `intent.reschedule`, `intent.cancel`, `intent.confirm_appointment`, `intent.billing`. Listen to `provider_list.0` for the pause at the semicolon; if the voice runs through it, regenerate with a period in place of the semicolon (edit the manifest, and the roster test still passes).
 - [ ] `pnpm regress --client record` for the full re-record (every key changed), then `pnpm regress --client recorded` and read the diff against the labels. Expect the usual handful of known disagreements plus anything the new questions surface; the `ph-*` entries are the ones to read first, since `providerNameStatus` is new to the model.
 - [ ] Restart `pnpm serve` and walk checklist step 24 on the phone.
+
+---
+
+## Deviations recorded during execution
+
+### Task 1 (capabilities intent), commits 2dd6956, 3d1126c
+
+- At the transfer offer, "what can you do" declines the offer: gate 6 settles every spoken non-yes at the offer as a decline before gate 8 runs, so the caller goes back to their question without hearing the capabilities line. This is the offer's existing rule, pinned by a turn test.
+- `resume` also returns to the keypad menu (`nomatch_dtmf_menu`, `menu: true`) when `menuActive`, so "what are my options" at the menu does not drop the digits or the rung. This was not in the plan text; it surfaced in review.
+- Acks on the two terminal decisions (`complete`, `handoff`) stay non-interruptible; only a `prompt`'s acks read their manifest flag. Spec §2.4 said every ack reads its flag; this was narrowed so a barge-in on a capabilities ack cannot cut the closing line before the end frame.
+- `resume` drops a `disambiguate` when a confirmation is pending or outside a form; documented in its own doc comment.
+- Latent: `inform` (and the declined offer) fill slots while a slot readback is pending, which could leave `pc.display` stale. Unreachable today because no slot uses `spokenConfirm: 'always'`; left for the framework work.
+- `inform` at `disambiguate_intent` outside a form returns to `ask_intent`, not to the two-way question. Harmless to the ladder; noted here.
+- The `capabilities-open` scenario checks only the final route; the turn itself is covered by `cp-01` and the turn tests.
+
+### Task 2 (provider help), commit 05f33e4, plus review fixes in eeb5a67
+
+- `ask_provider` carries no `options` (spec §3.1 said `yes`, `no`): `node.options` is for menus and disambiguations, and a yes/no pair there would change nothing the model reads.
+- Spec §3.3 said a help outcome "is not progress" and that `continueForm` decides whether to honour it. The plan moved the decision into `fillSlots` (honoured only for the slot the caller was just asked for, once per prompt) and counts an honoured help outcome as progress, so `case 'proceed'` does not fail the attempt. Same behaviour, a different seam; the spec text is brought in line in Task 4.
+- `SLOT_HELP` was added to the sweep's `SWEEPABLE` list (`src/harness-text/sweepSpace.ts`): the file's own rule fixes only the retry count, stub sharpness, timeout, and price. Counts in its test moved 22 to 23, and 21 to 22.
+- `helped` clears whenever `emptySlot()` runs (a queued second form, a `change_slot` reopen, a declined readback), so "once per slot per call" is really "once since the slot was last emptied". A second form on the same call gets the list again, which is correct: it is a different appointment.
+- Silence after the list re-asks "Do you have the name of the provider?" with the no-input ack and counts an attempt, so a following "no" goes straight to the keypad prompt. This follows the spec to the letter; a refinement would re-ask a silent help prompt with the help prompt itself. Flagged to Jason.
+- The corpus check allows `providerNameStatus` alongside `slots.provider` on one entry, which is contradictory by the question's own criteria. Not rejected; noted here.
+- Review fixes (the second commit): an ignored help outcome is no longer a fill event, because it broke the summary's "change the doctor" path and mislabelled the dashboard row; `helped` is recorded in `bookkeep` only when the help prompt is actually spoken, so a frustration offer that displaces the list no longer uses it up; `continueForm` also checks that the helped slot is the one the form would ask next.
+
+### Task 3 (intent acknowledgment), commit cbe0bf1, plus review fixes in 3e1cb26
+
+- Files beyond the plan's list changed for the ack: `src/harness-text/runner.test.ts` (the "acks-none" case renamed; the implicit-band case now also expects `ack_provider`), `src/harness-text/sweep.test.ts` (rebuilt: the old test used the ack a confident route lacked as the cosmetic tiebreak; with every entry acknowledged that tiebreak is gone, so the test now moves `SLOT_CHOICE_FILL` on the `ack_provider` implicit-confirm band instead), `src/server/adapter.test.ts`, `src/server/server.test.ts`, and `src/server/dashboard/view.test.ts` (frame counts and texts gain the ack).
+- The clips snapshot changed five rows, not six: `intent.schedule_new`'s label did not change.
+- The implicit intent band (`INTENT_IMPLICIT` to `INTENT_ROUTE`) now differs from a plain route only in dropping a second task named on the opener, and in the debug label `route_implicit`; commented in `gates.ts`.
+- A chained form (a queued task after a completion) is bridged with `bridge_next` only and does not also get `ack_intent`; the ack is for a form the caller picks.
+- "Say that again" and a reconnect replay the ack with the question, and the model reads that text as the prompt just played; this already happened for mid-confidence routes.
+- The model now reads `activeFormLabel: 'talk to billing'` and `pendingConfirmation.value: 'reschedule your appointment'`; the billing wording is the one to watch in the Task 5 re-record, since it sounds closer to wanting a person.
+- `verdict.confirm` on a route verdict is no longer read by `enterForm` (only `'explicit'` is acted on, in `handleVerdict`); left as is.

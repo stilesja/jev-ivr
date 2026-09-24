@@ -1,7 +1,7 @@
 # Design: Demo polish (capabilities, provider help, intent acknowledgment)
 
 **Date:** 2026-09-24
-**Status:** approved, awaiting plan
+**Status:** implemented on branch demo-polish; see the plan's deviation record
 **Depends on:** frustration escalation (PR #14)
 
 ## 1. Purpose
@@ -45,7 +45,7 @@ Slots fill first, as on the `queue` verdict: "what can you do, it's Jason Stiles
 
 `capabilities`, an acknowledgment: "I can help you schedule, reschedule, cancel, or confirm an appointment, or connect you to billing. You can just tell me what you need in your own words, and if you'd rather talk to a person, say so anytime." Marked `interruptible: true`.
 
-Rendering change: acknowledgments currently play non-interruptible whatever the manifest says. `decisionToFrames` now reads each ack's own manifest flag. Every existing ack entry is `interruptible: false`, so nothing else changes; this one is long enough that a caller should be able to talk over it.
+Rendering change: acknowledgments currently play non-interruptible whatever the manifest says. `decisionToFrames` now reads each ack's own manifest flag, but only for a `prompt` decision: acks on a `complete` or `handoff` decision stay non-interruptible, so a barge-in on a capabilities ack cannot cut the closing line before the end frame. Every existing ack entry is `interruptible: false`, so nothing else changes; this one is long enough that a caller should be able to talk over it.
 
 At the opening the caller hears the two sentences and then "How can I help you today?" (`ask_intent`). `nomatch_open` is unchanged.
 
@@ -55,11 +55,11 @@ At the opening the caller hears the two sentences and then "How can I help you t
 
 | id | text | change |
 | --- | --- | --- |
-| `ask_provider` | Do you have the name of the provider? | text changed; options `yes`, `no` |
+| `ask_provider` | Do you have the name of the provider? | text changed |
 | `ask_provider_name` | Which doctor is it with? | new |
 | `provider_list` | Our providers are Dr. Chen, Dr. Cheng, Dr. Patel, or Dr. Okafor; Dr. Nguyen, Dr. Rossi, Dr. Kim, or Dr. Alvarez. Which one is your appointment with? | new |
 
-`ask_provider_retry` and `ask_provider_dtmf` are unchanged. The list is split in two runs of four so the voice can breathe. A test in `render.test.ts` asserts `provider_list` names every provider from `providers.json` in roster order, as the keypad prompt's test already does.
+`ask_provider` carries no `options`: `node.options` is for menus and disambiguations, and a `yes`/`no` pair there would change nothing the model reads. `ask_provider_retry` and `ask_provider_dtmf` are unchanged. The list is split in two runs of four so the voice can breathe. A test in `render.test.ts` asserts `provider_list` names every provider from `providers.json` in roster order, as the keypad prompt's test already does.
 
 ### 3.2 Question
 
@@ -76,7 +76,7 @@ The provider slot adds a Choice `providerNameStatus`, asked whenever the slot is
 
 `SlotOutcome` gains `{ kind: 'help'; promptId: string }`. The provider slot's `fill` returns it when no provider is named (the `provider` Choice is `none` or below `SLOT_CHOICE_CONFIRM`) and the status top label is `has_name` or `no_name` at or above the new threshold `SLOT_HELP` (0.6): `ask_provider_name` for `has_name`, `provider_list` for `no_name`. A named provider wins as today, so "yes, Dr. Chen" fills in one turn.
 
-`fillSlots` carries a help outcome out as `FillResult.help: { slot, promptId } | null` and records the event; it is not progress and does not change the slot. `continueForm` honours it only when the slot it names is the one the form would ask next and the prompt has not already played for that slot on this call: it plays the help prompt as the question, target the slot, in place of `ask_<slot>`. The attempt counter does not move. `SlotState` gains `helped: string[]`, the help prompts already played for the slot, cleared by `emptySlot`.
+`fillSlots` honours a help outcome only for the slot the caller was just asked for, and only if that prompt has not already played since the slot was last emptied; it counts the honoured outcome as progress and carries it out as `FillResult.help: { slot, promptId } | null`. `continueForm` plays it when that slot is the one it would ask next: the help prompt takes the question's place, targeting the slot, in place of `ask_<slot>`, and the attempt counter does not move. `SlotState` gains `helped: string[]`, cleared by `emptySlot`; the prompt is recorded there only when it is actually spoken, so an offer or a disambiguation that displaces it does not use it up.
 
 A help outcome on any other slot, or a repeat of a help prompt already played, is an ordinary turn without progress: `case 'proceed'` sees no progress and `failAttempt` runs the ladder as today (retry line, keypad list, transfer). So "no" twice at the provider question means: list, then "Sorry, which doctor is it with? For example, Dr. Patel.", then the keypad, then a person.
 
