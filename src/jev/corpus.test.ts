@@ -141,6 +141,7 @@ describe('parseCorpus', () => {
     expect(() => parseCorpus('{"id":"h","text":"x","intent":"cancel","context":"billing","providerUnsure":true}\n')).toThrow(/not on form billing/);
     expect(parseCorpus('{"id":"i","text":"no I don\'t","intent":"none","context":"reschedule","prompted":"provider","providerNameStatus":"no_name"}\n')[0]?.providerNameStatus).toBe('no_name');
     expect(() => parseCorpus('{"id":"j","text":"x","intent":"none","context":"reschedule","providerNameStatus":"maybe"}\n')).toThrow(/has_name or no_name/);
+    expect(() => parseCorpus('{"id":"k","text":"x","intent":"none","context":"billing","providerNameStatus":"no_name"}\n')).toThrow(/not on form billing/);
   });
 
   it('accepts confirm contexts with confirm, changeSlot, and slot labels, and secondIntent outside a form', () => {

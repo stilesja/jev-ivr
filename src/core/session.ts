@@ -9,7 +9,7 @@ export interface SlotState {
   confirmed: boolean;
   attempts: number;
   window: SlotPartial | null;
-  /** help prompts already played for this slot on this call; each plays at most once */
+  /** help prompts already played for this slot since it was last emptied; each plays at most once */
   helped: string[];
 }
 

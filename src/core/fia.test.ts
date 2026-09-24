@@ -350,25 +350,29 @@ describe('fillSlots correcting a filled slot', () => {
 describe('fillSlots help', () => {
   const NO_NAME = { provider: choice({ none: 0.9, chen: 0.1 }), providerNameStatus: choice({ no_name: 0.9, neither: 0.1 }) };
 
-  it('carries help for the prompted slot once, as progress, and records it on the slot', () => {
+  it('carries help for the prompted slot when not yet played, as progress', () => {
     const s = setForm(newSession('s', 0), 'reschedule');
     s.promptedFor = 'provider';
     const first = fillSlots(s, NO_NAME, ctx(), [SLOTS.provider]);
     expect(first.help).toEqual({ slot: 'provider', promptId: 'provider_list' });
     expect(first.progress).toBe(true);
     expect(first.events).toEqual([{ slot: 'provider', outcome: { kind: 'help', promptId: 'provider_list' } }]);
-    expect(s.slots.provider.helped).toEqual(['provider_list']);
+    // fillSlots only reads `helped`; recording it is turn.ts' `bookkeep`, once the decision that
+    // plays the prompt is the one actually spoken (escalate can still replace it).
+    expect(s.slots.provider.helped).toEqual([]);
+    s.slots.provider.helped.push('provider_list');
     const again = fillSlots(s, NO_NAME, ctx(), [SLOTS.provider]);
     expect(again.help).toBeNull();
     expect(again.progress).toBe(false);
   });
 
-  it('ignores help for a slot that was not asked', () => {
+  it('ignores help for a slot that was not asked, and records no event for it', () => {
     const s = setForm(newSession('s', 0), 'reschedule');
     s.promptedFor = 'name';
     const r = fillSlots(s, NO_NAME, ctx(), [SLOTS.provider]);
     expect(r.help).toBeNull();
     expect(r.progress).toBe(false);
+    expect(r.events).toEqual([]);
     expect(s.slots.provider.helped).toEqual([]);
   });
 });

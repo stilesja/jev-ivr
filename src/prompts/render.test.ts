@@ -65,7 +65,9 @@ describe('keypad prompts match the tables they read from', () => {
       expect(at, `${p.name} is listed after the previous provider`).toBeGreaterThan(cursor);
       cursor = at;
     }
-    expect(text.split(';')).toHaveLength(2);
+    const parts = text.split(';');
+    expect(parts).toHaveLength(2);
+    for (const part of parts) expect(part.match(/Dr\./g)).toHaveLength(4);
   });
 });
 

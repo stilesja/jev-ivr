@@ -345,10 +345,12 @@ function continueForm(s: Session, acks: Ack[], disambiguate: FillResult['disambi
     s.pendingConfirmation = readback;
     return prompt(`confirm_${readback.slot}`, readback.slot, { [readback.slot]: readback.display }, acks, ['yes', 'no']);
   }
-  // The caller said whether they know the answer rather than answering: the slot's help prompt
-  // takes the question's place this once, and the attempt count does not move (spec 2026-09-24 §3.3).
-  if (help) return prompt(help.promptId, help.slot, {}, acks);
   const next = nextPrompt(s);
+  // The caller said whether they know the answer rather than answering: the slot's help prompt
+  // takes the question's place this once, and the attempt count does not move (spec 2026-09-24
+  // §3.3) -- but only when the form would still ask that slot next; otherwise the question the
+  // form actually owes wins, and the help decision is dropped along with it.
+  if (help && next.kind === 'ask' && next.slot === help.slot) return { ...prompt(help.promptId, help.slot, {}, acks), help };
   if (next.kind === 'complete') return askSummary(s, s.form, acks);
   return askSlot(next.slot, next.window, acks);
 }
@@ -477,7 +479,7 @@ function handleVerdict(s: Session, verdict: Verdict, answers: AnswerMap, ctx: Sl
       // path: naming a detail and repeating it unchanged answers nothing, so it reopens the slot
       // rather than re-arming the summary with a fresh attempt count.
       const named = fill?.progress === true
-        && fill.events.some((e) => e.slot === verdict.slot && e.outcome.kind !== 'absent' && e.outcome.kind !== 'invalid');
+        && fill.events.some((e) => e.slot === verdict.slot && (e.outcome.kind === 'filled' || e.outcome.kind === 'window' || e.outcome.kind === 'disambiguate'));
       if (named) return { decision: continueForm(s, [...acks, ...fill!.acks], fill!.disambiguate), events: fill!.events };
       // The named slot is asked from scratch, but the attempts it already cost stand: a caller
       // who could not say it the first time should not start the ladder over. Whatever else the
@@ -604,6 +606,9 @@ function bookkeep(s: Session, decision: Decision, verdictLabel: string): void {
     s.promptedFor = decision.target;
     s.menuActive = decision.menu === true;
     s.dtmfBuffer = '';
+    // A help prompt is recorded only once it is the decision actually spoken: `escalate` can
+    // still replace it with the transfer offer, whose own decision carries no `help` of its own.
+    if (decision.help) s.slots[decision.help.slot].helped.push(decision.help.promptId);
   } else if (decision.kind === 'complete' || decision.kind === 'handoff') {
     s.lastPromptId = decision.promptId;
     s.lastPromptText = spokenText(decision);

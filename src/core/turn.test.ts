@@ -1266,10 +1266,48 @@ describe('provider help', () => {
     const at = say(r.session, 'I do not know the doctor', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
     expect(at.decision).toMatchObject({ promptId: 'ask_name_retry', target: 'name' });
     expect(at.session.slots.provider.helped).toEqual([]);
+    expect(at.rows.find((g) => g.gate === 'slot:provider')).toBeUndefined();
   });
 
   it('shows help as a passed slot row', () => {
     const r = say(atProvider().session, 'no', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
     expect(r.rows.find((g) => g.gate === 'slot:provider')).toMatchObject({ outcome: 'help', passed: true, value: null });
+  });
+
+  it('fills from the keypad after the list, like any provider question', () => {
+    let r = say(atProvider().session, 'no', { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(r.decision).toMatchObject({ promptId: 'provider_list' });
+    r = resolve(r.session, dtmfFrames('3')[0]!, null, tc);
+    expect(r.session.slots.provider.value).toBe('patel');
+    expect(r.decision).toMatchObject({ promptId: 'ask_date' });
+  });
+
+  it('walks the plain ladder on silence at the question, not the help', () => {
+    const r = resolve(atProvider().session, silenceFrame(), null, tc);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', target: 'provider', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(r.session.slots.provider.attempts).toBe(1);
+  });
+
+  it('reopens the named slot at the summary correction, with the untouched fix carrying no help row', () => {
+    const r = afterTurns([...HAPPY, "the doctor, I don't know which, Thursday"]);
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'ask_provider', target: 'provider' });
+    expect(r.session.slots.date.display).toBe('Thursday, September 24');
+    expect(r.session.slots.provider.helped).toEqual([]);
+    expect(r.rows.find((g) => g.gate === 'slot:provider')).toBeUndefined();
+  });
+
+  it('does not mark help played when the offer displaces it, and plays it once the offer is settled', () => {
+    const s = atProvider().session;
+    s.frustratedTurns = 1;
+    let r = say(s, "ugh, I don't know", {
+      intentChange: ANSWERING, providerNameStatus: NO_NAME, frustration: score({ none: 0.1, mild: 0.2, high: 0.7 }),
+    });
+    expect(r.decision).toMatchObject({ promptId: 'offer_transfer' });
+    expect(r.session.slots.provider.helped).toEqual([]);
+    r = say(r.session, 'no', { intentChange: ANSWERING, confirmsNo: noul(0.9), providerNameStatus: choice({ neither: 0.9, no_name: 0.05, has_name: 0.05 }) });
+    expect(r.decision).toMatchObject({ promptId: 'ask_provider' });
+    r = say(r.session, "I don't know", { intentChange: ANSWERING, providerNameStatus: NO_NAME });
+    expect(r.decision).toMatchObject({ promptId: 'provider_list' });
+    expect(r.session.slots.provider.helped).toEqual(['provider_list']);
   });
 });
