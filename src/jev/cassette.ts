@@ -55,6 +55,15 @@ export function loadCassette(path: string): Map<string, CassetteLine> {
   return out;
 }
 
+/**
+ * The lines a run still asks for, one per key (the one that wins on load), in file order. The file
+ * is append-only, so every change to a question's wording leaves the answers to the old wording
+ * behind; they can never be read again, and this is how they are dropped.
+ */
+export function trimCassette(lines: Map<string, CassetteLine>, used: ReadonlySet<string>): CassetteLine[] {
+  return [...lines.values()].filter((l) => used.has(l.key));
+}
+
 /** Synchronous append so a crash mid-run keeps everything recorded so far. */
 export function appendCassette(path: string, line: CassetteLine): void {
   mkdirSync(dirname(path), { recursive: true });

@@ -73,6 +73,7 @@ outcomes and there are 89 scenarios available for multi-turn testing.
     pnpm regress --client recorded     # replay the recording offline; a miss is a failed turn
     pnpm regress --client jev          # real model, nothing recorded
     pnpm regress --client heuristic    # keyword stub, for comparison
+    pnpm cassette:trim                 # drop recorded answers no regression run asks for any more
 
 Outcomes include the final decision, prompt id, deciding gate, filled slots,
 and implicit-confirm acks, so a threshold change that only alters spoken
@@ -177,6 +178,11 @@ Recording, from the repo root:
 - `pnpm cli --client record` appends to the same file. Interactive
   exploration therefore grows the cassette with lines the regression run
   never replays; that is harmless but worth knowing.
+- Every change to a question's wording leaves the answers to the old wording
+  behind, and so does interactive exploration. `pnpm cassette:trim` replays
+  the whole regression run from the cassette, notes every request it makes,
+  and rewrites the file with only those answers. It spends nothing, and it
+  writes nothing if the replay missed: re-record first, then trim.
 - Once the cassette is committed, `pnpm test` validates it: the client
   builder's tests construct a `recorded` client, which loads and checks
   every line.
