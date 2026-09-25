@@ -3158,7 +3158,7 @@
   "fc-06": {
     "id": "fc-06",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -3359,7 +3359,7 @@
   "fc-18": {
     "id": "fc-18",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -4381,7 +4381,7 @@
   "ts-05": {
     "id": "ts-05",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [
       "slot_edge_earlier"
     ],
@@ -4401,7 +4401,7 @@
   "ts-06": {
     "id": "ts-06",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -4419,7 +4419,7 @@
   "ts-07": {
     "id": "ts-07",
     "decision": "prompt",
-    "promptId": "confirm_schedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -4437,7 +4437,7 @@
   "ts-08": {
     "id": "ts-08",
     "decision": "prompt",
-    "promptId": "confirm_schedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -4473,7 +4473,7 @@
   "ts-10": {
     "id": "ts-10",
     "decision": "prompt",
-    "promptId": "confirm_schedule",
+    "promptId": "confirm_time",
     "acks": [
       "slot_nearest"
     ],
@@ -4493,7 +4493,7 @@
   "ts-11": {
     "id": "ts-11",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",

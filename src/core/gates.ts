@@ -1,6 +1,6 @@
 import { isChoice, isScore, noulValue, rankProbabilities, type AnswerMap } from '../jev/types';
 import { INTENT_MENU, INFORMATIONAL_INTENTS, isFormIntent, type FormId, type Intent } from '../domain/intents';
-import { FORMS, type SlotId } from '../domain/forms';
+import { FORMS, SCHEDULING_FORMS, type SlotId } from '../domain/forms';
 import type { Session } from './session';
 import type { TurnState } from './state';
 import type { Thresholds } from './thresholds';
@@ -301,8 +301,18 @@ export function evaluateGates(session: Session, ts: TurnState, answers: AnswerMa
       // name is read before the no is settled for. A no that carries a value instead answers the
       // question's `none`, and turn.ts fills it on the rejected path.
       const [changeTop] = isChoice(answers.changeSlot) ? rankProbabilities(answers.changeSlot.probabilities) : [];
-      const named = changeTop && changeTop.label !== 'none' && changeTop.p >= t.SLOT_CHANGE && FORMS[pending.form].slots.includes(changeTop.label as SlotId) ? (changeTop.label as SlotId) : null;
-      changeSlotRow = { gate: 'changeSlot', value: changeTop?.p ?? null, threshold: t.SLOT_CHANGE, passed: named !== null, outcome: named ? `change:${named}` : 'none', decided: false };
+      const asked = changeTop && changeTop.label !== 'none' && changeTop.p >= t.SLOT_CHANGE && FORMS[pending.form].slots.includes(changeTop.label as SlotId) ? (changeTop.label as SlotId) : null;
+      // "Do you have a later appointment that day?" can read as naming the date to change and as
+      // asking for a later time in one breath. At a booking summary a confident same-day move that
+      // names no new day is a time request: the day is the one thing the caller wants kept, so the
+      // move wins and the turn goes on to the offer instead of reopening the day question.
+      const [prefTop] = isChoice(answers.timePreference) ? rankProbabilities(answers.timePreference.probabilities) : [];
+      const [dayTop] = isChoice(answers.dateMode) ? rankProbabilities(answers.dateMode.probabilities) : [];
+      const movesTime = prefTop !== undefined && prefTop.label !== 'none' && prefTop.p >= t.TIME_PREFERENCE;
+      const namesDay = dayTop !== undefined && dayTop.label !== 'none' && dayTop.p >= t.SLOT_CHOICE_CONFIRM;
+      const sameDay = asked === 'date' && SCHEDULING_FORMS.includes(pending.form) && movesTime && !namesDay;
+      const named = sameDay ? null : asked;
+      changeSlotRow = { gate: 'changeSlot', value: changeTop?.p ?? null, threshold: t.SLOT_CHANGE, passed: named !== null, outcome: named ? `change:${named}` : sameDay ? 'same_day_time' : 'none', decided: false };
       rows.push(changeSlotRow);
       if (named) routeVerdict = withQueue({ kind: 'change_slot', slot: named });
       else if (formConfirm === 'rejected') routeVerdict = withQueue({ kind: 'rejected' });

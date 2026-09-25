@@ -1348,7 +1348,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_reschedule",
+      "promptId": "confirm_time",
       "form": "reschedule"
     }
   },
@@ -1626,7 +1626,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_reschedule",
+      "promptId": "confirm_time",
       "form": "reschedule",
       "text": "I didn't hear anything."
     }
@@ -1896,9 +1896,9 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_reschedule",
+      "promptId": "confirm_time",
       "form": "reschedule",
-      "text": "Shall I make that change?"
+      "text": "Does that work?"
     }
   },
   {
@@ -2059,7 +2059,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_reschedule",
+      "promptId": "confirm_time",
       "form": "reschedule",
       "slots": {
         "date": "2026-09-24"
@@ -2160,7 +2160,7 @@
     ],
     "expect": {
       "decision": "prompt",
-      "promptId": "confirm_reschedule",
+      "promptId": "confirm_time",
       "form": "reschedule",
       "text": "The closest I have to the afternoon is 12:30 PM."
     }

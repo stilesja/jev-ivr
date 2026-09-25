@@ -57,6 +57,12 @@ describe('session', () => {
     expect(currentAttempts(s)).toBe(1);
   });
 
+  it('forgets which summary was heard when a form is entered', () => {
+    const s = newSession('s', 0);
+    s.summaryHeard = 'chen|jason stiles|1980-03-05';
+    expect(setForm(s, 'schedule_new').summaryHeard).toBeNull();
+  });
+
   it('cloneSession copies slot windows', () => {
     const s = newSession('s1', 0);
     s.slots.date.window = { start: '2026-09-21', end: '2026-09-27', label: 'next_week' };

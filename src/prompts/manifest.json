@@ -34,6 +34,7 @@
   "confirm_reschedule": { "text": "Your appointment with {provider} is on {existing}. It would move to {when}, for {name}, born {dob}. Shall I make that change?", "interruptible": true },
   "confirm_cancel": { "text": "Your appointment with {provider} is on {existing}. It would be cancelled, for {name}, born {dob}. Shall I cancel it?", "interruptible": true },
   "confirm_appointment_details": { "text": "I found your appointment with {provider}. It's on {existing}, for {name}, born {dob}. Is that the one?", "interruptible": true },
+  "confirm_time": { "text": "{when}. Does that work?", "interruptible": true },
   "slot_edge_earlier": { "text": "That's the earliest opening that day.", "interruptible": false },
   "slot_edge_later": { "text": "That's the latest opening that day.", "interruptible": false },
   "slot_nearest": { "text": "The closest I have to the {daypart} is {time}.", "interruptible": false },

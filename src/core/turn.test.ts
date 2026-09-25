@@ -671,7 +671,7 @@ describe('final confirm', () => {
 
   it('refills a corrected slot from a no and re-asks the summary', () => {
     const r = afterTurns([...HAPPY, 'no, Thursday']);
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time' });
     expect(r.session.slots.date.display).toBe('Thursday, September 24');
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
   });
@@ -685,7 +685,7 @@ describe('final confirm', () => {
     const r = afterTurns([...HAPPY, 'no, next week']);
     expect(r.decision).toMatchObject({ promptId: 'date_narrow_window' });
     expect(r.session.pendingConfirmation).toBeNull();
-    expect(afterTurns([...HAPPY, 'no, next week', 'Wednesday']).decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(afterTurns([...HAPPY, 'no, next week', 'Wednesday']).decision).toMatchObject({ promptId: 'confirm_time' });
   });
 
   it('asks what to change on a bare no, then reopens the named slot', () => {
@@ -697,19 +697,19 @@ describe('final confirm', () => {
     expect(r2.decision).toMatchObject({ promptId: 'ask_date', target: 'date' });
     expect(r2.session.slots.date.value).toBeNull();
     expect(r2.session.pendingConfirmation).toBeNull();
-    expect(afterTurns([...HAPPY, 'no', 'the day', 'Friday']).decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(afterTurns([...HAPPY, 'no', 'the day', 'Friday']).decision).toMatchObject({ promptId: 'confirm_time' });
   });
 
   it('reads a correction with no "no" in it', () => {
     const r = afterTurns([...HAPPY, 'Thursday']);
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time' });
     expect(r.session.slots.date.display).toBe('Thursday, September 24');
     expect(r.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
   });
 
   it('takes a value in answer to ask_change, rather than a slot name', () => {
     const r = afterTurns([...HAPPY, 'no', 'Thursday']);
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time' });
     expect(varsOf(r.decision)).toMatchObject({ date: 'Thursday, September 24' });
     const done = afterTurns([...HAPPY, 'no', 'Thursday', 'yes']);
     expect(done.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
@@ -742,7 +742,7 @@ describe('final confirm', () => {
     // "Tuesday" at the Tuesday summary changes nothing, so it is an unanswered turn, not a reset.
     const again = (n: number): Turn[] => [...HAPPY, ...Array.from({ length: n }, () => 'Tuesday')];
     const first = afterTurns(again(1));
-    expect(first.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(first.decision).toMatchObject({ promptId: 'confirm_time' });
     expect(first.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
     expect(afterTurns(again(2)).decision).toMatchObject({ promptId: 'confirm_dtmf' });
     expect(afterTurns(again(3)).decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
@@ -753,7 +753,7 @@ describe('final confirm', () => {
     const bill: Turn = { say: 'and can I also ask about my bill', over: adding };
     const queued = afterTurns([...HAPPY, 'no', bill]);
     // The first one buys the turn: it is a request to keep, not a dodged question.
-    expect(queued.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'ack_queued' }] });
+    expect(queued.decision).toMatchObject({ promptId: 'confirm_time', acks: [{ promptId: 'ack_queued' }] });
     expect(queued.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1, askedChange: true });
     // Asking for the same thing again adds nothing, so the ladder moves on.
     const r = afterTurns([...HAPPY, 'no', bill, 'no', bill]);
@@ -790,7 +790,7 @@ describe('final confirm', () => {
 
   it('still corrects, rather than reopens, when the no carries a value instead of a name', () => {
     const r = afterTurns([...HAPPY, 'no, Thursday']);
-    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_time' });
     expect(varsOf(r.decision)).toMatchObject({ provider: 'Dr. Chen', date: 'Thursday, September 24' });
   });
 
@@ -829,7 +829,7 @@ describe('final confirm', () => {
   it('walks the unanswered ladder: re-ask, keypad, agent', () => {
     const hours = 'what are your hours';
     const first = afterTurns([...HAPPY, hours]);
-    expect(first.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(first.decision).toMatchObject({ promptId: 'confirm_time' });
     expect(first.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
     expect(afterTurns([...HAPPY, hours, hours]).decision).toMatchObject({ promptId: 'confirm_dtmf', target: 'confirm', options: ['1', '2'] });
     expect(afterTurns([...HAPPY, hours, hours, hours]).decision).toMatchObject({ kind: 'handoff', reason: 'max-attempts' });
@@ -889,7 +889,7 @@ describe('final confirm', () => {
     expect(switched.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_intent_explicit' });
     expect(switched.session.pendingConfirmation).toMatchObject({ target: 'intent', intent: 'cancel' });
     const no = afterTurns([...HAPPY, switching, 'no']);
-    expect(no.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
+    expect(no.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time', target: 'confirm' });
     expect(no.session.form).toBe('reschedule');
     expect(no.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 0 });
   });
@@ -1014,7 +1014,7 @@ describe('frustration escalation', () => {
     expect(offered.session.pendingConfirmation)
       .toEqual({ target: 'transfer', attempts: 0, resume: { target: 'form', form: 'reschedule', attempts: 1 } });
     const back = say(offered.session, 'keep going', { confirmsYes: noul(0.05), confirmsNo: noul(0.9) });
-    expect(back.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm' });
+    expect(back.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time', target: 'confirm' });
     expect(back.session.pendingConfirmation).toEqual({ target: 'form', form: 'reschedule', attempts: 1 });
   });
 
@@ -1098,7 +1098,7 @@ describe('capabilities', () => {
 
   it('describes itself at the summary and re-asks it without counting', () => {
     const r = afterTurns([...HAPPY, { say: 'what can you do', over: { intent: ASKS } }]);
-    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule', target: 'confirm', acks: [CAPABILITIES] });
+    expect(r.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time', target: 'confirm', acks: [CAPABILITIES] });
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', form: 'reschedule', attempts: 0 });
   });
 
@@ -1208,7 +1208,7 @@ describe('silence', () => {
   it('walks the summary ladder', () => {
     const s = afterTurns(HAPPY).session; // at confirm_reschedule
     const one = resolve(s, silenceFrame(), null, tc);
-    expect(one.decision).toMatchObject({ promptId: 'confirm_reschedule', target: 'confirm', acks: [{ promptId: 'no_input', vars: {} }] });
+    expect(one.decision).toMatchObject({ promptId: 'confirm_time', target: 'confirm', acks: [{ promptId: 'no_input', vars: {} }] });
     expect(one.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
     const two = resolve(one.session, silenceFrame(), null, tc);
     expect(two.decision).toMatchObject({ promptId: 'confirm_dtmf' });
@@ -1517,7 +1517,7 @@ describe('bookings follow corrections', () => {
     expect(varsOf(change.decision)).toEqual({});
     expect(change.session.offer).toEqual(asked.session.offer);
     const moved = heuristicTurn(change.session, 'Thursday');
-    expect(moved.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_reschedule' });
+    expect(moved.decision).toMatchObject({ kind: 'prompt', promptId: 'confirm_time' });
     expect(moved.session.offer).toMatchObject({ provider: 'chen', date: '2026-09-24' });
   });
 });
@@ -1536,11 +1536,54 @@ describe('moving the offer', () => {
   const noPref = (r: TurnResult, say: string, timePreference: ReturnType<typeof choice>) =>
     heuristicTurn(r.session, say, { timePreference, confirmsYes: noul(0.05), confirmsNo: noul(0.9), changeSlot: choice({ none: 0.95 }) });
 
+  describe('the short re-read', () => {
+    const when = (r: TurnResult) => `${describeDay(r.session.offer!.date)} at ${r.session.offer!.times[r.session.offer!.index]}`;
+
+    it('reads the whole summary once, then only the day and time as the offer moves', () => {
+      const first = atOffer();
+      expect(first.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+      expect(spokenText(first.decision)).toContain('for Jason Stiles, born March 5th, 1980');
+      const moved = pref(first, 'later', LATER);
+      expect(moved.decision).toMatchObject({ promptId: 'confirm_time', target: 'confirm', options: ['yes', 'no'] });
+      expect(spokenText(moved.decision)).toBe(`${when(moved)}. Does that work?`);
+    });
+
+    it('puts the edge line in front of the short re-read', () => {
+      const r = pref(atOffer(), 'earlier', EARLIER);
+      expect(spokenText(r.decision)).toBe(`That's the earliest opening that day. ${when(r)}. Does that work?`);
+    });
+
+    it('reads the whole summary again when the doctor changes', () => {
+      const moved = pref(atOffer(), 'later', LATER);
+      const r = heuristicTurn(moved.session, 'not that doctor, make it Dr. Alvarez', {});
+      expect(r.session.slots.provider.value).toBe('alvarez');
+      expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+      expect(spokenText(r.decision)).toContain('Your appointment with Dr. Alvarez is on');
+    });
+
+    it('books on yes, and on keypad 1, from the short re-read', () => {
+      const moved = pref(atOffer(), 'later', LATER);
+      const yes = heuristicTurn(moved.session, 'yes', {});
+      expect(yes.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
+      expect(spokenText(yes.decision)).toContain(`Your appointment is moved to ${when(moved)}.`);
+      let keyed = moved;
+      for (const f of dtmfFrames('1')) keyed = resolve(keyed.session, f, null, tc);
+      expect(keyed.decision).toMatchObject({ kind: 'complete', promptId: 'reschedule_confirmed' });
+    });
+
+    it('keeps a cancel summary whole on every re-read', () => {
+      let r = say(started(), 'cancel with dr patel', { intent: choice({ cancel: 0.95, none: 0.05 }), provider: choice({ patel: 0.92, none: 0.08 }) });
+      r = identify(r.session);
+      r = say(r.session, 'hmm', { confirmsYes: noul(0.1), confirmsNo: noul(0.1), changeSlot: choice({ none: 0.95 }) });
+      expect(r.decision).toMatchObject({ promptId: 'confirm_cancel' });
+    });
+  });
+
   it('moves later and earlier one opening at a time and re-reads the summary as a correction (unanswered path)', () => {
     let r = pref(atOffer(), 'later', LATER);
     expect(r.verdict?.kind).toBe('confirm_unanswered');
     expect(indexAt(r)).toBe(1);
-    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [] });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_time', acks: [] });
     expect(varsOf(r.decision).when).toContain(timesAt(r)[1]!);
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 0 });
     r = pref(r, 'earlier please', EARLIER);
@@ -1551,14 +1594,14 @@ describe('moving the offer', () => {
     const r = noPref(atOffer(), 'no, later', LATER);
     expect(r.verdict?.kind).toBe('rejected');
     expect(indexAt(r)).toBe(1);
-    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_time' });
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 0 });
   });
 
   it('says so at an edge and counts the turn on the summary ladder', () => {
     let r = pref(atOffer(), 'earlier', EARLIER);
     expect(indexAt(r)).toBe(0);
-    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'slot_edge_earlier', vars: {} }] });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_time', acks: [{ promptId: 'slot_edge_earlier', vars: {} }] });
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
     r = pref(r, 'earlier', EARLIER);
     expect(r.decision).toMatchObject({ promptId: 'confirm_dtmf' });
@@ -1573,7 +1616,7 @@ describe('moving the offer', () => {
     // A wrap would re-arm the summary every time, so turning every opening down would never end.
     r = pref(r, 'not that one', DIFFERENT);
     expect(indexAt(r)).toBe(2);
-    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'slot_edge_later', vars: {} }] });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_time', acks: [{ promptId: 'slot_edge_later', vars: {} }] });
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
   });
 
@@ -1583,7 +1626,7 @@ describe('moving the offer', () => {
     });
     expect(r.session.daypart).toBe('morning');
     expect(indexAt(r)).toBe(1);
-    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [] });
+    expect(r.decision).toMatchObject({ promptId: 'confirm_time', acks: [] });
     expect(r.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 0 });
   });
 
@@ -1598,7 +1641,7 @@ describe('moving the offer', () => {
     expect(inside.session.daypart).toBe(target);
     expect(daypartOf(times[indexAt(inside)]!)).toBe(target);
     expect(inside.session.pendingConfirmation).toMatchObject({ attempts: 0 });
-    expect(inside.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [] });
+    expect(inside.decision).toMatchObject({ promptId: 'confirm_time', acks: [] });
 
     const missing = DAYPART_ORDER.find((p) => !times.some((t) => daypartOf(t) === p))!;
     expect(missing).toBeDefined();
@@ -1609,7 +1652,7 @@ describe('moving the offer', () => {
     // Asked again from the nearest opening, the index stays put: still said once, and a turn on the ladder.
     const again = heuristicTurn(closest.session, `no, the ${missing}`, { timeOfDay: choice({ [missing]: 0.9, none: 0.1 }), confirmsNo: noul(0.8) });
     expect(indexAt(again)).toBe(indexAt(closest));
-    expect(again.decision).toMatchObject({ promptId: 'confirm_reschedule', acks: [{ promptId: 'slot_nearest', vars: { daypart: missing, time: times[indexAt(closest)] } }] });
+    expect(again.decision).toMatchObject({ promptId: 'confirm_time', acks: [{ promptId: 'slot_nearest', vars: { daypart: missing, time: times[indexAt(closest)] } }] });
     expect(again.session.pendingConfirmation).toMatchObject({ target: 'form', attempts: 1 });
   });
 

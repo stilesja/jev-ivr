@@ -1127,7 +1127,7 @@
   "summary-unanswered-reask": {
     "id": "summary-unanswered-reask",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -1356,7 +1356,7 @@
   "silence-summary-reask": {
     "id": "silence-summary-reask",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [
       "no_input"
     ],
@@ -1584,7 +1584,7 @@
   "capabilities-at-summary": {
     "id": "capabilities-at-summary",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [
       "capabilities"
     ],
@@ -1706,7 +1706,7 @@
   "slot-earlier-edge-then-day": {
     "id": "slot-earlier-edge-then-day",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [],
     "reason": null,
     "decidedGate": "confirmation",
@@ -1788,7 +1788,7 @@
   "slot-nearest-opening": {
     "id": "slot-nearest-opening",
     "decision": "prompt",
-    "promptId": "confirm_reschedule",
+    "promptId": "confirm_time",
     "acks": [
       "slot_nearest"
     ],

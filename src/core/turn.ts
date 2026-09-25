@@ -154,6 +154,9 @@ export function buildOffer(provider: string, date: string, times: string[], dayp
   return { offer: { provider, date, times, index: best }, nearest: true };
 }
 
+/** The summary re-read on a booking form once only the offered day or time has moved (settleBookings). */
+export const SHORT_OFFER_PROMPT = 'confirm_time';
+
 /** The decision reads the form back: its summary question with that summary pending, or the completion. */
 function readsSummary(s: Session, decision: Decision): boolean {
   if (decision.kind === 'complete') return true;
@@ -198,8 +201,17 @@ export function settleBookings(s: Session, decision: Decision, directory: Appoin
   // The ack goes last, so "The closest I have to the afternoon is 1:00 PM." is the sentence right
   // before the summary that names it. A plain completion is rendered again too; its variables
   // were built from this same offer and booking, so that is harmless.
-  if (decision.kind === 'prompt' || decision.kind === 'complete') return { ...decision, vars: summaryVars(s), acks: [...decision.acks, ...acks] };
-  return decision;
+  if (decision.kind === 'complete') return { ...decision, vars: summaryVars(s), acks: [...decision.acks, ...acks] };
+  if (decision.kind !== 'prompt') return decision;
+  const heard = `${provider.value}|${name.value}|${dob.value}`;
+  if (SCHEDULING_FORMS.includes(s.form) && s.offer && s.summaryHeard === heard) {
+    // The caller has heard the whole summary for this doctor and themselves already; what moved is
+    // the day or the time, so only that is said: "Friday, October 2 at 1:00 PM. Does that work?"
+    // It is the same pending question, so yes, no, the keypad and the ladder all read it as the summary.
+    return { ...decision, promptId: SHORT_OFFER_PROMPT, vars: summaryVars(s), acks: [...decision.acks, ...acks] };
+  }
+  s.summaryHeard = heard;
+  return { ...decision, vars: summaryVars(s), acks: [...decision.acks, ...acks] };
 }
 
 /** Everything the summary just read back, as one comparable value: every slot's window too, so a
@@ -735,7 +747,7 @@ function handleDtmf(s: Session, digit: string, tc: TurnContext): { decision: Dec
     // digit answers nothing, so it is not a missed turn either.
     const summaryId = FORMS[pc.form].summaryPromptId;
     const advertised = s.lastPromptId === 'confirm_dtmf' || s.lastPromptId === 'system_slow_dtmf_hint'
-      || (summaryId !== null && s.lastPromptId === summaryId);
+      || (summaryId !== null && s.lastPromptId === summaryId) || s.lastPromptId === SHORT_OFFER_PROMPT;
     if (!advertised) return { decision: { kind: 'ignore' }, rows: [] };
     if (digit === '1') {
       s.pendingConfirmation = null;
