@@ -121,6 +121,11 @@ export class CassetteClient implements JevClient {
     this.load();
   }
 
+  /** Only a recording run talks to the model, so only it has a connection worth opening early. */
+  async warm(): Promise<void> {
+    if (this.opts.mode === 'record') await this.opts.inner?.warm?.();
+  }
+
   async ask(req: JevRequest): Promise<JevResponse> {
     const started = performance.now();
     const key = requestKey(req);
