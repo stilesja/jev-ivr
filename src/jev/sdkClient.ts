@@ -1,4 +1,5 @@
 import { TypeSafeClient } from '@typesafe-ai/sdk';
+import { Agent, fetch as undiciFetch } from 'undici';
 import {
   JevClientError,
   type AnswerMap, type JevClient, type JevRequest, type JevResponse, type Question, type QuestionMap,
@@ -7,11 +8,33 @@ import {
 /** Pinned: aliases move between releases and thresholds are calibrated per version. */
 export const JEV_MODEL = 'jev-1.13.0';
 
+/**
+ * How long a connection to the model may sit idle before it is closed. Node's own fetch closes a
+ * pooled connection after four seconds, and a phone caller's turns are further apart than that
+ * (listen, think, speak, transcribe), so every ask paid 200 ms or more of TCP and TLS setup on top
+ * of the model's own time. Thirty seconds outlasts any gap between turns and stays under the idle
+ * cutoff of the usual load balancer, which would otherwise hand a request a socket it has closed.
+ */
+export const KEEP_ALIVE_MS = 30_000;
+
+/**
+ * A fetch whose pooled connections live for `ms` when idle. Undici's own fetch is paired with its
+ * own Agent: handing Node's bundled fetch an Agent from the npm package mixes two copies of undici,
+ * a known source of version mismatches.
+ */
+export function keepAliveFetch(ms: number = KEEP_ALIVE_MS): typeof fetch {
+  const dispatcher = new Agent({ keepAliveTimeout: ms, keepAliveMaxTimeout: ms });
+  return ((input: unknown, init?: object) => undiciFetch(input as never, { ...init, dispatcher } as never)) as unknown as typeof fetch;
+}
+
 export interface SdkJevClientOptions {
   apiKey?: string;
   timeoutMs: number;
   maxRetries?: number;
+  /** Injected in tests; otherwise a keep-alive fetch (`keepAliveFetch`). */
   fetch?: typeof fetch;
+  /** Idle lifetime of a pooled connection when `fetch` is not given; defaults to `KEEP_ALIVE_MS`. */
+  keepAliveMs?: number;
 }
 
 type SdkQuestion =
@@ -81,15 +104,31 @@ function convert(q: Question, a: RawAnswer, id: string): AnswerMap[string] {
 
 export class SdkJevClient implements JevClient {
   private readonly client: TypeSafeClient;
+  private readonly fetchImpl: typeof fetch;
 
   constructor(private readonly opts: SdkJevClientOptions) {
+    this.fetchImpl = opts.fetch ?? keepAliveFetch(opts.keepAliveMs);
     this.client = new TypeSafeClient({
       apiKey: opts.apiKey,
       defaultModel: JEV_MODEL,
       timeout: opts.timeoutMs,
       retry: { maxRetries: opts.maxRetries ?? 1 },
-      fetch: opts.fetch,
+      fetch: this.fetchImpl,
     });
+  }
+
+  /**
+   * A HEAD to the API's base URL through the same pool the asks use, so the connection is open by
+   * the time the caller answers the greeting. The base URL answers 404, which costs nothing and is
+   * not an error here; any failure is swallowed, since the first ask simply opens its own.
+   */
+  async warm(): Promise<void> {
+    try {
+      const res = await this.fetchImpl(this.client.baseURL, { method: 'HEAD', signal: AbortSignal.timeout(this.opts.timeoutMs) });
+      await res.body?.cancel();
+    } catch {
+      // Best effort: the first ask opens the connection instead.
+    }
   }
 
   async ask(req: JevRequest): Promise<JevResponse> {

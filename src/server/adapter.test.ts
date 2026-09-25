@@ -121,6 +121,28 @@ describe('adapter', () => {
     expect(existsSync(join(d.dir, 'CA1.frames.jsonl'))).toBe(true);
   });
 
+  it('warms the model connection once on a new call, and not again on a reconnect', async () => {
+    let warmed = 0;
+    const inner = corpusClient();
+    const client: JevClient = { ask: (req) => inner.ask(req), warm: async () => { warmed += 1; } };
+    const d = deps(client);
+    const sock = fakeSocket();
+    await handleSocketMessage(d, sock, newConnectionContext(d.tokens.mint('CA1'), sock), setupMsg('CA1'));
+    expect(warmed).toBe(1);
+    const again = fakeSocket();
+    await handleSocketMessage(d, again, newConnectionContext(d.tokens.mint('CA1'), again), setupMsg('CA1', 'VX2'));
+    expect(warmed).toBe(1);
+  });
+
+  it('greets even when the warm-up fails', async () => {
+    const inner = corpusClient();
+    const client: JevClient = { ask: (req) => inner.ask(req), warm: () => Promise.reject(new Error('down')) };
+    const d = deps(client);
+    const sock = fakeSocket();
+    await handleSocketMessage(d, sock, newConnectionContext(d.tokens.mint('CA1'), sock), setupMsg('CA1'));
+    expect(texts(sock)).toEqual(['Thanks for calling Stiles Family Medical Practice. How can I help you today?']);
+  });
+
   it('refuses a bad token with an end message and closes', async () => {
     const d = deps();
     d.tokens.mint('CA1');

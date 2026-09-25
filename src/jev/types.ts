@@ -83,6 +83,12 @@ export interface JevResponse {
 
 export interface JevClient {
   ask(req: JevRequest): Promise<JevResponse>;
+  /**
+   * Open the connection to the model ahead of the first ask, so a call's first turn does not pay
+   * for TCP and TLS setup. Best effort: it resolves whether or not the connection opened, and a
+   * client with nothing to warm leaves it out.
+   */
+  warm?(): Promise<void>;
 }
 
 export class JevClientError extends Error {

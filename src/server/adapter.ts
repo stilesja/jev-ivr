@@ -410,6 +410,14 @@ export async function handleSocketMessage(deps: AdapterDeps, socket: SocketLike,
       type: 'call_started', callSid: frame.callSid, at: Date.now(),
       from: maskNumber(frame.from), todayIso: entry.opts.todayIso, thresholds: entry.opts.thresholds,
     });
+    // Open the connection to the model while the greeting plays, so the caller's first answer does
+    // not pay for its setup. Not awaited and never allowed to fail the call; a reconnect keeps the
+    // connection the call already had, so only a new call warms.
+    try {
+      void entry.opts.client.warm?.().catch(() => undefined);
+    } catch {
+      // A client whose warm throws synchronously is no reason to drop the call.
+    }
     await deps.store.enqueue(frame.callSid, (e) => turn(deps, e, frame));
     return;
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SdkJevClient, toSdkQuestions, fromSdkAnswers, JEV_MODEL } from './sdkClient';
+import { SdkJevClient, toSdkQuestions, fromSdkAnswers, JEV_MODEL, KEEP_ALIVE_MS, keepAliveFetch } from './sdkClient';
 import type { QuestionMap } from './types';
 
 const questions: QuestionMap = {
@@ -62,3 +62,28 @@ describe('SdkJevClient', () => {
     expect(res.latencyMs).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('connection reuse', () => {
+  it('keeps pooled connections for thirty seconds by default, longer than a caller takes between turns', () => {
+    expect(KEEP_ALIVE_MS).toBe(30_000);
+    expect(typeof keepAliveFetch()).toBe('function');
+    // Constructing without an injected fetch builds the keep-alive one and must not touch the network.
+    expect(() => new SdkJevClient({ apiKey: 'k', timeoutMs: 1500 })).not.toThrow();
+  });
+
+  it('warms with a HEAD to the API base through the same fetch the asks use', async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const fetch = (async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), method: init?.method });
+      return new Response(null, { status: 404 });
+    }) as unknown as typeof globalThis.fetch;
+    await new SdkJevClient({ apiKey: 'k', timeoutMs: 1500, fetch }).warm();
+    expect(calls).toEqual([{ url: 'https://api.typesafe.ai', method: 'HEAD' }]);
+  });
+
+  it('swallows a failed warm-up, since the first ask opens its own connection', async () => {
+    const fetch = (async () => { throw new Error('network down'); }) as unknown as typeof globalThis.fetch;
+    await expect(new SdkJevClient({ apiKey: 'k', timeoutMs: 1500, fetch }).warm()).resolves.toBeUndefined();
+  });
+});
+
