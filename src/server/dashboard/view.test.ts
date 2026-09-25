@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_THRESHOLDS } from '../../core/thresholds';
 import { JevClientError } from '../../jev/types';
@@ -385,6 +386,18 @@ describe('row helpers', () => {
     expect(thresholdFor('providerUnsure', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.PROVIDER_UNSURE);
     expect(thresholdFor('timeOfDay', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.TIME_OF_DAY);
     expect(thresholdFor('timePreference', DEFAULT_THRESHOLDS)).toBe(DEFAULT_THRESHOLDS.TIME_PREFERENCE);
+  });
+
+  it("draws replay ticks at today's defaults, for every threshold the view reads", () => {
+    const html = readFileSync(new URL('./page.html', import.meta.url), 'utf8');
+    const block = /const DEFAULTS = \{([\s\S]*?)\};/.exec(html)?.[1] ?? '';
+    const defaults = new Map([...block.matchAll(/^\s*([A-Z_]+):\s*([\d.]+),/gm)].map(([, name, value]) => [name!, Number(value)]));
+    expect(defaults.size).toBeGreaterThan(10);
+    for (const [name, value] of defaults) expect(value, name).toBe(DEFAULT_THRESHOLDS[name as keyof typeof DEFAULT_THRESHOLDS]);
+    // A threshold the view draws a tick at but the page has no default for draws no tick in replay.
+    const view = readFileSync(new URL('./view.js', import.meta.url), 'utf8');
+    const read = new Set([...view.matchAll(/'([A-Z][A-Z_]+)'|\bt\.([A-Z][A-Z_]+)/g)].map((m) => m[1] ?? m[2]!));
+    for (const name of read) if (Object.hasOwn(DEFAULT_THRESHOLDS, name)) expect(defaults.has(name), name).toBe(true);
   });
 
   /** INTENT_ROUTE is never applied at runtime: gates.ts routes at EXPLICIT, or SWITCH in a form. */
