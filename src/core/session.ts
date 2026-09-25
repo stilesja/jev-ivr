@@ -120,6 +120,12 @@ export interface Session {
   offer: Offer | null;
   /** The part of the day the caller asked for, if they ever did. Read, never asked; carries across a chained form with the identity slots. */
   daypart: Daypart | null;
+  /**
+   * The doctor and caller the last full summary named (provider, name, birthday). While they still
+   * match, a re-read only moves the day and time, so it says only the day and time: after one full
+   * readback the rest is a date and time negotiation. Cleared when a form is entered.
+   */
+  summaryHeard: string | null;
   ended: boolean;
 }
 
@@ -173,6 +179,7 @@ export function newSession(sessionId: string, nowMs: number, caller: CallerRecor
     existing: null,
     offer: null,
     daypart: null,
+    summaryHeard: null,
     ended: false,
   };
 }
@@ -232,6 +239,7 @@ export function setForm(session: Session, form: FormId): Session {
   session.intentAttempts = 0;
   session.pendingConfirmation = null;
   session.menuActive = false;
+  session.summaryHeard = null;
   return session;
 }
 

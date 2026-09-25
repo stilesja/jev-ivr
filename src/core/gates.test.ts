@@ -316,6 +316,16 @@ describe('evaluateGates', () => {
       expect(run(pending(), a).verdict).toEqual({ kind: 'confirmed', queue: 'billing' });
     });
 
+    it('treats a same-day move as a time request, not a change of day, unless a new day is named', () => {
+      // From a live call: "Do you have a later appointment that day?" scored later 1.00 and date 0.61.
+      const later = { changeSlot: choice({ date: 0.61, none: 0.39 }), timePreference: choice({ later: 1, none: 0 }), confirmsNo: noul(0.54), intentChange: choice({ answering: 0.9, adding: 0.05, replacing: 0.05 }) };
+      const same = run(pending(), baseAnswers({ ...later, dateMode: choice({ none: 0.98, weekday: 0.02 }) }));
+      expect(same.verdict).toEqual({ kind: 'confirm_unanswered' });
+      expect(same.rows.find((g) => g.gate === 'changeSlot')).toMatchObject({ passed: false, outcome: 'same_day_time' });
+      const newDay = run(pending(), baseAnswers({ ...later, dateMode: choice({ weekday: 0.9, none: 0.1 }) }));
+      expect(newDay.verdict).toEqual({ kind: 'change_slot', slot: 'date' });
+    });
+
     it('rejects on no, with the queue when one was added', () => {
       expect(run(pending(), baseAnswers({ confirmsNo: noul(0.9) })).verdict).toEqual({ kind: 'rejected' });
       expect(run(pending(), baseAnswers({
