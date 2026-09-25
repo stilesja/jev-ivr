@@ -373,9 +373,17 @@ the day's openings the index does not move and the caller hears "That's the
 earliest opening that day." or "That's the latest opening that day." instead,
 since neither end wraps. Those two lines are the plain-no path in disguise:
 each one still counts a turn on the summary's ladder, so two refusals at the
-same end reach the keypad prompt just as two bare no's would. A correction to
-the day or the doctor rebuilds both the offer and the found booking from the
-new values. The demo directory invents every booking and every day's openings
+same end reach the keypad prompt just as two bare no's would. The whole
+summary is read once; after that, a re-read that only moves the day or the
+time says just that: "Friday, October 2 at 1:00 PM. Does that work?", so the
+edge reads "That's the earliest opening that day. Friday, October 2 at 1:00
+PM. Does that work?" It is still the summary's question, so yes books it and
+the keypad and ladder work as before; a change of doctor, name or birthday
+brings the whole summary back. At a booking summary, a confident earlier,
+later or different time that names no new day is taken as a time request even
+when the model also reads it as changing the date ("Do you have a later
+appointment that day?"). A correction to the day or the doctor rebuilds both
+the offer and the found booking from the new values. The demo directory invents every booking and every day's openings
 deterministically from a hash of the caller's name, birthday and provider, so
 the same caller hears the same appointment on every call; a real deployment
 backs `AppointmentDirectory` with its own scheduling system instead. One
@@ -484,7 +492,9 @@ the vocabulary clips `intent.reschedule`, `intent.cancel`,
 `pnpm prompts:check` reports 3 missing and 6 stale until those are recorded
 (Task 5 of `docs/superpowers/plans/2026-09-24-demo-polish.md`).
 
-The appointment-slots change adds seven clips (`slot_edge_earlier.0`,
+The short re-read of a moving offer adds one clip, `confirm_time.0` ("Does
+that work?"), which matters only with `CLIPS=on`. The appointment-slots
+change adds seven clips (`slot_edge_earlier.0`,
 `slot_edge_later.0`, `slot_nearest.0` and `.1`, and the vocabulary clips
 `daypart.morning`, `daypart.midday`, `daypart.afternoon`) and re-records the
 four summaries (`confirm_schedule`, `confirm_reschedule`, `confirm_cancel`,
@@ -644,9 +654,9 @@ and on every record the trace route returns — before it leaves the server.
     finish the queued clips, and Twilio closes it and hits `/cr-action` with
     `SessionStatus=ended`.
 16. Call again, repeat through step 10, then say "no, Thursday" instead of
-    "yes". Expect the summary question again, now naming Thursday instead of
-    Tuesday. Then try "no, it's Jason Miles": expect the summary again with
-    the new name. Say "yes" to finish.
+    "yes". Expect only the new day and time, "Thursday, September 24 at
+    <time>. Does that work?", since only the day changed. Then try "no, it's
+    Jason Miles": expect the whole summary again with the new name. Say "yes" to finish.
 17. Call again and say: "I need to reschedule my appointment with Dr.
     Alvarez for next Thursday, and also I have a question about my bill."
     Expect "Sure, we'll talk to billing after this." before the name
@@ -693,11 +703,13 @@ and on every record the trace route returns — before it leaves the server.
 25. Call again and say "Book me with Dr. Chen next Thursday afternoon". Give
     the name and birthday. Expect the summary to offer an afternoon opening,
     not just any opening on Thursday.
-26. On that same call, say "earlier" at the offer. Expect the summary again
-    one opening earlier (Dr. Chen's Thursday openings are 10:00 AM, 11:15 AM
-    and 4:15 PM, so 4:15 PM becomes 11:15 AM). Say "earlier" twice more:
-    the second lands on 10:00 AM, and the third plays "That's the earliest
-    opening that day." before the summary, still naming Thursday.
+26. On that same call, say "earlier" at the offer. Expect only the new time,
+    one opening earlier: "Thursday, September 24 at 11:15 AM. Does that
+    work?" (Dr. Chen's Thursday openings are 10:00 AM, 11:15 AM and 4:15 PM).
+    Say "earlier" twice more: the second lands on 10:00 AM, and the third
+    plays "That's the earliest opening that day." before the same short
+    question. Try "Do you have a later appointment that day?" too: expect the
+    next opening, not the day question.
 27. Call again, reschedule with Dr. Chen through the day question, say
     "later" at the offer, then "yes". Expect the completion to name the
     moved-to time: "Your appointment is moved to Tuesday, September 22 at
