@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { appendCassette, canonicalJson, CASSETTE_MISS, CassetteClient, isCassetteMiss, loadCassette, requestKey, type CassetteLine } from './cassette';
+import { appendCassette, canonicalJson, CASSETTE_MISS, CassetteClient, isCassetteMiss, loadCassette, requestKey, trimCassette, type CassetteLine } from './cassette';
 import type { JevRequest, QuestionMap } from './types';
 import { JevClientError, type AnswerMap, type JevClient, type JevResponse } from './types';
 import { choice, noul } from '../testing/answers';
@@ -100,6 +100,15 @@ describe('cassette file', () => {
     const loaded = loadCassette(path);
     expect(loaded.size).toBe(1);
     expect(loaded.get('a'.repeat(64))?.model).toBe('new');
+  });
+
+  it('trims to the keys a run asks for, keeping the line that wins for each', () => {
+    appendCassette(path, line('a'.repeat(64), { model: 'old' }));
+    appendCassette(path, line('b'.repeat(64)));
+    appendCassette(path, line('a'.repeat(64), { model: 'new' }));
+    appendCassette(path, line('c'.repeat(64)));
+    const kept = trimCassette(loadCassette(path), new Set(['a'.repeat(64), 'c'.repeat(64)]));
+    expect(kept.map((l) => [l.key[0], l.model])).toEqual([['a', 'new'], ['c', line('c'.repeat(64)).model]]);
   });
 
   it('fails the load naming the bad line number', () => {

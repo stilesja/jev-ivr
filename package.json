@@ -13,6 +13,7 @@
     "cli": "tsx src/harness-text/cli.ts",
     "regress": "tsx src/harness-text/regress.ts",
     "sweep": "tsx src/harness-text/sweep.ts",
+    "cassette:trim": "tsx src/harness-text/cassetteTrim.ts",
     "serve": "tsx src/server/index.ts",
     "prompts:sheet": "tsx src/prompts/sheet.ts sheet",
     "prompts:check": "tsx src/prompts/sheet.ts check",

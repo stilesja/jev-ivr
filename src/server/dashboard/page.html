@@ -69,7 +69,7 @@
    */
   const DEFAULTS = {
     // gate ladder
-    GATE_ADDRESSED: 0.7,
+    GATE_ADDRESSED: 0.65,
     GATE_INTELLIGIBLE: 0.45,
     GATE_COMPLETE: 0.6,
     GATE_WANTS_HUMAN: 0.7,
@@ -85,6 +85,9 @@
     SLOT_CHOICE_CONFIRM: 0.45,
     SLOT_CHANGE: 0.6,
     PROVIDER_UNSURE: 0.45,
+    // appointment slots: the part of the day and the move along the day's openings
+    TIME_OF_DAY: 0.6,
+    TIME_PREFERENCE: 0.6,
     // confirmations and menus
     CONFIRM_YES: 0.7,
     CONFIRM_NO: 0.7,
