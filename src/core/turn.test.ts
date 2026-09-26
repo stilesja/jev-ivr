@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildOffer, plan, resolve, type TurnContext, type TurnResult } from './turn';
+import { buildOffer, plan, resolve, settleBookings, type TurnContext, type TurnResult } from './turn';
 import { newSession, type Session } from './session';
 import { INTENT_LABELS, type FormId } from '../domain/intents';
 import { DEFAULT_THRESHOLDS } from './thresholds';
@@ -627,6 +627,17 @@ function afterTurnsAndDtmf(steps: Turn[], digit: string): TurnResult {
   let r = afterTurns(steps);
   for (const f of dtmfFrames(digit)) r = resolve(r.session, f, null, tc);
   return r;
+}
+
+/** HAPPY against another directory, answered by the heuristic stub. */
+function happyWith(ctx: TurnContext): TurnResult {
+  let session = started();
+  let r: TurnResult | undefined;
+  for (const step of HAPPY as string[]) {
+    r = resolve(session, promptFrame(step), heuristicAnswers(session, step, {}), ctx);
+    session = r.session;
+  }
+  return r!;
 }
 
 function varsOf(decision: TurnResult['decision']): Record<string, string> {
@@ -1423,6 +1434,28 @@ describe('bookings', () => {
     const held = resolve(inForm, promptFrame('the morn', false), answers({ utteranceComplete: noul(0.2), timeOfDay: choice({ morning: 0.9, none: 0.1 }) }), tc);
     expect(held.decision).toEqual({ kind: 'hold' });
     expect(held.session.daypart).toBeNull();
+  });
+
+  it('never offers the time the caller already holds on a same-day move', () => {
+    // A directory that lists the caller's own booking among the day's openings: the demo's
+    // booking and openings hash independently, so this happens for about a third of bookings.
+    const held = { date: '2026-09-22', time: '8:30 AM' };
+    const clashing: TurnContext = {
+      ...tc,
+      directory: { find: () => ({ ...held }), openings: () => ['8:30 AM', '10:00 AM', '12:30 PM'] },
+    };
+    const r = happyWith(clashing);
+    expect(r.decision).toMatchObject({ promptId: 'confirm_reschedule' });
+    expect(r.session.existing).toEqual(held);
+    expect(r.session.offer!.times).toEqual(['10:00 AM', '12:30 PM']);
+    expect(varsOf(r.decision).when).toBe('Tuesday, September 22 at 10:00 AM');
+    // A correction that moves the booking onto a time the offer already lists rebuilds it without that time.
+    const elsewhere: TurnContext = { ...clashing, directory: { ...clashing.directory, find: () => ({ date: '2026-09-22', time: '11:15 AM' }) } };
+    const before = happyWith(elsewhere);
+    expect(before.session.offer!.times).toEqual(['8:30 AM', '10:00 AM', '12:30 PM']);
+    const after = settleBookings(before.session, before.decision, clashing.directory);
+    expect(before.session.offer!.times).toEqual(['10:00 AM', '12:30 PM']);
+    expect(varsOf(after).when).toBe('Tuesday, September 22 at 10:00 AM');
   });
 
   it('rebuilds the offer when a correction moves the day, and clears it for a chained form', () => {
