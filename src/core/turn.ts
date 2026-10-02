@@ -2,7 +2,7 @@ import { isChoice, rankProbabilities, type AnswerMap, type QuestionMap } from '.
 import type { InboundFrame, OutboundFrame } from '../channel/frames';
 import type { SlotId } from '../domain/forms';
 import { ALL_SLOTS, EXISTING_FORMS, FORMS, SCHEDULING_FORMS } from '../domain/forms';
-import { daypartBounds, daypartOf, minutesOf, type AppointmentDirectory, type Daypart } from '../domain/directory';
+import { daypartBounds, daypartOf, minutesOf, type AppointmentDirectory, type Booking, type Daypart } from '../domain/directory';
 import { INTENT_LABELS, INTENT_MENU, isFormIntent, type FormId } from '../domain/intents';
 import { allSlots, slotsFor, EXCLUDED_NAME_TOKENS, SLOTS, type SlotContext, type SlotPartial } from '../domain/slots';
 import { describeDay, describeWindow } from './extract/date';
@@ -154,6 +154,12 @@ export function buildOffer(provider: string, date: string, times: string[], dayp
   return { offer: { provider, date, times, index: best }, nearest: true };
 }
 
+/** The offer lists the caller's booked time on its own day: a correction to the name or birthday
+ * moved the booking onto it after the offer was built, so the offer is built again without it. */
+function offersHeld(offer: Offer, existing: Booking | null): boolean {
+  return existing !== null && existing.date === offer.date && offer.times.includes(existing.time);
+}
+
 /** The summary re-read on a booking form once only the offered day or time has moved (settleBookings). */
 export const SHORT_OFFER_PROMPT = 'confirm_time';
 
@@ -174,9 +180,10 @@ function readsSummary(s: Session, decision: Decision): boolean {
  * so a correction to any of them is read back with the booking it now points at. The offer waits
  * for the summary: built earlier, a daypart the caller names after the day would be ignored at the
  * first offer, and "The closest I have to the afternoon" would ride on a slot question instead of
- * sitting right before the summary that names it. It is rebuilt when the provider or the day moved
- * and kept otherwise, so an index moved by earlier/later stands; a turn that does not read the
- * summary back drops a stale offer so the next summary builds a fresh one.
+ * sitting right before the summary that names it. It never lists the caller's own booked time. It
+ * is rebuilt when the provider or the day moved, or when a corrected booking now sits on one of its
+ * times, and kept otherwise, so an index moved by earlier/later stands; a turn that does not read
+ * the summary back drops a stale offer so the next summary builds a fresh one.
  */
 export function settleBookings(s: Session, decision: Decision, directory: AppointmentDirectory): Decision {
   if (!s.form) return decision;
@@ -188,10 +195,14 @@ export function settleBookings(s: Session, decision: Decision, directory: Appoin
   const acks: Ack[] = [];
   if (!SCHEDULING_FORMS.includes(s.form) || !provider.value || !date.value) {
     s.offer = null;
-  } else if (s.offer === null || s.offer.provider !== provider.value || s.offer.date !== date.value) {
+  } else if (s.offer === null || s.offer.provider !== provider.value || s.offer.date !== date.value || offersHeld(s.offer, s.existing)) {
     s.offer = null;
     if (reads) {
-      const built = buildOffer(provider.value, date.value, directory.openings(provider.value, date.value), s.daypart);
+      // The caller's own booking is not an opening for them, even when the directory lists it:
+      // moving an appointment to the time it already has is no move at all.
+      const held = s.existing?.date === date.value ? s.existing.time : null;
+      const times = directory.openings(provider.value, date.value).filter((t) => t !== held);
+      const built = buildOffer(provider.value, date.value, times, s.daypart);
       s.offer = built.offer;
       const at = built.offer.times[built.offer.index];
       if (built.nearest && s.daypart && at) acks.push({ promptId: 'slot_nearest', vars: { daypart: s.daypart, time: at } });
