@@ -1,4 +1,11 @@
 # jev-ivr
+> **Continued as DialogWright.** This prototype grew into
+> [DialogWright](https://github.com/DialogWright/dialogwright), an open-source
+> framework for voice and chat agents that act safely: a decision model reads,
+> code decides, and every action goes through a policy gate. The clinic
+> scheduling demo here is its first example app (`apps/clinic`). This
+> repository is kept as the original prototype.
+
 > **Read the full write-up:** [Jev IVR: A Phone Line You Can Talk To](https://stiles.one/jev-ivr/)
 >
 > More of my work: [Hedge build log](https://stiles.one/hedge/build/) | [Essays on AI](https://stiles.one/essays/)
